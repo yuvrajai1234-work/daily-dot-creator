@@ -2,6 +2,7 @@ import { NavLink, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import { useAuth } from "@/components/AuthProvider";
 import {
   ChevronsLeft,
   ChevronsRight,
@@ -44,8 +45,14 @@ interface AppSidebarProps {
 
 const AppSidebar = ({ isCollapsed, setIsCollapsed }: AppSidebarProps) => {
   const navigate = useNavigate();
+  const { user, signOut } = useAuth();
 
-  const handleSignOut = () => {
+  const userName = user?.user_metadata?.full_name || user?.email?.split("@")[0] || "User";
+  const userEmail = user?.email || "";
+  const initials = userName.slice(0, 2).toUpperCase();
+
+  const handleSignOut = async () => {
+    await signOut();
     navigate("/");
   };
 
@@ -73,22 +80,22 @@ const AppSidebar = ({ isCollapsed, setIsCollapsed }: AppSidebarProps) => {
         </Button>
       </div>
 
-      {/* User avatar */}
+      {/* User */}
       <div className={`px-4 py-4 border-b border-sidebar-border ${isCollapsed ? "flex justify-center" : ""}`}>
         <div className={`flex items-center gap-3 ${isCollapsed ? "justify-center" : ""}`}>
           <Avatar className="h-9 w-9 border-2 border-primary/30">
-            <AvatarFallback className="bg-primary/20 text-primary text-sm">U</AvatarFallback>
+            <AvatarFallback className="bg-primary/20 text-primary text-sm">{initials}</AvatarFallback>
           </Avatar>
           {!isCollapsed && (
             <div className="flex-1 min-w-0">
-              <p className="text-sm font-medium text-sidebar-foreground truncate">User</p>
-              <p className="text-xs text-muted-foreground truncate">user@example.com</p>
+              <p className="text-sm font-medium text-sidebar-foreground truncate">{userName}</p>
+              <p className="text-xs text-muted-foreground truncate">{userEmail}</p>
             </div>
           )}
         </div>
       </div>
 
-      {/* Nav links */}
+      {/* Nav */}
       <nav className="flex-1 overflow-y-auto px-2 py-2 space-y-1">
         {navLinks.map((link) => (
           <Tooltip key={link.to} delayDuration={0}>
