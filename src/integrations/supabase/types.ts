@@ -14,7 +14,196 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      achievements: {
+        Row: {
+          category: string
+          coin_reward: number
+          created_at: string
+          description: string
+          icon: string
+          id: string
+          name: string
+          requirement_type: string
+          requirement_value: number
+        }
+        Insert: {
+          category?: string
+          coin_reward?: number
+          created_at?: string
+          description: string
+          icon?: string
+          id?: string
+          name: string
+          requirement_type?: string
+          requirement_value?: number
+        }
+        Update: {
+          category?: string
+          coin_reward?: number
+          created_at?: string
+          description?: string
+          icon?: string
+          id?: string
+          name?: string
+          requirement_type?: string
+          requirement_value?: number
+        }
+        Relationships: []
+      }
+      daily_reflections: {
+        Row: {
+          content: string
+          created_at: string
+          id: string
+          reflection_date: string
+          user_id: string
+        }
+        Insert: {
+          content: string
+          created_at?: string
+          id?: string
+          reflection_date?: string
+          user_id: string
+        }
+        Update: {
+          content?: string
+          created_at?: string
+          id?: string
+          reflection_date?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      habit_completions: {
+        Row: {
+          completion_date: string
+          created_at: string
+          effort_level: number
+          habit_id: string
+          id: string
+          user_id: string
+        }
+        Insert: {
+          completion_date?: string
+          created_at?: string
+          effort_level?: number
+          habit_id: string
+          id?: string
+          user_id: string
+        }
+        Update: {
+          completion_date?: string
+          created_at?: string
+          effort_level?: number
+          habit_id?: string
+          id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "habit_completions_habit_id_fkey"
+            columns: ["habit_id"]
+            isOneToOne: false
+            referencedRelation: "habits"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      habits: {
+        Row: {
+          color: string
+          created_at: string
+          description: string | null
+          icon: string
+          id: string
+          is_archived: boolean
+          name: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          color?: string
+          created_at?: string
+          description?: string | null
+          icon?: string
+          id?: string
+          is_archived?: boolean
+          name: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          color?: string
+          created_at?: string
+          description?: string | null
+          icon?: string
+          id?: string
+          is_archived?: boolean
+          name?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      profiles: {
+        Row: {
+          avatar_url: string | null
+          coin_balance: number
+          created_at: string
+          full_name: string | null
+          id: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          avatar_url?: string | null
+          coin_balance?: number
+          created_at?: string
+          full_name?: string | null
+          id?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          avatar_url?: string | null
+          coin_balance?: number
+          created_at?: string
+          full_name?: string | null
+          id?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      user_achievements: {
+        Row: {
+          achievement_id: string
+          earned_at: string
+          id: string
+          user_id: string
+        }
+        Insert: {
+          achievement_id: string
+          earned_at?: string
+          id?: string
+          user_id: string
+        }
+        Update: {
+          achievement_id?: string
+          earned_at?: string
+          id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_achievements_achievement_id_fkey"
+            columns: ["achievement_id"]
+            isOneToOne: false
+            referencedRelation: "achievements"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never

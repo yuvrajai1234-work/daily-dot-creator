@@ -7,6 +7,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { motion } from "framer-motion";
 import { Eye, EyeOff, Mail, Lock, User } from "lucide-react";
 import { toast } from "sonner";
+import { supabase } from "@/integrations/supabase/client";
 
 const SignUp = () => {
   const navigate = useNavigate();
@@ -14,11 +15,27 @@ const SignUp = () => {
   const [fullName, setFullName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [loading, setLoading] = useState(false);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    toast.success("Account created! Welcome to DailyDots!");
-    navigate("/dashboard");
+    setLoading(true);
+    try {
+      const { error } = await supabase.auth.signUp({
+        email,
+        password,
+        options: {
+          data: { full_name: fullName },
+          emailRedirectTo: window.location.origin,
+        },
+      });
+      if (error) throw error;
+      toast.success("Account created! Please check your email to verify your account.");
+    } catch (error: any) {
+      toast.error(error.message || "Failed to create account");
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -86,6 +103,7 @@ const SignUp = () => {
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     required
+                    minLength={6}
                   />
                   <button
                     type="button"
@@ -96,8 +114,12 @@ const SignUp = () => {
                   </button>
                 </div>
               </div>
-              <Button type="submit" className="w-full gradient-primary shadow-primary-glow hover:opacity-90 py-5">
-                Create Account
+              <Button
+                type="submit"
+                disabled={loading}
+                className="w-full gradient-primary shadow-primary-glow hover:opacity-90 py-5"
+              >
+                {loading ? "Creating account..." : "Create Account"}
               </Button>
             </form>
             <div className="mt-6 text-center">

@@ -2,54 +2,66 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
-import { Calendar, Flame, Trophy, TrendingUp, Plus, Check } from "lucide-react";
-import { useState } from "react";
+import { Calendar, Flame, Trophy, TrendingUp, Check, Trash2 } from "lucide-react";
+import { useState, useMemo } from "react";
 import { motion } from "framer-motion";
-import { toast } from "sonner";
-
-const mockHabits = [
-  { id: 1, name: "Morning Meditation", icon: "🧘", color: "hsl(262, 83%, 45%)", streak: 12, completed: true },
-  { id: 2, name: "Exercise", icon: "💪", color: "hsl(142, 76%, 36%)", streak: 7, completed: false },
-  { id: 3, name: "Read 30 mins", icon: "📚", color: "hsl(38, 92%, 50%)", streak: 21, completed: true },
-  { id: 4, name: "Drink Water", icon: "💧", color: "hsl(200, 80%, 50%)", streak: 30, completed: false },
-  { id: 5, name: "Journal", icon: "✍️", color: "hsl(310, 70%, 50%)", streak: 5, completed: true },
-  { id: 6, name: "No Social Media", icon: "📵", color: "hsl(0, 84%, 60%)", streak: 3, completed: false },
-];
-
-const weeklyData = [
-  { day: "Mon", completion: 80 },
-  { day: "Tue", completion: 65 },
-  { day: "Wed", completion: 90 },
-  { day: "Thu", completion: 75 },
-  { day: "Fri", completion: 85 },
-  { day: "Sat", completion: 60 },
-  { day: "Sun", completion: 95 },
-];
+import { useHabits, useTodayCompletions, useWeekCompletions, useToggleCompletion, useDeleteHabit, useSaveReflection } from "@/hooks/useHabits";
+import { useUserAchievements } from "@/hooks/useAchievements";
+import AddHabitDialog from "@/components/AddHabitDialog";
+import { useAuth } from "@/components/AuthProvider";
 
 const Dashboard = () => {
-  const [habits, setHabits] = useState(mockHabits);
+  const { user } = useAuth();
+  const { data: habits = [], isLoading: habitsLoading } = useHabits();
+  const { data: todayCompletions = [] } = useTodayCompletions();
+  const { data: weekCompletions = [] } = useWeekCompletions();
+  const { data: userAchievements = [] } = useUserAchievements();
+  const toggleCompletion = useToggleCompletion();
+  const deleteHabit = useDeleteHabit();
+  const saveReflection = useSaveReflection();
   const [reflection, setReflection] = useState("");
 
-  const toggleHabit = (id: number) => {
-    setHabits((prev) =>
-      prev.map((h) => (h.id === id ? { ...h, completed: !h.completed } : h))
-    );
-    const habit = habits.find((h) => h.id === id);
-    if (habit && !habit.completed) {
-      toast.success(`${habit.icon} ${habit.name} completed!`);
-    }
+  const completedIds = useMemo(
+    () => new Set(todayCompletions.map((c) => c.habit_id)),
+    [todayCompletions]
+  );
+
+  const completedCount = habits.filter((h) => completedIds.has(h.id)).length;
+  const completionRate = habits.length > 0 ? Math.round((completedCount / habits.length) * 100) : 0;
+
+  const weeklyData = useMemo(() => {
+    const days = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+    const today = new Date();
+    return Array.from({ length: 7 }, (_, i) => {
+      const date = new Date(today);
+      date.setDate(date.getDate() - (6 - i));
+      const dateStr = date.toISOString().split("T")[0];
+      const dayCompletions = weekCompletions.filter((c) => c.completion_date === dateStr);
+      const rate = habits.length > 0 ? Math.round((dayCompletions.length / habits.length) * 100) : 0;
+      return { day: days[date.getDay()], completion: Math.min(rate, 100) };
+    });
+  }, [weekCompletions, habits]);
+
+  const handleToggle = (habitId: string) => {
+    const isCompleted = completedIds.has(habitId);
+    toggleCompletion.mutate({ habitId, isCompleted });
   };
 
-  const completedCount = habits.filter((h) => h.completed).length;
-  const completionRate = Math.round((completedCount / habits.length) * 100);
-  const totalStreak = Math.max(...habits.map((h) => h.streak));
+  if (habitsLoading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <div className="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin" />
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
-      {/* Header */}
       <div>
         <h1 className="text-3xl font-bold">Dashboard</h1>
-        <p className="text-muted-foreground">Welcome back! Let's make today count.</p>
+        <p className="text-muted-foreground">
+          Welcome back, {user?.user_metadata?.full_name || "there"}! Let's make today count.
+        </p>
       </div>
 
       {/* Stats Cards */}
@@ -57,8 +69,8 @@ const Dashboard = () => {
         {[
           { label: "Today's Progress", value: `${completionRate}%`, icon: TrendingUp, gradient: "gradient-primary" },
           { label: "Completed", value: `${completedCount}/${habits.length}`, icon: Calendar, gradient: "gradient-success" },
-          { label: "Best Streak", value: `${totalStreak} days`, icon: Flame, gradient: "bg-warning" },
-          { label: "Achievements", value: "12", icon: Trophy, gradient: "gradient-hero" },
+          { label: "Total Habits", value: `${habits.length}`, icon: Flame, gradient: "bg-warning" },
+          { label: "Achievements", value: `${userAchievements.length}`, icon: Trophy, gradient: "gradient-hero" },
         ].map((stat) => (
           <motion.div key={stat.label} whileHover={{ y: -2 }}>
             <Card className="glass border-border/50 overflow-hidden">
@@ -78,57 +90,81 @@ const Dashboard = () => {
         ))}
       </div>
 
-      {/* Main Content Grid */}
+      {/* Main Content */}
       <div className="grid lg:grid-cols-3 gap-6">
         {/* Habits */}
         <div className="lg:col-span-2 space-y-4">
           <div className="flex items-center justify-between">
             <h2 className="text-xl font-semibold">Today's Habits</h2>
-            <Button size="sm" className="gradient-primary hover:opacity-90">
-              <Plus className="w-4 h-4 mr-1" /> Add Habit
-            </Button>
+            <AddHabitDialog />
           </div>
-          <div className="grid sm:grid-cols-2 gap-3">
-            {habits.map((habit) => (
-              <motion.div key={habit.id} whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}>
-                <Card
-                  className="cursor-pointer transition-smooth border-border/30 overflow-hidden"
-                  style={{
-                    background: habit.completed
-                      ? `linear-gradient(135deg, ${habit.color}, ${habit.color}88)`
-                      : undefined,
-                  }}
-                  onClick={() => toggleHabit(habit.id)}
-                >
-                  <CardContent className="p-4">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-3">
-                        <span className="text-2xl">{habit.icon}</span>
-                        <div>
-                          <p className={`font-medium ${habit.completed ? "text-foreground" : ""}`}>
-                            {habit.name}
-                          </p>
-                          <div className="flex items-center gap-1 mt-0.5">
-                            <Flame className="w-3 h-3 text-warning" />
-                            <span className="text-xs text-muted-foreground">{habit.streak} day streak</span>
+
+          {habits.length === 0 ? (
+            <Card className="glass border-border/50">
+              <CardContent className="p-8 text-center">
+                <p className="text-4xl mb-4">🎯</p>
+                <p className="text-lg font-medium mb-2">No habits yet!</p>
+                <p className="text-muted-foreground mb-4">Create your first habit to start tracking.</p>
+                <AddHabitDialog />
+              </CardContent>
+            </Card>
+          ) : (
+            <div className="grid sm:grid-cols-2 gap-3">
+              {habits.map((habit) => {
+                const isCompleted = completedIds.has(habit.id);
+                return (
+                  <motion.div key={habit.id} whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}>
+                    <Card
+                      className="cursor-pointer transition-smooth border-border/30 overflow-hidden relative group"
+                      style={{
+                        background: isCompleted
+                          ? `linear-gradient(135deg, ${habit.color}, ${habit.color}88)`
+                          : undefined,
+                      }}
+                      onClick={() => handleToggle(habit.id)}
+                    >
+                      <CardContent className="p-4">
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-3">
+                            <span className="text-2xl">{habit.icon}</span>
+                            <div>
+                              <p className="font-medium">{habit.name}</p>
+                              <div className="flex items-center gap-1 mt-0.5">
+                                <Flame className="w-3 h-3 text-warning" />
+                                <span className="text-xs text-muted-foreground">
+                                  {isCompleted ? "Done today!" : "Tap to complete"}
+                                </span>
+                              </div>
+                            </div>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                deleteHabit.mutate(habit.id);
+                              }}
+                              className="opacity-0 group-hover:opacity-100 transition-smooth p-1 hover:bg-destructive/20 rounded"
+                            >
+                              <Trash2 className="w-4 h-4 text-destructive" />
+                            </button>
+                            <div
+                              className={`w-8 h-8 rounded-full flex items-center justify-center border-2 transition-smooth ${
+                                isCompleted
+                                  ? "bg-foreground/20 border-foreground/40"
+                                  : "border-muted-foreground/30"
+                              }`}
+                            >
+                              {isCompleted && <Check className="w-4 h-4" />}
+                            </div>
                           </div>
                         </div>
-                      </div>
-                      <div
-                        className={`w-8 h-8 rounded-full flex items-center justify-center border-2 transition-smooth ${
-                          habit.completed
-                            ? "bg-foreground/20 border-foreground/40"
-                            : "border-muted-foreground/30"
-                        }`}
-                      >
-                        {habit.completed && <Check className="w-4 h-4" />}
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-              </motion.div>
-            ))}
-          </div>
+                      </CardContent>
+                    </Card>
+                  </motion.div>
+                );
+              })}
+            </div>
+          )}
         </div>
 
         {/* Right Column */}
@@ -157,6 +193,7 @@ const Dashboard = () => {
                       borderRadius: "8px",
                       color: "hsl(0, 0%, 98%)",
                     }}
+                    formatter={(value: number) => [`${value}%`, "Completion"]}
                   />
                   <Area
                     type="monotone"
@@ -185,12 +222,14 @@ const Dashboard = () => {
               <Button
                 className="w-full mt-3 gradient-primary hover:opacity-90"
                 size="sm"
+                disabled={!reflection.trim() || saveReflection.isPending}
                 onClick={() => {
-                  toast.success("Reflection saved!");
-                  setReflection("");
+                  saveReflection.mutate(reflection, {
+                    onSuccess: () => setReflection(""),
+                  });
                 }}
               >
-                Save Reflection
+                {saveReflection.isPending ? "Saving..." : "Save Reflection"}
               </Button>
             </CardContent>
           </Card>
