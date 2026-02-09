@@ -14,9 +14,9 @@ import { useCreateHabit } from "@/hooks/useHabits";
 
 const ICONS = ["🧘", "💪", "📚", "💧", "✍️", "📵", "🏃", "🥗", "😴", "🎯", "🎨", "🧹"];
 const COLORS = [
+  "hsl(45, 100%, 51%)",
+  "hsl(120, 100%, 50%)",
   "hsl(262, 83%, 45%)",
-  "hsl(142, 76%, 36%)",
-  "hsl(38, 92%, 50%)",
   "hsl(200, 80%, 50%)",
   "hsl(310, 70%, 50%)",
   "hsl(0, 84%, 60%)",
@@ -50,8 +50,8 @@ const AddHabitDialog = () => {
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <Button size="sm" className="gradient-primary hover:opacity-90">
-          <Plus className="w-4 h-4 mr-1" /> Add Habit
+        <Button size="sm" className="rounded-full gradient-primary hover:opacity-90 px-5">
+          <Plus className="w-4 h-4 mr-1" /> Add New Habit
         </Button>
       </DialogTrigger>
       <DialogContent className="glass border-primary/20">

@@ -154,7 +154,6 @@ export const useToggleCompletion = () => {
       isCompleted: boolean;
     }) => {
       if (isCompleted) {
-        // Remove completion
         const { error } = await supabase
           .from("habit_completions")
           .delete()
@@ -162,7 +161,6 @@ export const useToggleCompletion = () => {
           .eq("completion_date", today);
         if (error) throw error;
       } else {
-        // Add completion
         const { error } = await supabase
           .from("habit_completions")
           .insert({ habit_id: habitId, user_id: user!.id, completion_date: today, effort_level: 3 });
@@ -176,6 +174,46 @@ export const useToggleCompletion = () => {
     },
     onError: (error: any) => {
       toast.error(error.message || "Failed to update");
+    },
+  });
+};
+
+export const useLogEffort = () => {
+  const queryClient = useQueryClient();
+  const { user } = useAuth();
+  const today = new Date().toISOString().split("T")[0];
+
+  return useMutation({
+    mutationFn: async ({ habitId, effortLevel }: { habitId: string; effortLevel: number }) => {
+      // Upsert: insert or update effort for today
+      const { data: existing } = await supabase
+        .from("habit_completions")
+        .select("id")
+        .eq("habit_id", habitId)
+        .eq("completion_date", today)
+        .maybeSingle();
+
+      if (existing) {
+        const { error } = await supabase
+          .from("habit_completions")
+          .update({ effort_level: effortLevel })
+          .eq("id", existing.id);
+        if (error) throw error;
+      } else {
+        const { error } = await supabase
+          .from("habit_completions")
+          .insert({ habit_id: habitId, user_id: user!.id, completion_date: today, effort_level: effortLevel });
+        if (error) throw error;
+      }
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["completions"] });
+      queryClient.invalidateQueries({ queryKey: ["week-completions"] });
+      queryClient.invalidateQueries({ queryKey: ["all-completions"] });
+      toast.success("Effort logged!");
+    },
+    onError: (error: any) => {
+      toast.error(error.message || "Failed to log effort");
     },
   });
 };
