@@ -185,7 +185,7 @@ export const useLogEffort = () => {
 
   return useMutation({
     mutationFn: async ({ habitId, effortLevel }: { habitId: string; effortLevel: number }) => {
-      // Upsert: insert or update effort for today
+      // Check if already logged today (update doesn't cost B coins)
       const { data: existing } = await supabase
         .from("habit_completions")
         .select("id")
@@ -200,6 +200,24 @@ export const useLogEffort = () => {
           .eq("id", existing.id);
         if (error) throw error;
       } else {
+        // New log costs 10 B coins
+        const { data: profile } = await supabase
+          .from("profiles")
+          .select("b_coin_balance")
+          .eq("user_id", user!.id)
+          .single();
+
+        const bBalance = (profile as any)?.b_coin_balance || 0;
+        if (bBalance < 10) {
+          throw new Error("Not enough B Coins! You need 10 B Coins to log a habit.");
+        }
+
+        // Deduct B coins
+        await supabase
+          .from("profiles")
+          .update({ b_coin_balance: bBalance - 10 })
+          .eq("user_id", user!.id);
+
         const { error } = await supabase
           .from("habit_completions")
           .insert({ habit_id: habitId, user_id: user!.id, completion_date: today, effort_level: effortLevel });
@@ -210,7 +228,8 @@ export const useLogEffort = () => {
       queryClient.invalidateQueries({ queryKey: ["completions"] });
       queryClient.invalidateQueries({ queryKey: ["week-completions"] });
       queryClient.invalidateQueries({ queryKey: ["all-completions"] });
-      toast.success("Effort logged!");
+      queryClient.invalidateQueries({ queryKey: ["profile"] });
+      toast.success("Effort logged! (-10 B Coins)");
     },
     onError: (error: any) => {
       toast.error(error.message || "Failed to log effort");
@@ -242,6 +261,24 @@ export const useSaveReflection = () => {
 
   return useMutation({
     mutationFn: async (content: string) => {
+      // Saving journal costs 5 B coins
+      const { data: profile } = await supabase
+        .from("profiles")
+        .select("b_coin_balance")
+        .eq("user_id", user!.id)
+        .single();
+
+      const bBalance = (profile as any)?.b_coin_balance || 0;
+      if (bBalance < 5) {
+        throw new Error("Not enough B Coins! You need 5 B Coins to save a journal.");
+      }
+
+      // Deduct B coins
+      await supabase
+        .from("profiles")
+        .update({ b_coin_balance: bBalance - 5 })
+        .eq("user_id", user!.id);
+
       const today = new Date().toISOString().split("T")[0];
       const { data, error } = await supabase
         .from("daily_reflections")
@@ -256,7 +293,8 @@ export const useSaveReflection = () => {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["reflections"] });
-      toast.success("Reflection saved!");
+      queryClient.invalidateQueries({ queryKey: ["profile"] });
+      toast.success("Reflection saved! (-5 B Coins)");
     },
     onError: (error: any) => {
       toast.error(error.message || "Failed to save reflection");

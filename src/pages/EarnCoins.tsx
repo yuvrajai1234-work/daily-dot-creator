@@ -2,9 +2,11 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Coins, Check, Play, Crown } from "lucide-react";
+import { Check, Play, Crown, Info } from "lucide-react";
 import { motion } from "framer-motion";
-import { toast } from "sonner";
+import { useProfile } from "@/hooks/useProfile";
+import { useClaimBCoins, getMaxBCoins } from "@/hooks/useCoins";
+import { Progress } from "@/components/ui/progress";
 
 const subscriptionPlans = [
   {
@@ -37,22 +39,82 @@ const subscriptionPlans = [
 const EarnCoinsPage = () => {
   const [adViews, setAdViews] = useState(0);
   const maxAds = 5;
+  const { data: profile } = useProfile();
+  const claimBCoins = useClaimBCoins();
+
+  const bCoins = (profile as any)?.b_coin_balance || 0;
+  const bLevel = (profile as any)?.b_coin_level || 1;
+  const maxB = getMaxBCoins(bLevel);
+  const bProgress = Math.round((bCoins / maxB) * 100);
 
   const handleWatchAd = () => {
-    if (adViews >= maxAds) {
-      toast.error("Daily ad limit reached. Come back tomorrow!");
-      return;
-    }
+    if (adViews >= maxAds) return;
     setAdViews(adViews + 1);
-    toast.success("🪙 You earned 10 coins!");
+    claimBCoins.mutate({ amount: 10 });
   };
 
   return (
     <div className="space-y-8">
+      {/* B Coin Status */}
+      <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}>
+        <Card className="glass border-border/50">
+          <CardContent className="p-6">
+            <div className="flex items-center justify-between mb-4">
+              <div>
+                <h2 className="text-2xl font-bold flex items-center gap-2">
+                  <span className="w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center">
+                    <span className="text-sm font-bold text-primary">B</span>
+                  </span>
+                  B Coins
+                </h2>
+                <p className="text-sm text-muted-foreground mt-1">
+                  Level {bLevel} • Resets weekly • Max {maxB}
+                </p>
+              </div>
+              <div className="text-right">
+                <p className="text-3xl font-bold">{bCoins}</p>
+                <p className="text-xs text-muted-foreground">/ {maxB}</p>
+              </div>
+            </div>
+            <Progress value={bProgress} className="h-3" />
+            <div className="mt-3 flex flex-wrap gap-2 text-xs text-muted-foreground">
+              <Badge variant="outline" className="gap-1"><Info className="w-3 h-3" /> Log habit: 10 B Coins</Badge>
+              <Badge variant="outline" className="gap-1"><Info className="w-3 h-3" /> Save journal: 5 B Coins</Badge>
+            </div>
+          </CardContent>
+        </Card>
+      </motion.div>
+
+      {/* Earn B Coins - Free */}
+      <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }}>
+        <Card className="glass border-border/50">
+          <CardHeader className="flex flex-row items-center justify-between">
+            <div>
+              <CardTitle className="flex items-center gap-2">
+                <span className="w-6 h-6 rounded-full bg-primary/20 flex items-center justify-center">
+                  <span className="text-xs font-bold text-primary">B</span>
+                </span>
+                Earn B Coins for Free
+              </CardTitle>
+              <p className="text-sm text-muted-foreground mt-1">Daily engagement, watching ads, newsletter feedback, surveys</p>
+            </div>
+            <Button
+              onClick={handleWatchAd}
+              disabled={adViews >= maxAds || claimBCoins.isPending}
+              className="gradient-primary border-0 hover:opacity-90"
+            >
+              <Play className="w-4 h-4 mr-2" />
+              Watch Ad ({maxAds - adViews} left)
+            </Button>
+          </CardHeader>
+        </Card>
+      </motion.div>
+
+      {/* P Coins - Premium */}
       <div className="text-center">
-        <Badge className="gradient-primary text-foreground border-0 mb-3">How Much Does It Cost?</Badge>
-        <h1 className="text-4xl font-bold">Our Subscriptions</h1>
-        <p className="text-muted-foreground mt-2">Choose a plan that works for you</p>
+        <Badge className="bg-destructive/20 text-destructive border-destructive/30 mb-3">Premium Currency</Badge>
+        <h2 className="text-3xl font-bold">Buy P Coins</h2>
+        <p className="text-muted-foreground mt-2">P Coins work for both A Coin and B Coin purposes</p>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
@@ -61,17 +123,17 @@ const EarnCoinsPage = () => {
             key={index}
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: index * 0.1 }}
+            transition={{ delay: index * 0.1 + 0.2 }}
             whileHover={{ y: -5 }}
           >
             <Card
               className={`glass border-border/50 flex flex-col h-full relative ${
-                plan.recommended ? "border-primary shadow-primary-glow" : ""
+                plan.recommended ? "border-destructive shadow-lg" : ""
               }`}
             >
               {plan.recommended && (
                 <div className="absolute -top-3 left-1/2 -translate-x-1/2">
-                  <Badge className="gradient-primary text-foreground border-0 flex items-center gap-1">
+                  <Badge className="bg-destructive text-destructive-foreground border-0 flex items-center gap-1">
                     <Crown className="w-3 h-3" /> Recommended
                   </Badge>
                 </div>
@@ -94,7 +156,7 @@ const EarnCoinsPage = () => {
                     ))}
                   </ul>
                 </div>
-                <Button className="w-full bg-warning text-warning-foreground hover:opacity-90 font-bold">
+                <Button className="w-full bg-destructive text-destructive-foreground hover:opacity-90 font-bold">
                   Buy Now
                 </Button>
               </CardContent>
@@ -102,29 +164,6 @@ const EarnCoinsPage = () => {
           </motion.div>
         ))}
       </div>
-
-      {/* Free coins section */}
-      <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.4 }}>
-        <Card className="glass border-border/50">
-          <CardHeader className="flex flex-row items-center justify-between">
-            <div>
-              <CardTitle className="flex items-center gap-2">
-                <Coins className="w-5 h-5 text-warning" />
-                Earn Coins for Free
-              </CardTitle>
-              <p className="text-sm text-muted-foreground mt-1">Watch ads to earn coins — an alternative to subscriptions.</p>
-            </div>
-            <Button
-              onClick={handleWatchAd}
-              disabled={adViews >= maxAds}
-              className="gradient-primary border-0 hover:opacity-90"
-            >
-              <Play className="w-4 h-4 mr-2" />
-              Watch Ad ({maxAds - adViews} left)
-            </Button>
-          </CardHeader>
-        </Card>
-      </motion.div>
     </div>
   );
 };

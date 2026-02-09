@@ -147,29 +147,44 @@ export type Database = {
       }
       profiles: {
         Row: {
+          a_coin_balance: number
           avatar_url: string | null
+          b_coin_balance: number
+          b_coin_last_reset: string
+          b_coin_level: number
           coin_balance: number
           created_at: string
           full_name: string | null
           id: string
+          p_coin_balance: number
           updated_at: string
           user_id: string
         }
         Insert: {
+          a_coin_balance?: number
           avatar_url?: string | null
+          b_coin_balance?: number
+          b_coin_last_reset?: string
+          b_coin_level?: number
           coin_balance?: number
           created_at?: string
           full_name?: string | null
           id?: string
+          p_coin_balance?: number
           updated_at?: string
           user_id: string
         }
         Update: {
+          a_coin_balance?: number
           avatar_url?: string | null
+          b_coin_balance?: number
+          b_coin_last_reset?: string
+          b_coin_level?: number
           coin_balance?: number
           created_at?: string
           full_name?: string | null
           id?: string
+          p_coin_balance?: number
           updated_at?: string
           user_id?: string
         }

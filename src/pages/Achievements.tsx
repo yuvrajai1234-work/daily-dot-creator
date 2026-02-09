@@ -4,7 +4,9 @@ import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { Trophy, Lock, CheckCircle, Coins } from "lucide-react";
 import { motion } from "framer-motion";
-import { useAchievements, useUserAchievements, useClaimAchievement, useUserStats } from "@/hooks/useAchievements";
+import { useAchievements, useUserAchievements, useUserStats } from "@/hooks/useAchievements";
+import { useClaimACoins } from "@/hooks/useCoins";
+import { useProfile } from "@/hooks/useProfile";
 import { useMemo, useState } from "react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
@@ -21,8 +23,11 @@ const AchievementsPage = () => {
   const { data: achievements = [], isLoading: achievementsLoading } = useAchievements();
   const { data: userAchievements = [], isLoading: userAchievementsLoading } = useUserAchievements();
   const { data: stats } = useUserStats();
-  const claimAchievement = useClaimAchievement();
+  const { data: profile } = useProfile();
+  const claimACoins = useClaimACoins();
   const [activeTab, setActiveTab] = useState("all");
+
+  const aCoins = (profile as any)?.a_coin_balance || 0;
 
   const earnedIds = useMemo(
     () => new Set(userAchievements.map((ua) => ua.achievement_id)),
@@ -33,18 +38,10 @@ const AchievementsPage = () => {
     if (!stats) return 0;
     let current = 0;
     switch (achievement.requirement_type) {
-      case "total_completions":
-        current = stats.totalCompletions;
-        break;
-      case "streak":
-        current = stats.bestStreak;
-        break;
-      case "total_habits":
-        current = stats.totalHabits;
-        break;
-      case "total_reflections":
-        current = stats.totalReflections;
-        break;
+      case "total_completions": current = stats.totalCompletions; break;
+      case "streak": current = stats.bestStreak; break;
+      case "total_habits": current = stats.totalHabits; break;
+      case "total_reflections": current = stats.totalReflections; break;
     }
     return Math.min(Math.round((current / achievement.requirement_value) * 100), 100);
   };
@@ -63,7 +60,7 @@ const AchievementsPage = () => {
     return achievements.filter((a) => a.category === activeTab);
   }, [achievements, activeTab]);
 
-  const totalCoins = useMemo(() => {
+  const totalACoinsEarned = useMemo(() => {
     return achievements
       .filter((a) => earnedIds.has(a.id))
       .reduce((sum, a) => sum + a.coin_reward, 0);
@@ -79,10 +76,9 @@ const AchievementsPage = () => {
 
   return (
     <div className="space-y-6">
-      {/* Header */}
       <div>
         <h1 className="text-3xl font-bold">Achievements</h1>
-        <p className="text-muted-foreground">Track your milestones and earn rewards</p>
+        <p className="text-muted-foreground">Earn A Coins by completing milestones. Use them in the Rewards shop!</p>
       </div>
 
       {/* Summary Stats */}
@@ -101,11 +97,11 @@ const AchievementsPage = () => {
         <Card className="glass border-border/50">
           <CardContent className="p-4 flex items-center gap-4">
             <div className="w-12 h-12 rounded-xl gradient-success flex items-center justify-center">
-              <Coins className="w-6 h-6 text-foreground" />
+              <span className="text-lg font-bold text-foreground">A</span>
             </div>
             <div>
-              <p className="text-sm text-muted-foreground">Coins Earned</p>
-              <p className="text-2xl font-bold">{totalCoins}</p>
+              <p className="text-sm text-muted-foreground">A Coins Balance</p>
+              <p className="text-2xl font-bold">{aCoins}</p>
             </div>
           </CardContent>
         </Card>
@@ -133,11 +129,7 @@ const AchievementsPage = () => {
             All
           </TabsTrigger>
           {categories.filter((c) => c !== "all").map((cat) => (
-            <TabsTrigger
-              key={cat}
-              value={cat}
-              className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground"
-            >
+            <TabsTrigger key={cat} value={cat} className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
               {categoryLabels[cat] || cat}
             </TabsTrigger>
           ))}
@@ -158,11 +150,9 @@ const AchievementsPage = () => {
                   transition={{ delay: i * 0.05 }}
                   whileHover={{ y: -3 }}
                 >
-                  <Card
-                    className={`glass border-border/50 overflow-hidden transition-smooth ${
-                      earned ? "border-success/40 shadow-success-glow" : canClaim ? "border-primary/40 animate-pulse-glow" : ""
-                    }`}
-                  >
+                  <Card className={`glass border-border/50 overflow-hidden transition-smooth ${
+                    earned ? "border-success/40 shadow-success-glow" : canClaim ? "border-primary/40 animate-pulse-glow" : ""
+                  }`}>
                     <CardContent className="p-5">
                       <div className="flex items-start justify-between mb-3">
                         <div className="flex items-center gap-3">
@@ -172,7 +162,7 @@ const AchievementsPage = () => {
                           <div>
                             <h3 className="font-semibold">{achievement.name}</h3>
                             <Badge variant="outline" className="text-xs mt-0.5">
-                              +{achievement.coin_reward} coins
+                              +{achievement.coin_reward} A Coins
                             </Badge>
                           </div>
                         </div>
@@ -183,31 +173,24 @@ const AchievementsPage = () => {
                         )}
                       </div>
 
-                      <p className="text-sm text-muted-foreground mb-3">
-                        {achievement.description}
-                      </p>
+                      <p className="text-sm text-muted-foreground mb-3">{achievement.description}</p>
 
                       <div className="space-y-2">
                         <div className="flex justify-between text-xs">
                           <span className="text-muted-foreground">Progress</span>
-                          <span className={earned ? "text-success" : "text-foreground"}>
-                            {progress}%
-                          </span>
+                          <span className={earned ? "text-success" : "text-foreground"}>{progress}%</span>
                         </div>
-                        <Progress
-                          value={progress}
-                          className="h-2"
-                        />
+                        <Progress value={progress} className="h-2" />
                       </div>
 
                       {canClaim && (
                         <Button
                           className="w-full mt-3 gradient-primary hover:opacity-90"
                           size="sm"
-                          disabled={claimAchievement.isPending}
-                          onClick={() => claimAchievement.mutate(achievement.id)}
+                          disabled={claimACoins.isPending}
+                          onClick={() => claimACoins.mutate({ amount: achievement.coin_reward, achievementId: achievement.id })}
                         >
-                          🏆 Claim Reward
+                          🏆 Claim {achievement.coin_reward} A Coins
                         </Button>
                       )}
 

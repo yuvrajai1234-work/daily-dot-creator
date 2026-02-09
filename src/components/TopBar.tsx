@@ -1,4 +1,4 @@
-import { Coins, Medal, MessageSquare, Castle } from "lucide-react";
+import { Medal, MessageSquare, Castle } from "lucide-react";
 import { useProfile } from "@/hooks/useProfile";
 import { useUserStats } from "@/hooks/useAchievements";
 import { Link } from "react-router-dom";
@@ -8,7 +8,9 @@ const TopBar = () => {
   const { data: profile } = useProfile();
   const { data: stats } = useUserStats();
 
-  const coinBalance = profile?.coin_balance || 0;
+  const aCoins = (profile as any)?.a_coin_balance || 0;
+  const bCoins = (profile as any)?.b_coin_balance || 0;
+  const pCoins = (profile as any)?.p_coin_balance || 0;
   const currentStreak = stats?.bestStreak || 0;
 
   return (
@@ -21,20 +23,28 @@ const TopBar = () => {
         <span className="text-sm font-semibold">{currentStreak}</span>
       </Link>
 
-      {/* Coins */}
-      <Link to="/earn-coins" className="flex items-center gap-1 px-2 py-1 rounded-lg hover:bg-secondary/50 transition-smooth">
-        <div className="w-6 h-6 rounded-full bg-primary/20 flex items-center justify-center">
-          <Coins className="w-3.5 h-3.5 text-primary" />
+      {/* A Coins */}
+      <Link to="/achievements" className="flex items-center gap-1 px-2 py-1 rounded-lg hover:bg-secondary/50 transition-smooth">
+        <div className="w-6 h-6 rounded-full bg-success/20 flex items-center justify-center">
+          <span className="text-xs font-bold text-success">A</span>
         </div>
-        <span className="text-sm font-semibold">{coinBalance}</span>
+        <span className="text-sm font-semibold">{aCoins}</span>
       </Link>
 
-      {/* Points */}
+      {/* B Coins */}
+      <Link to="/earn-coins" className="flex items-center gap-1 px-2 py-1 rounded-lg hover:bg-secondary/50 transition-smooth">
+        <div className="w-6 h-6 rounded-full bg-primary/20 flex items-center justify-center">
+          <span className="text-xs font-bold text-primary">B</span>
+        </div>
+        <span className="text-sm font-semibold">{bCoins}</span>
+      </Link>
+
+      {/* P Coins */}
       <Link to="/rewards" className="flex items-center gap-1 px-2 py-1 rounded-lg hover:bg-secondary/50 transition-smooth">
         <div className="w-6 h-6 rounded-full bg-destructive/20 flex items-center justify-center">
           <span className="text-xs font-bold text-destructive">P</span>
         </div>
-        <span className="text-sm font-semibold">0</span>
+        <span className="text-sm font-semibold">{pCoins}</span>
       </Link>
 
       {/* Divider */}
