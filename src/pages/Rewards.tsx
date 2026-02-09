@@ -4,6 +4,7 @@ import { Badge } from "@/components/ui/badge";
 import { Gift, ShoppingBag, Sparkles, Lock } from "lucide-react";
 import { motion } from "framer-motion";
 import { toast } from "sonner";
+import { useProfile } from "@/hooks/useProfile";
 
 const rewards = [
   { id: 1, name: "Custom Theme", description: "Unlock a custom color theme for your dashboard", cost: 50, icon: "🎨", category: "Customization" },
@@ -17,6 +18,9 @@ const rewards = [
 ];
 
 const RewardsPage = () => {
+  const { data: profile } = useProfile();
+  const coinBalance = profile?.coin_balance || 0;
+
   const handleRedeem = (rewardName: string) => {
     toast.success(`🎉 Redeemed "${rewardName}"!`);
   };
@@ -33,7 +37,7 @@ const RewardsPage = () => {
         <CardContent className="p-6 flex items-center justify-between">
           <div>
             <p className="text-sm opacity-80">Your Balance</p>
-            <p className="text-4xl font-bold mt-1">0 Coins</p>
+            <p className="text-4xl font-bold mt-1">{coinBalance} Coins</p>
             <p className="text-sm opacity-70 mt-2">Earn coins by completing habits and quests!</p>
           </div>
           <Gift className="w-16 h-16 opacity-30" />

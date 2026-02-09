@@ -1,16 +1,15 @@
-import { Coins, Medal, Bell, MessageSquare, Castle } from "lucide-react";
-import { useAuth } from "@/components/AuthProvider";
-import { useUserAchievements } from "@/hooks/useAchievements";
-import { useTodayCompletions } from "@/hooks/useHabits";
+import { Coins, Medal, MessageSquare, Castle } from "lucide-react";
+import { useProfile } from "@/hooks/useProfile";
+import { useUserStats } from "@/hooks/useAchievements";
 import { Link } from "react-router-dom";
+import NotificationPopover from "@/components/NotificationPopover";
 
 const TopBar = () => {
-  const { user } = useAuth();
-  const { data: achievements = [] } = useUserAchievements();
-  const { data: todayCompletions = [] } = useTodayCompletions();
+  const { data: profile } = useProfile();
+  const { data: stats } = useUserStats();
 
-  const streakCount = todayCompletions.length;
-  const coinBalance = achievements.length * 10;
+  const coinBalance = profile?.coin_balance || 0;
+  const currentStreak = stats?.bestStreak || 0;
 
   return (
     <div className="flex items-center justify-end gap-1 px-4 py-2 border-b border-border/30 bg-background/80 backdrop-blur-sm">
@@ -19,7 +18,7 @@ const TopBar = () => {
         <div className="w-6 h-6 rounded-full bg-warning/20 flex items-center justify-center">
           <Medal className="w-3.5 h-3.5 text-warning" />
         </div>
-        <span className="text-sm font-semibold">{streakCount}</span>
+        <span className="text-sm font-semibold">{currentStreak}</span>
       </Link>
 
       {/* Coins */}
@@ -43,17 +42,15 @@ const TopBar = () => {
 
       {/* Community */}
       <Link to="/community" className="p-2 rounded-lg hover:bg-secondary/50 transition-smooth">
-        <MessageSquare className="w-4.5 h-4.5 text-muted-foreground hover:text-foreground transition-smooth" />
+        <MessageSquare className="w-4 h-4 text-muted-foreground hover:text-foreground transition-smooth" />
       </Link>
 
-      {/* Notifications */}
-      <Link to="/inbox" className="p-2 rounded-lg hover:bg-secondary/50 transition-smooth relative">
-        <Bell className="w-4.5 h-4.5 text-muted-foreground hover:text-foreground transition-smooth" />
-      </Link>
+      {/* Notifications Popover */}
+      <NotificationPopover />
 
       {/* Profile */}
       <Link to="/profile" className="p-2 rounded-lg hover:bg-secondary/50 transition-smooth">
-        <Castle className="w-4.5 h-4.5 text-muted-foreground hover:text-foreground transition-smooth" />
+        <Castle className="w-4 h-4 text-muted-foreground hover:text-foreground transition-smooth" />
       </Link>
     </div>
   );
