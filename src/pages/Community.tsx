@@ -7,7 +7,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Search, Users, Plus, LogOut } from "lucide-react";
 import { motion } from "framer-motion";
-import { useCommunities } from "@/hooks/useCommunities";
+import { useCommunities, JOIN_COST, CREATE_COST } from "@/hooks/useCommunities";
 import { Skeleton } from "@/components/ui/skeleton";
 
 const EMOJIS = ["🎯", "🌅", "💻", "🥗", "🧘", "📚", "🏋️", "🎨", "🎵", "🌿", "🔥", "⭐"];
@@ -100,7 +100,7 @@ const CommunityPage = () => {
                 </Select>
               </div>
               <Button className="w-full gradient-primary border-0" onClick={handleCreate} disabled={createCommunity.isPending}>
-                {createCommunity.isPending ? "Creating..." : "Create Team"}
+                {createCommunity.isPending ? "Creating..." : `Create Team (${CREATE_COST} 🪙)`}
               </Button>
             </div>
           </DialogContent>
@@ -175,7 +175,7 @@ const CommunityPage = () => {
                         onClick={() => joinCommunity.mutate(community.id)}
                         disabled={joinCommunity.isPending}
                       >
-                        Join
+                        Join ({JOIN_COST} 🪙)
                       </Button>
                     )}
                   </CardFooter>
