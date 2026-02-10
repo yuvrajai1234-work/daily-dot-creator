@@ -50,6 +50,68 @@ export type Database = {
         }
         Relationships: []
       }
+      communities: {
+        Row: {
+          created_at: string
+          created_by: string
+          emoji: string
+          habit_category: string
+          id: string
+          name: string
+          tagline: string
+        }
+        Insert: {
+          created_at?: string
+          created_by: string
+          emoji?: string
+          habit_category?: string
+          id?: string
+          name: string
+          tagline?: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string
+          emoji?: string
+          habit_category?: string
+          id?: string
+          name?: string
+          tagline?: string
+        }
+        Relationships: []
+      }
+      community_members: {
+        Row: {
+          community_id: string
+          id: string
+          joined_at: string
+          role: string
+          user_id: string
+        }
+        Insert: {
+          community_id: string
+          id?: string
+          joined_at?: string
+          role?: string
+          user_id: string
+        }
+        Update: {
+          community_id?: string
+          id?: string
+          joined_at?: string
+          role?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "community_members_community_id_fkey"
+            columns: ["community_id"]
+            isOneToOne: false
+            referencedRelation: "communities"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       daily_reflections: {
         Row: {
           content: string
