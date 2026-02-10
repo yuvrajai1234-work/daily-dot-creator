@@ -2,6 +2,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/components/AuthProvider";
 import { toast } from "@/hooks/use-toast";
+import { useSpendBCoins } from "@/hooks/useCoins";
 
 export interface Community {
   id: string;
@@ -14,9 +15,13 @@ export interface Community {
   member_count?: number;
 }
 
+export const JOIN_COST = 10;
+export const CREATE_COST = 20;
+
 export const useCommunities = () => {
   const { user } = useAuth();
   const queryClient = useQueryClient();
+  const spendBCoins = useSpendBCoins();
 
   const communitiesQuery = useQuery({
     queryKey: ["communities"],
@@ -61,6 +66,8 @@ export const useCommunities = () => {
 
   const joinCommunity = useMutation({
     mutationFn: async (communityId: string) => {
+      // Deduct B coins first
+      await spendBCoins.mutateAsync({ amount: JOIN_COST, reason: "Join community" });
       const { error } = await supabase
         .from("community_members")
         .insert({ community_id: communityId, user_id: user!.id, role: "member" });
@@ -69,7 +76,7 @@ export const useCommunities = () => {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["communities"] });
       queryClient.invalidateQueries({ queryKey: ["my-memberships"] });
-      toast({ title: "Joined!", description: "You've joined the community." });
+      toast({ title: "Joined!", description: `Spent ${JOIN_COST} B Coins to join.` });
     },
     onError: (err: Error) => {
       toast({ title: "Error", description: err.message, variant: "destructive" });
@@ -94,6 +101,8 @@ export const useCommunities = () => {
 
   const createCommunity = useMutation({
     mutationFn: async (data: { name: string; tagline: string; emoji: string; habit_category: string }) => {
+      // Deduct B coins first
+      await spendBCoins.mutateAsync({ amount: CREATE_COST, reason: "Create community" });
       const { data: community, error } = await supabase
         .from("communities")
         .insert({ ...data, created_by: user!.id })
@@ -109,7 +118,7 @@ export const useCommunities = () => {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["communities"] });
       queryClient.invalidateQueries({ queryKey: ["my-memberships"] });
-      toast({ title: "Community created!" });
+      toast({ title: "Community created!", description: `Spent ${CREATE_COST} B Coins.` });
     },
     onError: (err: Error) => {
       toast({ title: "Error", description: err.message, variant: "destructive" });
