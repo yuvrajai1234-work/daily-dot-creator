@@ -7,12 +7,13 @@ import { Textarea } from "@/components/ui/textarea";
 import { Slider } from "@/components/ui/slider";
 import { Separator } from "@/components/ui/separator";
 import { useAuth } from "@/components/AuthProvider";
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { motion } from "framer-motion";
 import { useUserStats } from "@/hooks/useAchievements";
 import { User, MapPin, Briefcase, Calendar } from "lucide-react";
+import LifeBalanceSpiderWeb from "@/components/LifeBalanceSpiderWeb";
 
 const personalityTraits = [
   "Openness", "Conscientiousness", "Resilience", "Confidence",
@@ -26,6 +27,7 @@ const ProfilePage = () => {
   const metadata = user?.user_metadata || {};
 
   const [isEditing, setIsEditing] = useState(false);
+  const [isEditingPersonality, setIsEditingPersonality] = useState(false);
   const [name, setName] = useState(metadata.full_name || "");
   const [designation, setDesignation] = useState(metadata.designation || "");
   const [bio, setBio] = useState(metadata.bio || "");
@@ -36,6 +38,7 @@ const ProfilePage = () => {
   // Personality sliders
   const [introvertExtrovert, setIntrovertExtrovert] = useState(metadata.introvertExtrovert || 50);
   const [analyticalCreative, setAnalyticalCreative] = useState(metadata.analyticalCreative || 50);
+  const [loyalFickle, setLoyalFickle] = useState(metadata.loyalFickle || 50);
   const [passiveActive, setPassiveActive] = useState(metadata.passiveActive || 50);
 
   const userInitials = name
@@ -52,6 +55,7 @@ const ProfilePage = () => {
       personality_traits: selectedTraits,
       introvertExtrovert,
       analyticalCreative,
+      loyalFickle,
       passiveActive,
     };
 
@@ -73,6 +77,7 @@ const ProfilePage = () => {
     setSelectedTraits(metadata.personality_traits || []);
     setIntrovertExtrovert(metadata.introvertExtrovert || 50);
     setAnalyticalCreative(metadata.analyticalCreative || 50);
+    setLoyalFickle(metadata.loyalFickle || 50);
     setPassiveActive(metadata.passiveActive || 50);
     setIsEditing(false);
   };
@@ -82,6 +87,60 @@ const ProfilePage = () => {
       prev.includes(trait) ? prev.filter((t) => t !== trait) : [...prev, trait]
     );
   };
+
+  const handleSavePersonality = async () => {
+    const updates = {
+      introvertExtrovert,
+      analyticalCreative,
+      loyalFickle,
+      passiveActive,
+    };
+
+    const { error } = await supabase.auth.updateUser({ data: updates });
+    if (error) {
+      toast.error("Failed to update personality");
+    } else {
+      toast.success("Personality updated!");
+      setIsEditingPersonality(false);
+    }
+  };
+
+  const handleCancelPersonality = () => {
+    setIntrovertExtrovert(metadata.introvertExtrovert || 50);
+    setAnalyticalCreative(metadata.analyticalCreative || 50);
+    setLoyalFickle(metadata.loyalFickle || 50);
+    setPassiveActive(metadata.passiveActive || 50);
+    setIsEditingPersonality(false);
+  };
+
+  // MBTI Personality Type Calculator
+  const personalityTypes = {
+    ISTJ: 'Responsible, sincere, analytical, reserved, realistic, systematic. Hardworking and trustworthy with practical judgement.',
+    ISFJ: 'Warm, considerate, gentle, responsible, pragmatic, thorough. Devoted caretakers who enjoy being helpful to others.',
+    INFJ: 'Idealistic, organized, insightful, dependable, compassionate, gentle. Peace & cooperation.',
+    INTJ: 'Innovative, independent, strategic, logical, reserved, insightful. Driven by original ideas to achieve improvements.',
+    ISTP: 'Action-oriented, logical, analytical, spontaneous, reserved, independent. Enjoy adventure, skilled at understanding things.',
+    ISFP: 'Gentle, sensitive, nurturing, helpful, flexible, realistic. Personal environment is beautiful & practical.',
+    INFP: 'Sensitive, creative, idealistic, perceptive, caring, loyal. Harmony and growth, dreams and possibilities.',
+    INTP: 'Intellectual, logical, precise, reserved, flexible, imaginative. Thinkers who enjoy speculation & creative problem solving.',
+    ESTP: 'Outgoing, realistic, action-oriented, curious, versatile, spontaneous. Pragmatic problem solvers & negotiators.',
+    ESFP: 'Playful, enthusiastic, friendly, spontaneous, tactful, flexible. Have common sense, enjoy helping people.',
+    ENFP: 'Enthusiastic, creative, spontaneous, optimistic, supportive, playful. Inspiration, new projects, see potential.',
+    ENTP: 'Inventive, enthusiastic, strategic, enterprising, inquisitive, versatile. Enjoy new ideas and challenges, value inspiration.',
+    ESTJ: 'Efficient, outgoing, analytical, systematic, dependable, realistic. Like to run the show and get things done in an orderly fashion.',
+    ESFJ: 'Friendly, outgoing, reliable, conscientious, organized, practical. Helpful and please others, enjoy being active and productive.',
+    ENFJ: 'Caring, enthusiastic, idealistic, organized, diplomatic, responsible. Skilled communicators who value connection.',
+    ENTJ: 'Strategic, logical, efficient, outgoing, ambitious, independent. Effective organizers of people and planners.',
+  };
+
+  const personalityType = useMemo(() => {
+    let type = '';
+    type += introvertExtrovert < 50 ? 'I' : 'E';
+    type += analyticalCreative < 50 ? 'S' : 'N';
+    type += loyalFickle < 50 ? 'F' : 'T';
+    type += passiveActive < 50 ? 'P' : 'J';
+    return type as keyof typeof personalityTypes;
+  }, [introvertExtrovert, analyticalCreative, loyalFickle, passiveActive]);
 
   return (
     <div className="space-y-6">
@@ -174,21 +233,21 @@ const ProfilePage = () => {
               <CardContent className="flex flex-wrap gap-2">
                 {isEditing
                   ? personalityTraits.map((trait) => (
-                      <Badge
-                        key={trait}
-                        variant={selectedTraits.includes(trait) ? "default" : "outline"}
-                        className="cursor-pointer transition-smooth"
-                        onClick={() => toggleTrait(trait)}
-                      >
-                        {trait}
-                      </Badge>
-                    ))
+                    <Badge
+                      key={trait}
+                      variant={selectedTraits.includes(trait) ? "default" : "outline"}
+                      className="cursor-pointer transition-smooth"
+                      onClick={() => toggleTrait(trait)}
+                    >
+                      {trait}
+                    </Badge>
+                  ))
                   : (selectedTraits.length > 0
-                      ? selectedTraits.map((trait) => (
-                          <Badge key={trait} className="gradient-primary text-foreground">{trait}</Badge>
-                        ))
-                      : <p className="text-sm text-muted-foreground">No traits selected yet</p>
-                    )}
+                    ? selectedTraits.map((trait) => (
+                      <Badge key={trait} className="gradient-primary text-foreground">{trait}</Badge>
+                    ))
+                    : <p className="text-sm text-muted-foreground">No traits selected yet</p>
+                  )}
               </CardContent>
             </Card>
           </motion.div>
@@ -223,13 +282,22 @@ const ProfilePage = () => {
           {/* Personality Sliders */}
           <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }}>
             <Card className="glass border-border/50">
-              <CardHeader>
+              <CardHeader className="flex flex-row items-center justify-between">
                 <CardTitle>Personality Spectrum</CardTitle>
+                {isEditingPersonality ? (
+                  <div className="flex gap-2">
+                    <Button size="sm" onClick={handleSavePersonality}>Save</Button>
+                    <Button size="sm" variant="outline" onClick={handleCancelPersonality}>Cancel</Button>
+                  </div>
+                ) : (
+                  <Button size="sm" onClick={() => setIsEditingPersonality(true)}>Edit</Button>
+                )}
               </CardHeader>
-              <CardContent className="space-y-8">
+              <CardContent className="space-y-6">
                 {[
                   { label: ["Introvert", "Extrovert"], value: introvertExtrovert, setter: setIntrovertExtrovert },
                   { label: ["Analytical", "Creative"], value: analyticalCreative, setter: setAnalyticalCreative },
+                  { label: ["Loyal", "Fickle"], value: loyalFickle, setter: setLoyalFickle },
                   { label: ["Passive", "Active"], value: passiveActive, setter: setPassiveActive },
                 ].map(({ label, value, setter }) => (
                   <div key={label[0]} className="space-y-2">
@@ -239,17 +307,34 @@ const ProfilePage = () => {
                     </div>
                     <Slider
                       value={[value]}
-                      onValueChange={([v]) => isEditing && setter(v)}
+                      onValueChange={([v]) => isEditingPersonality && setter(v)}
                       max={100}
                       step={1}
-                      disabled={!isEditing}
+                      disabled={!isEditingPersonality}
                       className="cursor-pointer"
                     />
                     <p className="text-center text-xs text-muted-foreground">{value}%</p>
                   </div>
                 ))}
+
+                {/* MBTI Personality Type Display */}
+                <div className="mt-6 pt-6 border-t border-border/30">
+                  <div className="p-4 rounded-lg bg-primary/10 border border-primary/30">
+                    <h3 className="text-xl font-bold text-center text-primary mb-2">
+                      {personalityType}
+                    </h3>
+                    <p className="text-sm text-center text-muted-foreground leading-relaxed">
+                      {personalityTypes[personalityType]}
+                    </p>
+                  </div>
+                </div>
               </CardContent>
             </Card>
+          </motion.div>
+
+          {/* Life Balance Spider Web */}
+          <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.15 }}>
+            <LifeBalanceSpiderWeb />
           </motion.div>
         </div>
       </div>
