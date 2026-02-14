@@ -1,6 +1,7 @@
 import { useMemo } from "react";
 import { useTodayCompletions, useHabits } from "@/hooks/useHabits";
 import { useUserStats, useAchievements, useUserAchievements } from "@/hooks/useAchievements";
+import { useClaimedRewards } from "@/hooks/useCoins";
 
 export interface AppNotification {
   id: string;
@@ -19,29 +20,33 @@ export const useNotifications = () => {
   const { data: stats } = useUserStats();
   const { data: achievements = [] } = useAchievements();
   const { data: userAchievements = [] } = useUserAchievements();
+  const { data: claimedRewards = [] } = useClaimedRewards();
 
   const hasCompletedHabitToday = todayCompletions.length > 0;
   const currentStreak = stats?.bestStreak || 0;
   const earnedIds = new Set(userAchievements.map((ua) => ua.achievement_id));
+  const claimedIds = new Set(claimedRewards.map((cr) => cr.reward_id));
 
   const notifications = useMemo<AppNotification[]>(() => {
     const notifs: AppNotification[] = [];
     const now = new Date();
 
-    // Daily login quest - always claimable
-    notifs.push({
-      id: "quest-login",
-      type: "quest",
-      title: "Daily Login Reward",
-      description: "You logged in today! Claim your coins.",
-      icon: "🔑",
-      claimable: true,
-      claimReward: 5,
-      timestamp: now,
-    });
+    // Daily login quest - only show if not claimed
+    if (!claimedIds.has("quest-login")) {
+      notifs.push({
+        id: "quest-login",
+        type: "quest",
+        title: "Daily Login Reward",
+        description: "You logged in today! Claim your coins.",
+        icon: "🔑",
+        claimable: true,
+        claimReward: 5,
+        timestamp: now,
+      });
+    }
 
-    // Habit completion quest
-    if (hasCompletedHabitToday) {
+    // Habit completion quest - only show if not claimed
+    if (hasCompletedHabitToday && !claimedIds.has("quest-habit")) {
       notifs.push({
         id: "quest-habit",
         type: "quest",
@@ -54,8 +59,8 @@ export const useNotifications = () => {
       });
     }
 
-    // Reflection quest
-    if ((stats?.totalReflections || 0) > 0) {
+    // Reflection quest - only show if not claimed
+    if ((stats?.totalReflections || 0) > 0 && !claimedIds.has("quest-reflection")) {
       notifs.push({
         id: "quest-reflection",
         type: "quest",
@@ -77,9 +82,10 @@ export const useNotifications = () => {
     ];
 
     milestones.forEach((m) => {
-      if (currentStreak >= m.days) {
+      const streakId = `streak-${m.days}`;
+      if (currentStreak >= m.days && !claimedIds.has(streakId)) {
         notifs.push({
-          id: `streak-${m.days}`,
+          id: streakId,
           type: "streak",
           title: `${m.label} Achieved! 🔥`,
           description: `Maintain ${m.days} days — claim your bonus!`,
@@ -131,7 +137,7 @@ export const useNotifications = () => {
     }
 
     return notifs;
-  }, [todayCompletions, habits, stats, achievements, userAchievements, hasCompletedHabitToday, currentStreak, earnedIds]);
+  }, [todayCompletions, habits, stats, achievements, userAchievements, hasCompletedHabitToday, currentStreak, earnedIds, claimedIds]);
 
   const claimableCount = notifications.filter((n) => n.claimable).length;
 

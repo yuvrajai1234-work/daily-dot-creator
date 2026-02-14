@@ -34,8 +34,8 @@ const NotificationPopover = () => {
       const achievementId = notif.id.replace("achievement-", "");
       claimACoins.mutate({ amount: notif.claimReward, achievementId });
     } else {
-      // Quests, streaks, daily engagement give B coins
-      claimBCoins.mutate({ amount: notif.claimReward });
+      // Quests, streaks, daily engagement give B coins and need to track claims
+      claimBCoins.mutate({ amount: notif.claimReward, rewardId: notif.id });
     }
   };
 

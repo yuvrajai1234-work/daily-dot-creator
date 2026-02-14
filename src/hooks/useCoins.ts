@@ -1,4 +1,4 @@
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/components/AuthProvider";
 import { useProfile } from "@/hooks/useProfile";
@@ -6,6 +6,40 @@ import { toast } from "sonner";
 
 // B coin max balance per level: level 1 = 75, level 2 = 80, ... level 50 = 320
 export const getMaxBCoins = (level: number) => 70 + level * 5;
+
+// Interface for claimed rewards
+export interface ClaimedReward {
+  id: string;
+  user_id: string;
+  reward_id: string;
+  reward_type: string;
+  claim_date: string;
+  coins_claimed: number;
+  claimed_at: string;
+}
+
+// Hook to get today's claimed rewards
+export const useClaimedRewards = () => {
+  const { user } = useAuth();
+
+  return useQuery({
+    queryKey: ["claimed-rewards", user?.id],
+    queryFn: async (): Promise<ClaimedReward[]> => {
+      if (!user) return [];
+
+      const today = new Date().toISOString().split("T")[0];
+      const { data, error } = await supabase
+        .from("claimed_rewards")
+        .select("*")
+        .eq("user_id", user.id)
+        .eq("claim_date", today);
+
+      if (error) throw error;
+      return (data as any) || [];
+    },
+    enabled: !!user,
+  });
+};
 
 export const useClaimACoins = () => {
   const queryClient = useQueryClient();
@@ -59,7 +93,7 @@ export const useClaimBCoins = () => {
   const { user } = useAuth();
 
   return useMutation({
-    mutationFn: async ({ amount }: { amount: number }) => {
+    mutationFn: async ({ amount, rewardId }: { amount: number; rewardId?: string }) => {
       const { data: profile, error: fetchErr } = await supabase
         .from("profiles")
         .select("b_coin_balance, b_coin_level, b_coin_last_reset")
@@ -71,7 +105,7 @@ export const useClaimBCoins = () => {
       const lastReset = new Date(profile.b_coin_last_reset);
       const now = new Date();
       const daysSinceReset = (now.getTime() - lastReset.getTime()) / (1000 * 60 * 60 * 24);
-      
+
       let currentBalance = profile.b_coin_balance || 0;
       let resetDate = profile.b_coin_last_reset;
 
@@ -89,14 +123,32 @@ export const useClaimBCoins = () => {
         .eq("user_id", user!.id);
       if (error) throw error;
 
+      // Record the claim if rewardId is provided
+      if (rewardId) {
+        const { error: claimError } = await supabase
+          .from("claimed_rewards")
+          .insert({
+            user_id: user!.id,
+            reward_id: rewardId,
+            reward_type: "quest",
+            coins_claimed: amount,
+          });
+        if (claimError) throw claimError;
+      }
+
       return newBalance;
     },
     onSuccess: (_, vars) => {
       queryClient.invalidateQueries({ queryKey: ["profile"] });
+      queryClient.invalidateQueries({ queryKey: ["claimed-rewards"] });
       toast.success(`🪙 Claimed ${vars.amount} B Coins!`);
     },
     onError: (error: any) => {
-      toast.error(error.message || "Failed to claim");
+      if (error.message?.includes("duplicate") || error.code === "23505") {
+        toast.info("Already claimed today!");
+      } else {
+        toast.error(error.message || "Failed to claim");
+      }
     },
   });
 };
