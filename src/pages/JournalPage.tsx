@@ -129,9 +129,8 @@ const JournalPage = () => {
                 variant={mood === m ? "default" : "outline"}
                 size="icon"
                 onClick={() => setMood(m)}
-                className={`text-2xl rounded-full w-12 h-12 transition-smooth ${
-                  mood === m ? "scale-125 gradient-primary border-0" : ""
-                }`}
+                className={`text-2xl rounded-full w-12 h-12 transition-smooth ${mood === m ? "scale-125 gradient-primary border-0" : ""
+                  }`}
               >
                 {m}
               </Button>

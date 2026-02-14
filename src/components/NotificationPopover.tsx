@@ -1,5 +1,4 @@
 import { Bell, Gift, Flame, Trophy, Clock, CheckCircle } from "lucide-react";
-import { useEffect, useRef } from "react";
 import {
   Popover,
   PopoverContent,
@@ -10,7 +9,6 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { useNotifications, AppNotification } from "@/hooks/useNotifications";
 import { useClaimACoins, useClaimBCoins } from "@/hooks/useCoins";
 import { useNavigate } from "react-router-dom";
-import { toast } from "sonner";
 
 const typeIcon = (type: AppNotification["type"]) => {
   switch (type) {
@@ -27,47 +25,6 @@ const NotificationPopover = () => {
   const navigate = useNavigate();
   const claimACoins = useClaimACoins();
   const claimBCoins = useClaimBCoins();
-  const previousNotificationIds = useRef<Set<string>>(new Set());
-  const isInitialLoad = useRef(true);
-
-  // Show toast for new claimable notifications
-  useEffect(() => {
-    const claimableNotifications = notifications.filter(n => n.claimable);
-    const currentIds = new Set(claimableNotifications.map(n => n.id));
-
-    // Skip showing toasts on initial load
-    if (isInitialLoad.current) {
-      previousNotificationIds.current = currentIds;
-      isInitialLoad.current = false;
-      return;
-    }
-
-    // Find new notifications that weren't in the previous set
-    claimableNotifications.forEach(notif => {
-      if (!previousNotificationIds.current.has(notif.id)) {
-        // This is a new notification, show toast
-        toast(
-          <div className="flex items-center gap-3 cursor-pointer" onClick={() => navigate("/inbox")}>
-            <span className="text-2xl">{notif.icon}</span>
-            <div className="flex-1 min-w-0">
-              <p className="font-medium text-sm">{notif.title}</p>
-              <p className="text-xs text-muted-foreground">{notif.description}</p>
-              <p className="text-xs text-warning font-medium mt-0.5">
-                Click to view in Inbox →
-              </p>
-            </div>
-          </div>,
-          {
-            duration: 2000,
-            position: "top-right",
-          }
-        );
-      }
-    });
-
-    // Update the previous set
-    previousNotificationIds.current = currentIds;
-  }, [notifications, navigate]);
 
   const handleClaim = (notif: AppNotification) => {
     if (!notif.claimReward) return;

@@ -199,6 +199,7 @@ export const useLogEffort = () => {
           .update({ effort_level: effortLevel })
           .eq("id", existing.id);
         if (error) throw error;
+        return { isUpdate: true };
       } else {
         // New log costs 10 B coins
         const { data: profile } = await supabase
@@ -222,14 +223,20 @@ export const useLogEffort = () => {
           .from("habit_completions")
           .insert({ habit_id: habitId, user_id: user!.id, completion_date: today, effort_level: effortLevel });
         if (error) throw error;
+        return { isUpdate: false };
       }
     },
-    onSuccess: () => {
+    onSuccess: (result) => {
       queryClient.invalidateQueries({ queryKey: ["completions"] });
       queryClient.invalidateQueries({ queryKey: ["week-completions"] });
       queryClient.invalidateQueries({ queryKey: ["all-completions"] });
       queryClient.invalidateQueries({ queryKey: ["profile"] });
-      toast.success("Effort logged! (-10 B Coins)");
+
+      if (result.isUpdate) {
+        toast.success("Effort level updated!");
+      } else {
+        toast.success("Effort logged! (-10 B Coins)");
+      }
     },
     onError: (error: any) => {
       toast.error(error.message || "Failed to log effort");
