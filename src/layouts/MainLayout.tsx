@@ -15,7 +15,7 @@ const MainLayout = () => {
         }`}
       >
         <TopBar />
-        <div className="p-6 max-w-7xl mx-auto flex-1 w-full">
+        <div className="p-6 max-w-7xl mx-auto flex-1 w-full overflow-y-auto">
           <Outlet />
         </div>
       </main>
