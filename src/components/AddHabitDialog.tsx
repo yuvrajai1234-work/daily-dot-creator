@@ -137,7 +137,7 @@ const AddHabitDialog = () => {
           <Plus className="w-4 h-4 mr-1" /> Add New Habit
         </Button>
       </DialogTrigger>
-      <DialogContent className="glass border-primary/20 max-w-lg max-h-[85vh] flex flex-col">
+      <DialogContent className="glass border-primary/20 max-w-lg max-h-[85vh]">
         <DialogHeader>
           <DialogTitle>Create New Habit</DialogTitle>
         </DialogHeader>
@@ -165,7 +165,7 @@ const AddHabitDialog = () => {
         </div>
 
         {mode === "preset" ? (
-          <ScrollArea className="flex-1 max-h-[55vh] pr-2">
+          <ScrollArea className="h-96 pr-2">
             <div className="space-y-4">
               {HABIT_CATEGORIES.map((cat) => (
                 <div key={cat.label}>
@@ -188,7 +188,7 @@ const AddHabitDialog = () => {
             </div>
           </ScrollArea>
         ) : (
-          <ScrollArea className="flex-1 max-h-[55vh] pr-2">
+          <ScrollArea className="h-96 pr-2">
             <form onSubmit={handleSubmit} className="space-y-4">
               <div className="space-y-2">
                 <Label>Habit Name</Label>
