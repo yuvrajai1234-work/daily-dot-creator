@@ -9,58 +9,64 @@ import { motion } from "framer-motion";
 import { useAuth } from "@/components/AuthProvider";
 import { useTodayCompletions } from "@/hooks/useHabits";
 import { useUserStats } from "@/hooks/useAchievements";
+import { useClaimedRewards, useClaimBCoins } from "@/hooks/useCoins";
 import { toast } from "sonner";
 
 const InboxPage = () => {
   const { user } = useAuth();
   const { data: todayCompletions = [] } = useTodayCompletions();
   const { data: stats } = useUserStats();
+  const { data: claimedRewards = [] } = useClaimedRewards();
+  const claimBCoins = useClaimBCoins();
   const [expirationText, setExpirationText] = useState("");
 
   const hasCompletedHabitToday = todayCompletions.length > 0;
   const currentStreak = stats?.bestStreak || 0;
 
+  // Create a set of claimed reward IDs for quick lookup
+  const claimedIds = new Set(claimedRewards.map((cr) => cr.reward_id));
+
   // Daily quests
   const quests = useMemo(
     () => [
       {
-        id: "login",
+        id: "quest-login",
         title: "Daily Login",
         description: "Log in to DailyDots",
         reward: 5,
         icon: "🔑",
         completed: true, // Always true since they're viewing this
-        claimed: false,
+        claimed: claimedIds.has("quest-login"),
       },
       {
-        id: "habit",
+        id: "quest-habit",
         title: "Habit Check-in",
         description: "Complete at least one daily habit",
         reward: 10,
         icon: "✅",
         completed: hasCompletedHabitToday,
-        claimed: false,
+        claimed: claimedIds.has("quest-habit"),
       },
       {
-        id: "reflection",
+        id: "quest-reflection",
         title: "Daily Reflection",
         description: "Write a journal entry or reflection",
         reward: 5,
         icon: "📝",
         completed: (stats?.totalReflections || 0) > 0,
-        claimed: false,
+        claimed: claimedIds.has("quest-reflection"),
       },
       {
-        id: "community",
+        id: "quest-community",
         title: "Community Engagement",
         description: "Visit the community page",
         reward: 3,
         icon: "👥",
         completed: false,
-        claimed: false,
+        claimed: claimedIds.has("quest-community"),
       },
     ],
-    [hasCompletedHabitToday, stats]
+    [hasCompletedHabitToday, stats, claimedIds]
   );
 
   // Streak milestones
@@ -92,8 +98,8 @@ const InboxPage = () => {
 
   const claimedQuests = quests.filter((q) => q.completed).length;
 
-  const handleClaim = (questTitle: string, reward: number) => {
-    toast.success(`🎉 Claimed ${reward} coins from "${questTitle}"!`);
+  const handleClaim = (questId: string, questTitle: string, reward: number) => {
+    claimBCoins.mutate({ amount: reward, rewardId: questId });
   };
 
   return (
@@ -171,14 +177,19 @@ const InboxPage = () => {
                       </div>
                     </div>
                   </div>
-                  {quest.completed ? (
+                  {quest.completed && !quest.claimed ? (
                     <Button
                       className="gradient-primary border-0 hover:opacity-90"
                       size="sm"
-                      onClick={() => handleClaim(quest.title, quest.reward)}
+                      onClick={() => handleClaim(quest.id, quest.title, quest.reward)}
+                      disabled={claimBCoins.isPending}
                     >
                       <CheckCircle className="w-4 h-4 mr-1" /> Claim
                     </Button>
+                  ) : quest.claimed ? (
+                    <Badge variant="outline" className="bg-success/10 text-success border-success/30">
+                      <CheckCircle className="w-3 h-3 mr-1" /> Claimed
+                    </Badge>
                   ) : (
                     <Badge variant="outline" className="text-muted-foreground">
                       Incomplete
@@ -218,14 +229,19 @@ const InboxPage = () => {
                           </div>
                         </div>
                       </div>
-                      {achieved ? (
+                      {achieved && !claimedIds.has(`streak-${milestone.days}`) ? (
                         <Button
                           className="gradient-success border-0 hover:opacity-90"
                           size="sm"
-                          onClick={() => handleClaim(milestone.label, milestone.reward)}
+                          onClick={() => handleClaim(`streak-${milestone.days}`, milestone.label, milestone.reward)}
+                          disabled={claimBCoins.isPending}
                         >
                           <CheckCircle className="w-4 h-4 mr-1" /> Claim
                         </Button>
+                      ) : achieved ? (
+                        <Badge variant="outline" className="bg-success/10 text-success border-success/30">
+                          <CheckCircle className="w-3 h-3 mr-1" /> Claimed
+                        </Badge>
                       ) : (
                         <Badge variant="outline" className="text-muted-foreground">
                           {currentStreak}/{milestone.days}
