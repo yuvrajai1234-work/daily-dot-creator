@@ -26,7 +26,8 @@ const NotificationPopover = () => {
   const claimACoins = useClaimACoins();
   const claimBCoins = useClaimBCoins();
 
-  const handleClaim = (notif: AppNotification) => {
+  const handleClaim = (notif: AppNotification, e: React.MouseEvent) => {
+    e.stopPropagation(); // Prevent navigation when claiming
     if (!notif.claimReward) return;
 
     if (notif.type === "achievement") {
@@ -41,6 +42,17 @@ const NotificationPopover = () => {
 
   const getCoinLabel = (notif: AppNotification) => {
     return notif.type === "achievement" ? "A Coins" : "B Coins";
+  };
+
+  const handleNotificationClick = (notif: AppNotification) => {
+    // Navigate to appropriate page based on notification type
+    if (notif.type === "achievement") {
+      navigate("/achievements");
+    } else if (notif.type === "reminder") {
+      navigate("/habits");
+    } else {
+      navigate("/inbox");
+    }
   };
 
   return (
@@ -80,7 +92,8 @@ const NotificationPopover = () => {
               {notifications.map((notif) => (
                 <div
                   key={notif.id}
-                  className="flex items-start gap-3 px-4 py-3 hover:bg-secondary/30 transition-smooth"
+                  className="flex items-start gap-3 px-4 py-3 hover:bg-secondary/30 transition-smooth cursor-pointer"
+                  onClick={() => handleNotificationClick(notif)}
                 >
                   <span className="text-xl mt-0.5">{notif.icon}</span>
                   <div className="flex-1 min-w-0">
@@ -97,7 +110,7 @@ const NotificationPopover = () => {
                           size="sm"
                           className="h-6 text-xs px-2 gradient-primary hover:opacity-90 gap-1"
                           disabled={claimACoins.isPending || claimBCoins.isPending}
-                          onClick={() => handleClaim(notif)}
+                          onClick={(e) => handleClaim(notif, e)}
                         >
                           <CheckCircle className="w-3 h-3" />
                           Claim +{notif.claimReward} {getCoinLabel(notif)}
@@ -110,17 +123,6 @@ const NotificationPopover = () => {
             </div>
           )}
         </ScrollArea>
-
-        <div className="px-4 py-2 border-t border-border/30">
-          <Button
-            variant="ghost"
-            size="sm"
-            className="w-full text-xs text-muted-foreground hover:text-foreground"
-            onClick={() => navigate("/inbox")}
-          >
-            View all in Inbox →
-          </Button>
-        </div>
       </PopoverContent>
     </Popover>
   );
