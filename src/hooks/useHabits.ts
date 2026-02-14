@@ -2,6 +2,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/components/AuthProvider";
 import { toast } from "sonner";
+import { getAppDate } from "@/lib/dateUtils";
 
 export interface Habit {
   id: string;
@@ -44,7 +45,7 @@ export const useHabits = () => {
 
 export const useTodayCompletions = () => {
   const { user } = useAuth();
-  const today = new Date().toISOString().split("T")[0];
+  const today = getAppDate(); // Current date in IST (resets at midnight)
 
   return useQuery({
     queryKey: ["completions", user?.id, today],
@@ -76,6 +77,25 @@ export const useWeekCompletions = () => {
         .lte("completion_date", today.toISOString().split("T")[0]);
       if (error) throw error;
       return data as HabitCompletion[];
+    },
+    enabled: !!user,
+  });
+};
+
+export const useTodayReflection = () => {
+  const { user } = useAuth();
+  const today = getAppDate(); // Current date in IST (resets at midnight)
+
+  return useQuery({
+    queryKey: ["today-reflection", user?.id, today],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("daily_reflections")
+        .select("*")
+        .eq("reflection_date", today)
+        .maybeSingle();
+      if (error) throw error;
+      return data;
     },
     enabled: !!user,
   });
@@ -143,7 +163,7 @@ export const useDeleteHabit = () => {
 export const useToggleCompletion = () => {
   const queryClient = useQueryClient();
   const { user } = useAuth();
-  const today = new Date().toISOString().split("T")[0];
+  const today = getAppDate(); // Current date in IST (resets at midnight)
 
   return useMutation({
     mutationFn: async ({
@@ -181,7 +201,7 @@ export const useToggleCompletion = () => {
 export const useLogEffort = () => {
   const queryClient = useQueryClient();
   const { user } = useAuth();
-  const today = new Date().toISOString().split("T")[0];
+  const today = getAppDate(); // Current date in IST (resets at midnight)
 
   return useMutation({
     mutationFn: async ({ habitId, effortLevel }: { habitId: string; effortLevel: number }) => {
@@ -286,7 +306,7 @@ export const useSaveReflection = () => {
         .update({ b_coin_balance: bBalance - 5 })
         .eq("user_id", user!.id);
 
-      const today = new Date().toISOString().split("T")[0];
+      const today = getAppDate(); // Current date in IST (resets at midnight)
       const { data, error } = await supabase
         .from("daily_reflections")
         .upsert(

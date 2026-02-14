@@ -3,6 +3,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/components/AuthProvider";
 import { useProfile } from "@/hooks/useProfile";
 import { toast } from "sonner";
+import { getAppDate } from "@/lib/dateUtils";
 
 // B coin max balance per level: level 1 = 75, level 2 = 80, ... level 50 = 320
 export const getMaxBCoins = (level: number) => 70 + level * 5;
@@ -27,7 +28,7 @@ export const useClaimedRewards = () => {
     queryFn: async (): Promise<ClaimedReward[]> => {
       if (!user) return [];
 
-      const today = new Date().toISOString().split("T")[0];
+      const today = getAppDate(); // Current date in IST (resets at midnight)
       const { data, error } = await supabase
         .from("claimed_rewards")
         .select("*")
@@ -131,6 +132,7 @@ export const useClaimBCoins = () => {
             user_id: user!.id,
             reward_id: rewardId,
             reward_type: "quest",
+            claim_date: getAppDate(), // Use IST date explicitly
             coins_claimed: amount,
           });
         if (claimError) throw claimError;

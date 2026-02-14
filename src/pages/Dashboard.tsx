@@ -6,13 +6,7 @@ import StatsCards from "@/components/dashboard/StatsCards";
 import HabitCard from "@/components/dashboard/HabitCard";
 import AIReflection from "@/components/dashboard/AIReflection";
 import AddHabitDialog from "@/components/AddHabitDialog";
-
-const getGreeting = () => {
-  const hour = new Date().getHours();
-  if (hour < 12) return "Good Morning";
-  if (hour < 17) return "Good Afternoon";
-  return "Good Evening";
-};
+import { getGreeting } from "@/lib/dateUtils";
 
 const Dashboard = () => {
   const { user } = useAuth();

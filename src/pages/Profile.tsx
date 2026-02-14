@@ -6,19 +6,25 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Slider } from "@/components/ui/slider";
 import { Separator } from "@/components/ui/separator";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useAuth } from "@/components/AuthProvider";
 import { useState, useMemo } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { motion } from "framer-motion";
 import { useUserStats } from "@/hooks/useAchievements";
-import { User, MapPin, Briefcase, Calendar } from "lucide-react";
+import { User, MapPin, Briefcase, Calendar, Users, Weight, Ruler, Heart, Crown, Camera } from "lucide-react";
 import LifeBalanceSpiderWeb from "@/components/LifeBalanceSpiderWeb";
+import HabitPointsCalendar from "@/components/HabitPointsCalendar";
+import AvatarSelector from "@/components/AvatarSelector";
+
 
 const personalityTraits = [
-  "Openness", "Conscientiousness", "Resilience", "Confidence",
-  "Kindness", "Leadership", "Optimism", "Creativity",
-  "Gratitude", "Self-discipline", "Patience", "Courage",
+  "Empathy", "Resilience", "Confidence", "Kindness", "Leadership", "Reliability",
+  "Optimism", "Creativity", "Honesty", "Gratitude", "Humility", "Adaptability",
+  "Punctuality", "Generosity", "Self-discipline", "Resourcefulness", "Fair-mindedness",
+  "Enthusiasm", "Forgiveness", "Integrity", "Patience", "Courage", "Loyalty",
+  "Curiosity", "Perseverance",
 ];
 
 const ProfilePage = () => {
@@ -28,18 +34,41 @@ const ProfilePage = () => {
 
   const [isEditing, setIsEditing] = useState(false);
   const [isEditingPersonality, setIsEditingPersonality] = useState(false);
+  const [isAvatarDialogOpen, setIsAvatarDialogOpen] = useState(false);
+
+  // Basic Info
   const [name, setName] = useState(metadata.full_name || "");
   const [designation, setDesignation] = useState(metadata.designation || "");
   const [bio, setBio] = useState(metadata.bio || "");
+  const [avatarUrl, setAvatarUrl] = useState(metadata.avatar_url || "");
+
+  // Extended Profile Fields
   const [age, setAge] = useState(metadata.age || "");
+  const [gender, setGender] = useState(metadata.gender || "");
+  const [weight, setWeight] = useState(metadata.weight || "");
+  const [height, setHeight] = useState(metadata.height || "");
+  const [bodyType, setBodyType] = useState(metadata.bodyType || "");
+  const [status, setStatus] = useState(metadata.status || "");
   const [location, setLocation] = useState(metadata.location || "");
+  const [archetype, setArchetype] = useState(metadata.archetype || "");
+
   const [selectedTraits, setSelectedTraits] = useState<string[]>(metadata.personality_traits || []);
 
-  // Personality sliders
+  // MBTI Personality sliders
   const [introvertExtrovert, setIntrovertExtrovert] = useState(metadata.introvertExtrovert || 50);
   const [analyticalCreative, setAnalyticalCreative] = useState(metadata.analyticalCreative || 50);
   const [loyalFickle, setLoyalFickle] = useState(metadata.loyalFickle || 50);
   const [passiveActive, setPassiveActive] = useState(metadata.passiveActive || 50);
+
+  // Calculate BMI
+  const bmi = useMemo(() => {
+    if (weight && height) {
+      const weightKg = parseFloat(weight);
+      const heightM = parseFloat(height) / 100;
+      return (weightKg / (heightM * heightM)).toFixed(2);
+    }
+    return "";
+  }, [weight, height]);
 
   const userInitials = name
     ? name.split(" ").map((n: string) => n[0]).join("").toUpperCase()
@@ -50,8 +79,15 @@ const ProfilePage = () => {
       full_name: name,
       designation,
       bio,
+      avatar_url: avatarUrl,
       age: age ? Number(age) : null,
+      gender,
+      weight: weight ? Number(weight) : null,
+      height: height ? Number(height) : null,
+      bodyType,
+      status,
       location,
+      archetype,
       personality_traits: selectedTraits,
       introvertExtrovert,
       analyticalCreative,
@@ -72,14 +108,36 @@ const ProfilePage = () => {
     setName(metadata.full_name || "");
     setDesignation(metadata.designation || "");
     setBio(metadata.bio || "");
+    setAvatarUrl(metadata.avatar_url || "");
     setAge(metadata.age || "");
+    setGender(metadata.gender || "");
+    setWeight(metadata.weight || "");
+    setHeight(metadata.height || "");
+    setBodyType(metadata.bodyType || "");
+    setStatus(metadata.status || "");
     setLocation(metadata.location || "");
+    setArchetype(metadata.archetype || "");
     setSelectedTraits(metadata.personality_traits || []);
     setIntrovertExtrovert(metadata.introvertExtrovert || 50);
     setAnalyticalCreative(metadata.analyticalCreative || 50);
     setLoyalFickle(metadata.loyalFickle || 50);
     setPassiveActive(metadata.passiveActive || 50);
     setIsEditing(false);
+  };
+
+  const handleAvatarChange = async (newAvatarUrl: string) => {
+    setAvatarUrl(newAvatarUrl);
+
+    // Save immediately
+    const { error } = await supabase.auth.updateUser({
+      data: { avatar_url: newAvatarUrl }
+    });
+
+    if (error) {
+      toast.error("Failed to update avatar");
+    } else {
+      toast.success("Avatar updated!");
+    }
   };
 
   const toggleTrait = (trait: string) => {
@@ -166,10 +224,23 @@ const ProfilePage = () => {
                 )}
               </CardHeader>
               <CardContent className="flex flex-col items-center text-center space-y-4">
-                <Avatar className="w-24 h-24 border-4 border-primary/30">
-                  <AvatarImage src={metadata.avatar_url} alt={name} />
-                  <AvatarFallback className="bg-primary/20 text-primary text-xl">{userInitials}</AvatarFallback>
-                </Avatar>
+                <div className="relative group cursor-pointer" onClick={() => setIsAvatarDialogOpen(true)}>
+                  <Avatar className="w-24 h-24 border-4 border-primary/30">
+                    {avatarUrl && !avatarUrl.startsWith("http") ? (
+                      <div className="w-full h-full flex items-center justify-center text-5xl bg-primary/10">
+                        {avatarUrl}
+                      </div>
+                    ) : (
+                      <>
+                        <AvatarImage src={avatarUrl} alt={name} />
+                        <AvatarFallback className="bg-primary/20 text-primary text-xl">{userInitials}</AvatarFallback>
+                      </>
+                    )}
+                  </Avatar>
+                  <div className="absolute inset-0 flex items-center justify-center bg-black/50 rounded-full opacity-0 group-hover:opacity-100 transition-opacity">
+                    <Camera className="w-8 h-8 text-white" />
+                  </div>
+                </div>
 
                 {isEditing ? (
                   <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="Your name" className="text-center bg-secondary/30 border-border" />
@@ -197,29 +268,194 @@ const ProfilePage = () => {
           {/* Details Card */}
           <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }}>
             <Card className="glass border-border/50">
-              <CardContent className="p-5 space-y-4">
-                {[
-                  { label: "Age", icon: Calendar, value: age, setter: setAge, type: "number" },
-                  { label: "Location", icon: MapPin, value: location, setter: setLocation, type: "text" },
-                ].map(({ label, icon: Icon, value, setter, type }) => (
-                  <div key={label} className="flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      <Icon className="w-4 h-4 text-muted-foreground" />
-                      <span className="font-medium text-sm">{label}</span>
-                    </div>
-                    {isEditing ? (
-                      <Input
-                        value={value}
-                        onChange={(e) => setter(e.target.value)}
-                        placeholder={label}
-                        type={type}
-                        className="w-1/2 bg-secondary/30 border-border text-sm"
-                      />
-                    ) : (
-                      <span className="text-sm text-muted-foreground">{value || "—"}</span>
-                    )}
+              <CardHeader>
+                <CardTitle className="text-lg">Details</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                {/* Age */}
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <Calendar className="w-4 h-4 text-muted-foreground" />
+                    <span className="font-medium text-sm">Age</span>
                   </div>
-                ))}
+                  {isEditing ? (
+                    <Input
+                      value={age}
+                      onChange={(e) => setAge(e.target.value)}
+                      placeholder="Age"
+                      type="number"
+                      className="w-24 bg-secondary/30 border-border text-sm"
+                    />
+                  ) : (
+                    <span className="text-sm text-muted-foreground">{age || "—"}</span>
+                  )}
+                </div>
+
+                {/* Gender */}
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <Users className="w-4 h-4 text-muted-foreground" />
+                    <span className="font-medium text-sm">Gender</span>
+                  </div>
+                  {isEditing ? (
+                    <Select value={gender} onValueChange={setGender}>
+                      <SelectTrigger className="w-32 bg-secondary/30 border-border text-sm">
+                        <SelectValue placeholder="Select" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="Male">Male</SelectItem>
+                        <SelectItem value="Female">Female</SelectItem>
+                        <SelectItem value="Other">Other</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  ) : (
+                    <span className="text-sm text-muted-foreground">{gender || "—"}</span>
+                  )}
+                </div>
+
+                {/* Weight */}
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <Weight className="w-4 h-4 text-muted-foreground" />
+                    <span className="font-medium text-sm">Weight (kg)</span>
+                  </div>
+                  {isEditing ? (
+                    <Input
+                      value={weight}
+                      onChange={(e) => setWeight(e.target.value)}
+                      placeholder="65"
+                      type="number"
+                      className="w-24 bg-secondary/30 border-border text-sm"
+                    />
+                  ) : (
+                    <span className="text-sm text-muted-foreground">{weight ? `${weight} kg` : "—"}</span>
+                  )}
+                </div>
+
+                {/* Height */}
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <Ruler className="w-4 h-4 text-muted-foreground" />
+                    <span className="font-medium text-sm">Height (cm)</span>
+                  </div>
+                  {isEditing ? (
+                    <Input
+                      value={height}
+                      onChange={(e) => setHeight(e.target.value)}
+                      placeholder="181"
+                      type="number"
+                      className="w-24 bg-secondary/30 border-border text-sm"
+                    />
+                  ) : (
+                    <span className="text-sm text-muted-foreground">{height ? `${height} cm` : "—"}</span>
+                  )}
+                </div>
+
+                {/* BMI - Auto-calculated */}
+                {(bmi || (weight && height)) && (
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <Heart className="w-4 h-4 text-muted-foreground" />
+                      <span className="font-medium text-sm">BMI</span>
+                    </div>
+                    <span className="text-sm text-primary font-medium">{bmi || "—"}</span>
+                  </div>
+                )}
+
+                {/* Body Type */}
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <User className="w-4 h-4 text-muted-foreground" />
+                    <span className="font-medium text-sm">Body Type</span>
+                  </div>
+                  {isEditing ? (
+                    <Select value={bodyType} onValueChange={setBodyType}>
+                      <SelectTrigger className="w-32 bg-secondary/30 border-border text-sm">
+                        <SelectValue placeholder="Select" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="Ectomorph">Ectomorph</SelectItem>
+                        <SelectItem value="Mesomorph">Mesomorph</SelectItem>
+                        <SelectItem value="Endomorph">Endomorph</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  ) : (
+                    <span className="text-sm text-muted-foreground">{bodyType || "—"}</span>
+                  )}
+                </div>
+
+                {/* Status */}
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <Heart className="w-4 h-4 text-muted-foreground" />
+                    <span className="font-medium text-sm">Status</span>
+                  </div>
+                  {isEditing ? (
+                    <Select value={status} onValueChange={setStatus}>
+                      <SelectTrigger className="w-32 bg-secondary/30 border-border text-sm">
+                        <SelectValue placeholder="Select" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="Single">Single</SelectItem>
+                        <SelectItem value="In a Relationship">In a Relationship</SelectItem>
+                        <SelectItem value="Married">Married</SelectItem>
+                        <SelectItem value="It's Complicated">It's Complicated</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  ) : (
+                    <span className="text-sm text-muted-foreground">{status || "—"}</span>
+                  )}
+                </div>
+
+                {/* Location */}
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <MapPin className="w-4 h-4 text-muted-foreground" />
+                    <span className="font-medium text-sm">Location</span>
+                  </div>
+                  {isEditing ? (
+                    <Input
+                      value={location}
+                      onChange={(e) => setLocation(e.target.value)}
+                      placeholder="City"
+                      type="text"
+                      className="w-32 bg-secondary/30 border-border text-sm"
+                    />
+                  ) : (
+                    <span className="text-sm text-muted-foreground">{location || "—"}</span>
+                  )}
+                </div>
+
+                {/* Archetype */}
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <Crown className="w-4 h-4 text-muted-foreground" />
+                    <span className="font-medium text-sm">Archetype</span>
+                  </div>
+                  {isEditing ? (
+                    <Select value={archetype} onValueChange={setArchetype}>
+                      <SelectTrigger className="w-32 bg-secondary/30 border-border text-sm">
+                        <SelectValue placeholder="Select" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="Ruler">Ruler</SelectItem>
+                        <SelectItem value="Creator">Creator</SelectItem>
+                        <SelectItem value="Sage">Sage</SelectItem>
+                        <SelectItem value="Innocent">Innocent</SelectItem>
+                        <SelectItem value="Explorer">Explorer</SelectItem>
+                        <SelectItem value="Hero">Hero</SelectItem>
+                        <SelectItem value="Magician">Magician</SelectItem>
+                        <SelectItem value="Lover">Lover</SelectItem>
+                        <SelectItem value="Jester">Jester</SelectItem>
+                        <SelectItem value="Caregiver">Caregiver</SelectItem>
+                        <SelectItem value="Rebel">Rebel</SelectItem>
+                        <SelectItem value="Everyman">Everyman</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  ) : (
+                    <span className="text-sm text-muted-foreground">{archetype || "—"}</span>
+                  )}
+                </div>
               </CardContent>
             </Card>
           </motion.div>
@@ -332,12 +568,26 @@ const ProfilePage = () => {
             </Card>
           </motion.div>
 
+          {/* Habit Points Calendar */}
+          <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.13 }}>
+            <HabitPointsCalendar />
+          </motion.div>
+
           {/* Life Balance Spider Web */}
           <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.15 }}>
             <LifeBalanceSpiderWeb />
           </motion.div>
         </div>
       </div>
+
+      {/* Avatar Selector Dialog */}
+      <AvatarSelector
+        open={isAvatarDialogOpen}
+        onOpenChange={setIsAvatarDialogOpen}
+        currentAvatar={avatarUrl}
+        userInitials={userInitials}
+        onAvatarChange={handleAvatarChange}
+      />
     </div>
   );
 };

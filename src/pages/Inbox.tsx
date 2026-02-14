@@ -7,7 +7,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Gift, Flame, CheckCircle, Clock, Zap, Target } from "lucide-react";
 import { motion } from "framer-motion";
 import { useAuth } from "@/components/AuthProvider";
-import { useTodayCompletions } from "@/hooks/useHabits";
+import { useTodayCompletions, useTodayReflection } from "@/hooks/useHabits";
 import { useUserStats } from "@/hooks/useAchievements";
 import { useClaimedRewards, useClaimBCoins } from "@/hooks/useCoins";
 import { toast } from "sonner";
@@ -15,12 +15,14 @@ import { toast } from "sonner";
 const InboxPage = () => {
   const { user } = useAuth();
   const { data: todayCompletions = [] } = useTodayCompletions();
+  const { data: todayReflection } = useTodayReflection();
   const { data: stats } = useUserStats();
   const { data: claimedRewards = [] } = useClaimedRewards();
   const claimBCoins = useClaimBCoins();
   const [expirationText, setExpirationText] = useState("");
 
   const hasCompletedHabitToday = todayCompletions.length > 0;
+  const hasWrittenReflectionToday = !!todayReflection; // Check if reflection exists for today
   const currentStreak = stats?.bestStreak || 0;
 
   // Create a set of claimed reward IDs for quick lookup
@@ -53,7 +55,7 @@ const InboxPage = () => {
         description: "Write a journal entry or reflection",
         reward: 5,
         icon: "📝",
-        completed: (stats?.totalReflections || 0) > 0,
+        completed: hasWrittenReflectionToday, // Use today's reflection check
         claimed: claimedIds.has("quest-reflection"),
       },
       {
@@ -66,7 +68,7 @@ const InboxPage = () => {
         claimed: claimedIds.has("quest-community"),
       },
     ],
-    [hasCompletedHabitToday, stats, claimedIds]
+    [hasCompletedHabitToday, hasWrittenReflectionToday, claimedIds]
   );
 
   // Streak milestones
