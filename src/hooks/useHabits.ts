@@ -264,6 +264,46 @@ export const useLogEffort = () => {
   });
 };
 
+export const useArchivedHabits = () => {
+  const { user } = useAuth();
+
+  return useQuery({
+    queryKey: ["archived-habits", user?.id],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("habits")
+        .select("*")
+        .eq("is_archived", true)
+        .order("created_at", { ascending: false });
+      if (error) throw error;
+      return data as Habit[];
+    },
+    enabled: !!user,
+  });
+};
+
+export const useUnarchiveHabit = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (habitId: string) => {
+      const { error } = await supabase
+        .from("habits")
+        .update({ is_archived: false })
+        .eq("id", habitId);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["habits"] });
+      queryClient.invalidateQueries({ queryKey: ["archived-habits"] });
+      toast.success("Habit restored!");
+    },
+    onError: (error: any) => {
+      toast.error(error.message || "Failed to restore habit");
+    },
+  });
+};
+
 export const useReflections = () => {
   const { user } = useAuth();
 

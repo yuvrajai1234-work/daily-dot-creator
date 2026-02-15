@@ -7,7 +7,7 @@ import { Trash2, Archive, ArchiveRestore, MoreHorizontal, TrendingUp, Target, Za
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { motion } from "framer-motion";
 import { subDays, format } from "date-fns";
-import { useHabits, useAllCompletions, useDeleteHabit } from "@/hooks/useHabits";
+import { useHabits, useAllCompletions, useDeleteHabit, useArchivedHabits, useUnarchiveHabit } from "@/hooks/useHabits";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/components/AuthProvider";
 import { useQueryClient } from "@tanstack/react-query";
@@ -19,9 +19,8 @@ const AnalyticsPage = () => {
   const { data: habits = [], isLoading: habitsLoading } = useHabits();
   const { data: completions = [] } = useAllCompletions();
   const deleteHabit = useDeleteHabit();
-
-  // Also fetch archived habits
-  const allHabitsQuery = useHabits();
+  const { data: archivedHabits = [] } = useArchivedHabits();
+  const unarchiveHabit = useUnarchiveHabit();
 
   const totalHabitPoints = useMemo(() => {
     return completions.reduce((sum, c) => sum + c.effort_level, 0);
@@ -113,9 +112,8 @@ const AnalyticsPage = () => {
                 <div key={habit.id} className="flex items-center justify-between">
                   <div className="flex items-center gap-3">
                     <div
-                      className={`w-10 h-8 rounded-md flex items-center justify-center text-foreground font-bold text-sm ${
-                        index % 2 === 0 ? "bg-warning" : "bg-primary"
-                      }`}
+                      className={`w-10 h-8 rounded-md flex items-center justify-center text-foreground font-bold text-sm ${index % 2 === 0 ? "bg-warning" : "bg-primary"
+                        }`}
                     >
                       {habit.points}
                     </div>
@@ -218,6 +216,76 @@ const AnalyticsPage = () => {
                       </TableCell>
                     </TableRow>
                   ))}
+                </TableBody>
+              </Table>
+            )}
+          </CardContent>
+        </Card>
+      </motion.div>
+
+      {/* Archived & Past Habits */}
+      <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 }}>
+        <Card className="glass border-border/50">
+          <CardHeader>
+            <CardTitle>Archived & Past Habits</CardTitle>
+            <CardDescription>View and manage your archived habits.</CardDescription>
+          </CardHeader>
+          <CardContent>
+            {archivedHabits.length === 0 ? (
+              <p className="text-muted-foreground text-center py-4">No archived habits.</p>
+            ) : (
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Habit</TableHead>
+                    <TableHead className="text-right">Completions</TableHead>
+                    <TableHead className="text-right">Points</TableHead>
+                    <TableHead className="text-right">Actions</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {archivedHabits.map((habit) => {
+                    const habitCompletions = completions.filter(c => c.habit_id === habit.id);
+                    const totalCompletions = habitCompletions.length;
+                    const totalPoints = habitCompletions.reduce((sum, c) => sum + c.effort_level, 0);
+
+                    return (
+                      <TableRow key={habit.id}>
+                        <TableCell className="flex items-center gap-2">
+                          <span>{habit.icon}</span>
+                          <span className="text-muted-foreground">{habit.name}</span>
+                        </TableCell>
+                        <TableCell className="text-right font-mono">{totalCompletions}</TableCell>
+                        <TableCell className="text-right font-mono">{totalPoints}</TableCell>
+                        <TableCell className="text-right">
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <Button variant="ghost" size="icon">
+                                <MoreHorizontal className="h-4 w-4" />
+                              </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent>
+                              <DropdownMenuItem onSelect={() => unarchiveHabit.mutate(habit.id)}>
+                                <ArchiveRestore className="mr-2 h-4 w-4" />
+                                <span>Unarchive</span>
+                              </DropdownMenuItem>
+                              <DropdownMenuItem
+                                onSelect={() => {
+                                  if (confirm("Permanently delete this habit and all its records?")) {
+                                    deleteHabit.mutate(habit.id);
+                                  }
+                                }}
+                                className="text-destructive"
+                              >
+                                <Trash2 className="mr-2 h-4 w-4" />
+                                <span>Delete Permanently</span>
+                              </DropdownMenuItem>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })}
                 </TableBody>
               </Table>
             )}
