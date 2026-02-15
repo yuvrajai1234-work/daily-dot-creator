@@ -6,7 +6,6 @@ import StatsCards from "@/components/dashboard/StatsCards";
 import HabitCard from "@/components/dashboard/HabitCard";
 import AIReflection from "@/components/dashboard/AIReflection";
 import AddHabitDialog from "@/components/AddHabitDialog";
-import XPProgressBar from "@/components/XPProgressBar";
 import { getGreeting } from "@/lib/dateUtils";
 
 const Dashboard = () => {
@@ -89,7 +88,6 @@ const Dashboard = () => {
 
         {/* Right Column */}
         <div className="space-y-4">
-          <XPProgressBar />
           <AIReflection completionRate={completionRate} userName={userName} />
         </div>
       </div>

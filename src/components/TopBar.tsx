@@ -1,26 +1,54 @@
-import { Medal, MessageSquare, Castle } from "lucide-react";
+import { MessageSquare, Castle, Star } from "lucide-react";
 import { useProfile } from "@/hooks/useProfile";
-import { useUserStats } from "@/hooks/useAchievements";
+import { useLevelInfo, getLevelTier } from "@/hooks/useXP";
 import { Link } from "react-router-dom";
 import NotificationPopover from "@/components/NotificationPopover";
 
 const TopBar = () => {
   const { data: profile } = useProfile();
-  const { data: stats } = useUserStats();
+  const { data: levelInfo } = useLevelInfo();
 
   const aCoins = (profile as any)?.a_coin_balance || 0;
   const bCoins = (profile as any)?.b_coin_balance || 0;
   const pCoins = (profile as any)?.p_coin_balance || 0;
-  const currentStreak = stats?.bestStreak || 0;
+  const userLevel = levelInfo?.level || 1;
+  const currentXP = levelInfo?.currentXP || 0;
+  const xpNeeded = levelInfo?.xpNeeded || 100;
+  const progress = levelInfo?.progress || 0;
+  const tier = getLevelTier(userLevel);
 
   return (
     <div className="flex items-center justify-end gap-1 px-4 py-2 border-b border-border/30 bg-background/80 backdrop-blur-sm">
-      {/* Streak */}
-      <Link to="/achievements" className="flex items-center gap-1 px-2 py-1 rounded-lg hover:bg-secondary/50 transition-smooth">
-        <div className="w-6 h-6 rounded-full bg-warning/20 flex items-center justify-center">
-          <Medal className="w-3.5 h-3.5 text-warning" />
+      {/* XP Progress Bar */}
+      <Link to="/dashboard" className="flex flex-col gap-0.5 px-2 py-1 rounded-lg hover:bg-secondary/50 transition-smooth min-w-[120px]">
+        <div className="flex items-center justify-between">
+          <span className="text-[10px] text-green-500 font-semibold">
+            {currentXP} / {xpNeeded} XP
+          </span>
+          <span
+            className="text-[10px] font-semibold px-1.5 py-0.5 rounded"
+            style={{
+              backgroundColor: `${tier.color}20`,
+              color: tier.color
+            }}
+          >
+            {tier.name}
+          </span>
         </div>
-        <span className="text-sm font-semibold">{currentStreak}</span>
+        <div className="h-1 bg-secondary/50 rounded-full overflow-hidden">
+          <div
+            className="h-full bg-gradient-to-r from-green-500 to-emerald-400 transition-all duration-300"
+            style={{ width: `${progress}%` }}
+          />
+        </div>
+      </Link>
+
+      {/* XP Level */}
+      <Link to="/dashboard" className="flex items-center gap-1 px-2 py-1 rounded-lg hover:bg-secondary/50 transition-smooth">
+        <div className="w-6 h-6 rounded-full bg-orange-500/20 flex items-center justify-center">
+          <Star className="w-3.5 h-3.5 text-orange-500 fill-orange-500" />
+        </div>
+        <span className="text-sm font-semibold">{userLevel}</span>
       </Link>
 
       {/* A Coins */}
