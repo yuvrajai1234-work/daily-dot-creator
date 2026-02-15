@@ -246,16 +246,31 @@ export const useLogEffort = () => {
         return { isUpdate: false };
       }
     },
-    onSuccess: (result) => {
+    onSuccess: async (result, variables) => {
       queryClient.invalidateQueries({ queryKey: ["completions"] });
       queryClient.invalidateQueries({ queryKey: ["week-completions"] });
       queryClient.invalidateQueries({ queryKey: ["all-completions"] });
       queryClient.invalidateQueries({ queryKey: ["profile"] });
 
+      // Award XP for new habit log (not for updates)
+      if (!result.isUpdate) {
+        try {
+          await supabase.rpc("add_xp_to_user", {
+            p_user_id: user!.id,
+            p_xp_amount: 10,
+            p_activity_type: "habit_log",
+            p_activity_id: variables.habitId,
+            p_description: "Logged a habit"
+          });
+        } catch (error) {
+          console.error("Failed to award XP:", error);
+        }
+      }
+
       if (result.isUpdate) {
         toast.success("Effort level updated!");
       } else {
-        toast.success("Effort logged! (-10 B Coins)");
+        toast.success("Effort logged! (-10 B Coins, +10 XP)");
       }
     },
     onError: (error: any) => {
@@ -358,10 +373,23 @@ export const useSaveReflection = () => {
       if (error) throw error;
       return data;
     },
-    onSuccess: () => {
+    onSuccess: async () => {
       queryClient.invalidateQueries({ queryKey: ["reflections"] });
       queryClient.invalidateQueries({ queryKey: ["profile"] });
-      toast.success("Reflection saved! (-5 B Coins)");
+
+      // Award XP for journal entry
+      try {
+        await supabase.rpc("add_xp_to_user", {
+          p_user_id: user!.id,
+          p_xp_amount: 15,
+          p_activity_type: "journal",
+          p_description: "Wrote a journal entry"
+        });
+      } catch (error) {
+        console.error("Failed to award XP:", error);
+      }
+
+      toast.success("Reflection saved! (-5 B Coins, +15 XP)");
     },
     onError: (error: any) => {
       toast.error(error.message || "Failed to save reflection");

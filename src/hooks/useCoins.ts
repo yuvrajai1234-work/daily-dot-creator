@@ -74,10 +74,24 @@ export const useClaimACoins = () => {
 
       return newBalance;
     },
-    onSuccess: (_, vars) => {
+    onSuccess: async (_, vars) => {
       queryClient.invalidateQueries({ queryKey: ["profile"] });
       queryClient.invalidateQueries({ queryKey: ["user-achievements"] });
-      toast.success(`🏆 Claimed ${vars.amount} A Coins!`);
+
+      // Award XP for claiming achievement
+      try {
+        await supabase.rpc("add_xp_to_user", {
+          p_user_id: user!.id,
+          p_xp_amount: 20,
+          p_activity_type: "claim_reward",
+          p_activity_id: vars.achievementId,
+          p_description: "Claimed an achievement reward"
+        });
+      } catch (error) {
+        console.error("Failed to award XP:", error);
+      }
+
+      toast.success(`🏆 Claimed ${vars.amount} A Coins! (+20 XP)`);
     },
     onError: (error: any) => {
       if (error.message?.includes("duplicate")) {
@@ -140,10 +154,24 @@ export const useClaimBCoins = () => {
 
       return newBalance;
     },
-    onSuccess: (_, vars) => {
+    onSuccess: async (_, vars) => {
       queryClient.invalidateQueries({ queryKey: ["profile"] });
       queryClient.invalidateQueries({ queryKey: ["claimed-rewards"] });
-      toast.success(`🪙 Claimed ${vars.amount} B Coins!`);
+
+      // Award XP for claiming quest reward
+      try {
+        await supabase.rpc("add_xp_to_user", {
+          p_user_id: user!.id,
+          p_xp_amount: 10,
+          p_activity_type: "claim_reward",
+          p_activity_id: vars.rewardId,
+          p_description: "Claimed a quest reward"
+        });
+      } catch (error) {
+        console.error("Failed to award XP:", error);
+      }
+
+      toast.success(`🪙 Claimed ${vars.amount} B Coins! (+10 XP)`);
     },
     onError: (error: any) => {
       if (error.message?.includes("duplicate") || error.code === "23505") {
