@@ -105,9 +105,9 @@ export const useNotifications = () => {
         // Check if user qualifies
         let qualifies = false;
         if (ach.requirement_type === "streak" && currentStreak >= ach.requirement_value) qualifies = true;
-        if (ach.requirement_type === "completions" && (stats?.totalCompletions || 0) >= ach.requirement_value) qualifies = true;
-        if (ach.requirement_type === "habits" && (stats?.totalHabits || 0) >= ach.requirement_value) qualifies = true;
-        if (ach.requirement_type === "reflections" && (stats?.totalReflections || 0) >= ach.requirement_value) qualifies = true;
+        if (ach.requirement_type === "total_completions" && (stats?.totalCompletions || 0) >= ach.requirement_value) qualifies = true;
+        if (ach.requirement_type === "total_habits" && (stats?.totalHabits || 0) >= ach.requirement_value) qualifies = true;
+        if (ach.requirement_type === "total_reflections" && (stats?.totalReflections || 0) >= ach.requirement_value) qualifies = true;
 
         if (qualifies) {
           notifs.push({
@@ -123,20 +123,6 @@ export const useNotifications = () => {
         }
       }
     });
-
-    // Reminders for incomplete habits
-    const incompleteCount = habits.length - todayCompletions.length;
-    if (incompleteCount > 0 && habits.length > 0) {
-      notifs.push({
-        id: "reminder-habits",
-        type: "reminder",
-        title: "Habits Remaining",
-        description: `You have ${incompleteCount} habit${incompleteCount > 1 ? "s" : ""} left for today.`,
-        icon: "⏰",
-        claimable: false,
-        timestamp: now,
-      });
-    }
 
     return notifs;
   }, [todayCompletions, habits, stats, achievements, userAchievements, hasCompletedHabitToday, currentStreak, earnedIds, claimedIds]);

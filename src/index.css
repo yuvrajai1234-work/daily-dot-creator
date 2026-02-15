@@ -54,6 +54,7 @@
     --gradient-success: linear-gradient(135deg, hsl(142 76% 36%), hsl(142 76% 50%));
     --gradient-hero: linear-gradient(135deg, hsl(262 83% 58%), hsl(310 70% 60%));
     --gradient-card: linear-gradient(145deg, hsl(240 10% 6%), hsl(240 8% 12%));
+    --gradient-danger: linear-gradient(135deg, hsl(0 84% 60%), hsl(0 84% 70%));
 
     /* Glassmorphism */
     --glass-bg: hsla(240, 10%, 10%, 0.8);
@@ -136,6 +137,10 @@
     background: var(--gradient-card);
   }
 
+  .gradient-danger {
+    background: var(--gradient-danger);
+  }
+
   .shadow-primary-glow {
     box-shadow: var(--shadow-primary);
   }
@@ -160,13 +165,35 @@
     transition: var(--transition-bounce);
   }
 
-  .level-1 { color: hsl(var(--level-1)); }
-  .level-2 { color: hsl(var(--level-2)); }
-  .level-3 { color: hsl(var(--level-3)); }
-  .level-4 { color: hsl(var(--level-4)); }
+  .level-1 {
+    color: hsl(var(--level-1));
+  }
 
-  .level-1-bg { background-color: hsl(var(--level-1)); }
-  .level-2-bg { background-color: hsl(var(--level-2)); }
-  .level-3-bg { background-color: hsl(var(--level-3)); }
-  .level-4-bg { background-color: hsl(var(--level-4)); }
+  .level-2 {
+    color: hsl(var(--level-2));
+  }
+
+  .level-3 {
+    color: hsl(var(--level-3));
+  }
+
+  .level-4 {
+    color: hsl(var(--level-4));
+  }
+
+  .level-1-bg {
+    background-color: hsl(var(--level-1));
+  }
+
+  .level-2-bg {
+    background-color: hsl(var(--level-2));
+  }
+
+  .level-3-bg {
+    background-color: hsl(var(--level-3));
+  }
+
+  .level-4-bg {
+    background-color: hsl(var(--level-4));
+  }
 }

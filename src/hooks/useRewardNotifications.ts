@@ -83,13 +83,13 @@ export const useRewardNotifications = () => {
 
                 // Check if user qualifies for this achievement
                 switch (achievement.requirement_type) {
-                    case "habits":
+                    case "total_habits":
                         qualifies = (stats.totalHabits || 0) >= achievement.requirement_value;
                         break;
-                    case "completions":
+                    case "total_completions":
                         qualifies = (stats.totalCompletions || 0) >= achievement.requirement_value;
                         break;
-                    case "reflections":
+                    case "total_reflections":
                         qualifies = (stats.totalReflections || 0) >= achievement.requirement_value;
                         break;
                     case "streak":
