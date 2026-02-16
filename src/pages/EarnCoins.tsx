@@ -77,9 +77,23 @@ const EarnCoinsPage = () => {
               </div>
             </div>
             <Progress value={bProgress} className="h-3" />
-            <div className="mt-3 flex flex-wrap gap-2 text-xs text-muted-foreground">
-              <Badge variant="outline" className="gap-1"><Info className="w-3 h-3" /> Log habit: 10 B Coins</Badge>
-              <Badge variant="outline" className="gap-1"><Info className="w-3 h-3" /> Save journal: 5 B Coins</Badge>
+            <div className="mt-4 grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
+              <Badge variant="outline" className="justify-start gap-2 py-1.5 text-muted-foreground bg-background/50 hover:bg-background transition-colors">
+                <Info className="w-3.5 h-3.5 text-primary" />
+                <span>Log habit: <span className="font-semibold text-foreground">10 B Coins</span></span>
+              </Badge>
+              <Badge variant="outline" className="justify-start gap-2 py-1.5 text-muted-foreground bg-background/50 hover:bg-background transition-colors">
+                <Info className="w-3.5 h-3.5 text-primary" />
+                <span>Save journal: <span className="font-semibold text-foreground">5 B Coins</span></span>
+              </Badge>
+              <Badge variant="outline" className="justify-start gap-2 py-1.5 text-muted-foreground bg-background/50 hover:bg-background transition-colors">
+                <Info className="w-3.5 h-3.5 text-primary" />
+                <span>Join community: <span className="font-semibold text-foreground">10 B Coins</span></span>
+              </Badge>
+              <Badge variant="outline" className="justify-start gap-2 py-1.5 text-muted-foreground bg-background/50 hover:bg-background transition-colors">
+                <Info className="w-3.5 h-3.5 text-primary" />
+                <span>Create community: <span className="font-semibold text-foreground">20 B Coins</span></span>
+              </Badge>
             </div>
           </CardContent>
         </Card>
@@ -127,9 +141,8 @@ const EarnCoinsPage = () => {
             whileHover={{ y: -5 }}
           >
             <Card
-              className={`glass border-border/50 flex flex-col h-full relative ${
-                plan.recommended ? "border-destructive shadow-lg" : ""
-              }`}
+              className={`glass border-border/50 flex flex-col h-full relative ${plan.recommended ? "border-destructive shadow-lg" : ""
+                }`}
             >
               {plan.recommended && (
                 <div className="absolute -top-3 left-1/2 -translate-x-1/2">
