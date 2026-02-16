@@ -7,17 +7,21 @@ import { useUserStats, useAchievements, useUserAchievements } from "@/hooks/useA
 /**
  * Hook that monitors for claimable rewards and sends popup notifications
  */
+// Track what we've already notified about in this session (persists across unmounts/remounts)
+const notifiedSet = new Set<string>();
+let lastNotificationDate = new Date().toDateString();
+
+/**
+ * Hook that monitors for claimable rewards and sends popup notifications
+ */
 export const useRewardNotifications = () => {
     const { showNotification } = usePopupNotifications();
     const { data: todayCompletions = [] } = useTodayCompletions();
     const { data: todayReflection } = useTodayReflection();
-    const { data: claimedRewards = [] } = useClaimedRewards();
+    const { data: claimedRewards = [], isLoading: isClaimedLoading } = useClaimedRewards();
     const { data: stats } = useUserStats();
     const { data: achievements = [] } = useAchievements();
     const { data: userAchievements = [] } = useUserAchievements();
-
-    // Track what we've already notified about (persists across renders)
-    const notifiedRef = useRef<Set<string>>(new Set());
 
     const hasCompletedHabitToday = todayCompletions.length > 0;
     const hasWrittenReflectionToday = !!todayReflection;
@@ -25,8 +29,18 @@ export const useRewardNotifications = () => {
     const earnedIds = new Set(userAchievements.map((ua) => ua.achievement_id));
 
     useEffect(() => {
+        // Reset notifications if day changes
+        const today = new Date().toDateString();
+        if (today !== lastNotificationDate) {
+            notifiedSet.clear();
+            lastNotificationDate = today;
+        }
+
+        // Don't show notifications while loading claimed rewards
+        if (isClaimedLoading) return;
+
         // Daily Login Quest
-        if (!claimedIds.has("quest-login") && !notifiedRef.current.has("quest-login")) {
+        if (!claimedIds.has("quest-login") && !notifiedSet.has("quest-login")) {
             showNotification({
                 type: "reward",
                 title: "🔑 Daily Login Reward",
@@ -34,14 +48,14 @@ export const useRewardNotifications = () => {
                 route: "/inbox",
                 duration: 3000,
             });
-            notifiedRef.current.add("quest-login");
+            notifiedSet.add("quest-login");
         }
 
         // Habit Completion Quest
         if (
             hasCompletedHabitToday &&
             !claimedIds.has("quest-habit") &&
-            !notifiedRef.current.has("quest-habit")
+            !notifiedSet.has("quest-habit")
         ) {
             showNotification({
                 type: "reward",
@@ -50,14 +64,14 @@ export const useRewardNotifications = () => {
                 route: "/inbox",
                 duration: 3000,
             });
-            notifiedRef.current.add("quest-habit");
+            notifiedSet.add("quest-habit");
         }
 
         // Reflection Quest
         if (
             hasWrittenReflectionToday &&
             !claimedIds.has("quest-reflection") &&
-            !notifiedRef.current.has("quest-reflection")
+            !notifiedSet.has("quest-reflection")
         ) {
             showNotification({
                 type: "reward",
@@ -66,7 +80,7 @@ export const useRewardNotifications = () => {
                 route: "/inbox",
                 duration: 3000,
             });
-            notifiedRef.current.add("quest-reflection");
+            notifiedSet.add("quest-reflection");
         }
 
         // Check for unclaimed achievements
@@ -75,7 +89,7 @@ export const useRewardNotifications = () => {
                 const notifKey = `achievement-${achievement.id}`;
 
                 // Skip if already earned or already notified
-                if (earnedIds.has(achievement.id) || notifiedRef.current.has(notifKey)) {
+                if (earnedIds.has(achievement.id) || notifiedSet.has(notifKey)) {
                     return;
                 }
 
@@ -105,7 +119,7 @@ export const useRewardNotifications = () => {
                         route: "/achievements",
                         duration: 3000,
                     });
-                    notifiedRef.current.add(notifKey);
+                    notifiedSet.add(notifKey);
                 }
             });
         }
@@ -117,15 +131,6 @@ export const useRewardNotifications = () => {
         achievements,
         stats,
         showNotification,
+        isClaimedLoading
     ]);
-
-    // Reset notifications when day changes (when claimedRewards resets)
-    useEffect(() => {
-        if (claimedRewards.length === 0) {
-            // New day - clear notified quests
-            notifiedRef.current.delete("quest-login");
-            notifiedRef.current.delete("quest-habit");
-            notifiedRef.current.delete("quest-reflection");
-        }
-    }, [claimedRewards.length]);
 };
