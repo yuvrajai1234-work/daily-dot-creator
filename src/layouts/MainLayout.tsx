@@ -3,6 +3,7 @@ import { Outlet } from "react-router-dom";
 import AppSidebar from "@/components/AppSidebar";
 import TopBar from "@/components/TopBar";
 import { useRewardNotifications } from "@/hooks/useRewardNotifications";
+import { useReminderToasts } from "@/hooks/useReminderToasts";
 import { LevelUpOverlay } from "@/components/LevelUpOverlay";
 import { useLevelInfo } from "@/hooks/useXP";
 import { AnimatePresence } from "framer-motion";
@@ -16,6 +17,8 @@ const MainLayout = () => {
 
   // Monitor for claimable rewards and send notifications
   useRewardNotifications();
+  // Monitor reminders
+  useReminderToasts();
 
   // Track level changes
   useEffect(() => {

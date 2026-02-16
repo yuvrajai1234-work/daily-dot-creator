@@ -1,11 +1,11 @@
 import { motion, AnimatePresence } from "framer-motion";
-import { X, Gift, Trophy, Users, Sparkles } from "lucide-react";
+import { X, Gift, Trophy, Users, Sparkles, Bell } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useEffect } from "react";
 
 export interface PopupNotification {
     id: string;
-    type: "reward" | "achievement" | "community" | "event";
+    type: "reward" | "achievement" | "community" | "event" | "reminder";
     title: string;
     message: string;
     route: string; // Where to navigate on click
@@ -27,6 +27,8 @@ const getIcon = (type: PopupNotification["type"]) => {
             return <Users className="w-5 h-5" />;
         case "event":
             return <Sparkles className="w-5 h-5" />;
+        case "reminder":
+            return <Bell className="w-5 h-5" />;
         default:
             return <Gift className="w-5 h-5" />;
     }
@@ -42,6 +44,8 @@ const getColor = (type: PopupNotification["type"]) => {
             return "from-blue-500/20 to-cyan-500/20 border-blue-500/50";
         case "event":
             return "from-green-500/20 to-emerald-500/20 border-green-500/50";
+        case "reminder":
+            return "from-indigo-500/20 to-violet-500/20 border-indigo-500/50";
         default:
             return "from-primary/20 to-primary/20 border-primary/50";
     }

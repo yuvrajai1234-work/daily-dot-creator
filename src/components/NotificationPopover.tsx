@@ -49,7 +49,7 @@ const NotificationPopover = () => {
     if (notif.type === "achievement") {
       navigate("/achievements");
     } else if (notif.type === "reminder") {
-      navigate("/habits");
+      navigate("/calendar");
     } else {
       navigate("/inbox");
     }
@@ -60,9 +60,9 @@ const NotificationPopover = () => {
       <PopoverTrigger asChild>
         <button className="p-2 rounded-lg hover:bg-secondary/50 transition-smooth relative">
           <Bell className="w-4 h-4 text-muted-foreground hover:text-foreground transition-smooth" />
-          {claimableCount > 0 && (
+          {notifications.length > 0 && (
             <span className="absolute -top-0.5 -right-0.5 min-w-[18px] h-[18px] rounded-full bg-destructive text-destructive-foreground text-[10px] font-bold flex items-center justify-center px-1 animate-pulse">
-              {claimableCount}
+              {notifications.length}
             </span>
           )}
         </button>
@@ -74,11 +74,9 @@ const NotificationPopover = () => {
       >
         <div className="flex items-center justify-between px-4 py-3 border-b border-border/30">
           <h3 className="font-semibold text-sm">Notifications</h3>
-          {claimableCount > 0 && (
-            <span className="text-xs text-warning font-medium">
-              {claimableCount} claimable
-            </span>
-          )}
+          <span className="text-xs text-muted-foreground font-medium">
+            {notifications.length} updates
+          </span>
         </div>
 
         <ScrollArea className="max-h-[360px]">

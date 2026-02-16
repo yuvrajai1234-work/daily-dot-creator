@@ -2,6 +2,8 @@ import { useMemo } from "react";
 import { useTodayCompletions, useHabits, useTodayReflection } from "@/hooks/useHabits";
 import { useUserStats, useAchievements, useUserAchievements } from "@/hooks/useAchievements";
 import { useClaimedRewards } from "@/hooks/useCoins";
+import { useReminders } from "@/hooks/useReminders";
+import { format } from "date-fns";
 
 export interface AppNotification {
   id: string;
@@ -22,6 +24,7 @@ export const useNotifications = () => {
   const { data: achievements = [] } = useAchievements();
   const { data: userAchievements = [] } = useUserAchievements();
   const { data: claimedRewards = [] } = useClaimedRewards();
+  const { reminders } = useReminders();
 
   const hasCompletedHabitToday = todayCompletions.length > 0;
   const hasWrittenReflectionToday = !!todayReflection;
@@ -124,8 +127,24 @@ export const useNotifications = () => {
       }
     });
 
+    // Reminders for today
+    const todayStr = format(now, "yyyy-MM-dd");
+    const todayReminders = reminders.filter(r => r.date === todayStr && !r.completed);
+
+    todayReminders.forEach((r) => {
+      notifs.push({
+        id: r.id,
+        type: "reminder",
+        title: r.isSpecial ? "🎉 Special Event Today" : "🔔 Reminder",
+        description: `${r.title} at ${r.time}`,
+        icon: r.isSpecial ? "🎉" : "🔔",
+        claimable: false,
+        timestamp: new Date(`${r.date}T${r.time}`),
+      });
+    });
+
     return notifs;
-  }, [todayCompletions, habits, stats, achievements, userAchievements, hasCompletedHabitToday, currentStreak, earnedIds, claimedIds]);
+  }, [todayCompletions, habits, stats, achievements, userAchievements, hasCompletedHabitToday, currentStreak, earnedIds, claimedIds, reminders]);
 
   const claimableCount = notifications.filter((n) => n.claimable).length;
 
