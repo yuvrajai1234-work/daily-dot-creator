@@ -6,7 +6,8 @@ import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Calendar } from "@/components/ui/calendar";
-import { Plus, Trash2, Calendar as CalendarIcon, Sparkles, ChevronLeft, ChevronRight, X, Check } from "lucide-react";
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
+import { Plus, Trash2, Calendar as CalendarIcon, Sparkles, ChevronLeft, ChevronRight, X, Check, Search } from "lucide-react";
 import { toast } from "sonner";
 import { format } from "date-fns";
 import { motion } from "framer-motion";
@@ -30,6 +31,41 @@ interface Todo {
   completed: boolean;
 }
 
+// Helper to parse journal content - Defined outside component to avoid hoisting issues
+const parseJournalContent = (content: string) => {
+  const lines = content.split("\n");
+  let heading = "";
+  let mood = null;
+  let dailyReflection = "";
+  let mistakes = "";
+  let steps = "";
+  let todos: Array<{ text: string; completed: boolean }> = [];
+
+  for (const line of lines) {
+    if (line.startsWith("Heading: ")) {
+      heading = line.replace("Heading: ", "").trim();
+    } else if (line.startsWith("Mood: ")) {
+      mood = line.replace("Mood: ", "").trim();
+    } else if (line.startsWith("---")) {
+      continue;
+    } else if (line.startsWith("Reflections: ")) {
+      mistakes = line.replace("Reflections: ", "").trim();
+    } else if (line.startsWith("Next Steps: ")) {
+      steps = line.replace("Next Steps: ", "").trim();
+    } else if (line.startsWith("Todos:")) {
+      continue;
+    } else if (line.startsWith("✅") || line.startsWith("⬜")) {
+      const completed = line.startsWith("✅");
+      const text = line.substring(2).trim();
+      todos.push({ text, completed });
+    } else if (line.trim()) {
+      dailyReflection += line + "\n";
+    }
+  }
+
+  return { heading, mood, dailyReflection, mistakes, steps, todos };
+};
+
 const JournalPage = () => {
   const { data: reflections = [], isLoading } = useReflections();
   const saveReflection = useSaveReflection();
@@ -45,6 +81,7 @@ const JournalPage = () => {
   const [todos, setTodos] = useState<Todo[]>([]);
   const [newTodo, setNewTodo] = useState("");
   const [browsingDate, setBrowsingDate] = useState<Date>(new Date());
+  const [headingSearch, setHeadingSearch] = useState("");
 
   const handleAddTodo = () => {
     if (newTodo.trim()) {
@@ -103,6 +140,32 @@ const JournalPage = () => {
     return reflections.filter((r) => r.reflection_date === dateStr);
   }, [reflections, browsingDate]);
 
+  // Get all headings from reflections for search dropdown
+  const allHeadings = useMemo(() => {
+    const headingsWithDates = reflections
+      .map((r) => {
+        const parsed = parseJournalContent(r.content);
+        return {
+          heading: parsed.heading,
+          date: r.reflection_date,
+          displayText: parsed.heading
+            ? `${parsed.heading} - ${format(new Date(r.reflection_date), "MMM dd, yyyy")}`
+            : null,
+        };
+      })
+      .filter((item) => item.heading && item.displayText)
+      .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()); // Sort by date, newest first
+
+    // Filter based on search input
+    if (headingSearch.trim()) {
+      return headingsWithDates.filter((item) =>
+        item.heading.toLowerCase().includes(headingSearch.toLowerCase())
+      );
+    }
+
+    return headingsWithDates;
+  }, [reflections, headingSearch]);
+
   // Navigate to previous day
   const goToPreviousDay = () => {
     const newDate = new Date(browsingDate);
@@ -117,40 +180,7 @@ const JournalPage = () => {
     setBrowsingDate(newDate);
   };
 
-  // Parse journal content to extract structured data
-  const parseJournalContent = (content: string) => {
-    const lines = content.split("\n");
-    let heading = "";
-    let mood = null;
-    let dailyReflection = "";
-    let mistakes = "";
-    let steps = "";
-    let todos: Array<{ text: string; completed: boolean }> = [];
 
-    for (const line of lines) {
-      if (line.startsWith("Heading: ")) {
-        heading = line.replace("Heading: ", "").trim();
-      } else if (line.startsWith("Mood: ")) {
-        mood = line.replace("Mood: ", "").trim();
-      } else if (line.startsWith("---")) {
-        continue;
-      } else if (line.startsWith("Reflections: ")) {
-        mistakes = line.replace("Reflections: ", "").trim();
-      } else if (line.startsWith("Next Steps: ")) {
-        steps = line.replace("Next Steps: ", "").trim();
-      } else if (line.startsWith("Todos:")) {
-        continue;
-      } else if (line.startsWith("✅") || line.startsWith("⬜")) {
-        const completed = line.startsWith("✅");
-        const text = line.substring(2).trim();
-        todos.push({ text, completed });
-      } else if (line.trim()) {
-        dailyReflection += line + "\n";
-      }
-    }
-
-    return { heading, mood, dailyReflection, mistakes, steps, todos };
-  };
 
   return (
     <div className="space-y-6">
@@ -329,24 +359,68 @@ const JournalPage = () => {
 
       {/* Past Entries */}
       <div>
-        <div className="flex items-center justify-between mb-4">
+        <div className="flex items-center justify-between mb-4 gap-4">
           <h2 className="text-2xl font-bold">Past Entries</h2>
-          <Popover>
-            <PopoverTrigger asChild>
-              <Button variant="outline" className="w-[260px] justify-start text-left font-normal">
-                <CalendarIcon className="mr-2 h-4 w-4" />
-                {format(browsingDate, "PPP")}
-              </Button>
-            </PopoverTrigger>
-            <PopoverContent className="w-auto p-0">
-              <Calendar
-                mode="single"
-                selected={browsingDate}
-                onSelect={(d) => d && setBrowsingDate(d)}
-                initialFocus
-              />
-            </PopoverContent>
-          </Popover>
+          <div className="flex gap-2">
+            {/* Search by Heading */}
+            <Popover>
+              <PopoverTrigger asChild>
+                <Button variant="outline" className="w-[300px] justify-start text-left font-normal">
+                  <Search className="mr-2 h-4 w-4" />
+                  {headingSearch ? `"${headingSearch}"` : "Search by heading..."}
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-[300px] p-0" align="end">
+                <Command>
+                  <CommandInput
+                    placeholder="Search headings..."
+                    value={headingSearch}
+                    onValueChange={setHeadingSearch}
+                  />
+                  <CommandList>
+                    <CommandEmpty>No headings found.</CommandEmpty>
+                    <CommandGroup heading="Previous Headings">
+                      {allHeadings.slice(0, 10).map((item, index) => (
+                        <CommandItem
+                          key={`${item.date}-${index}`}
+                          onSelect={() => {
+                            setBrowsingDate(new Date(item.date));
+                            setHeadingSearch("");
+                          }}
+                          className="cursor-pointer"
+                        >
+                          <div className="flex flex-col">
+                            <span className="font-medium">{item.heading}</span>
+                            <span className="text-xs text-muted-foreground">
+                              {format(new Date(item.date), "MMMM dd, yyyy")}
+                            </span>
+                          </div>
+                        </CommandItem>
+                      ))}
+                    </CommandGroup>
+                  </CommandList>
+                </Command>
+              </PopoverContent>
+            </Popover>
+
+            {/* Date Picker */}
+            <Popover>
+              <PopoverTrigger asChild>
+                <Button variant="outline" className="w-[260px] justify-start text-left font-normal">
+                  <CalendarIcon className="mr-2 h-4 w-4" />
+                  {format(browsingDate, "PPP")}
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-auto p-0">
+                <Calendar
+                  mode="single"
+                  selected={browsingDate}
+                  onSelect={(d) => d && setBrowsingDate(d)}
+                  initialFocus
+                />
+              </PopoverContent>
+            </Popover>
+          </div>
         </div>
 
         <div className="relative">
