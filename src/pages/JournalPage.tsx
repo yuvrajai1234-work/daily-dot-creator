@@ -37,6 +37,7 @@ const JournalPage = () => {
   const { data: allCompletions = [] } = useAllCompletions();
 
   const [motivation] = useState(() => motivationalQuotes[Math.floor(Math.random() * motivationalQuotes.length)]);
+  const [entryHeading, setEntryHeading] = useState("");
   const [mood, setMood] = useState<string | null>(null);
   const [dailyReflection, setDailyReflection] = useState("");
   const [mistakesReflection, setMistakesReflection] = useState("");
@@ -61,12 +62,18 @@ const JournalPage = () => {
   };
 
   const handleSaveJournal = () => {
+    if (!entryHeading.trim()) {
+      toast.error("Please add a heading for your journal entry.");
+      return;
+    }
+
     if (!dailyReflection.trim()) {
       toast.error("Your daily reflection cannot be empty.");
       return;
     }
 
     const fullEntry = [
+      entryHeading ? `Heading: ${entryHeading}` : "",
       mood ? `Mood: ${mood}` : "",
       dailyReflection,
       mistakesReflection ? `\n---\nReflections: ${mistakesReflection}` : "",
@@ -80,6 +87,7 @@ const JournalPage = () => {
 
     saveReflection.mutate(fullEntry, {
       onSuccess: () => {
+        setEntryHeading("");
         setDailyReflection("");
         setMistakesReflection("");
         setSuccessSteps("");
@@ -111,34 +119,37 @@ const JournalPage = () => {
 
   // Parse journal content to extract structured data
   const parseJournalContent = (content: string) => {
-    const moodMatch = content.match(/Mood: (.+)/);
-    const mood = moodMatch ? moodMatch[1].trim() : null;
+    const lines = content.split("\n");
+    let heading = "";
+    let mood = null;
+    let dailyReflection = "";
+    let mistakes = "";
+    let steps = "";
+    let todos: Array<{ text: string; completed: boolean }> = [];
 
-    // Split by sections
-    const sections = content.split('\n---\n');
+    for (const line of lines) {
+      if (line.startsWith("Heading: ")) {
+        heading = line.replace("Heading: ", "").trim();
+      } else if (line.startsWith("Mood: ")) {
+        mood = line.replace("Mood: ", "").trim();
+      } else if (line.startsWith("---")) {
+        continue;
+      } else if (line.startsWith("Reflections: ")) {
+        mistakes = line.replace("Reflections: ", "").trim();
+      } else if (line.startsWith("Next Steps: ")) {
+        steps = line.replace("Next Steps: ", "").trim();
+      } else if (line.startsWith("Todos:")) {
+        continue;
+      } else if (line.startsWith("✅") || line.startsWith("⬜")) {
+        const completed = line.startsWith("✅");
+        const text = line.substring(2).trim();
+        todos.push({ text, completed });
+      } else if (line.trim()) {
+        dailyReflection += line + "\n";
+      }
+    }
 
-    const dailyReflection = sections[0]?.replace(/Mood: .+\n?/, '').trim() || '';
-
-    const mistakesMatch = sections.find(s => s.startsWith('Reflections:'));
-    const mistakes = mistakesMatch ? mistakesMatch.replace('Reflections:', '').trim() : '';
-
-    const stepsMatch = sections.find(s => s.startsWith('Next Steps:'));
-    const steps = stepsMatch ? stepsMatch.replace('Next Steps:', '').trim() : '';
-
-    const todosMatch = sections.find(s => s.startsWith('Todos:'));
-    const todos = todosMatch
-      ? todosMatch
-        .replace('Todos:', '')
-        .trim()
-        .split('\n')
-        .filter(t => t.trim())
-        .map(t => ({
-          text: t.replace(/^[✅⬜]\s*/, '').trim(),
-          completed: t.startsWith('✅')
-        }))
-      : [];
-
-    return { mood, dailyReflection, mistakes, steps, todos };
+    return { heading, mood, dailyReflection, mistakes, steps, todos };
   };
 
   return (
@@ -159,6 +170,25 @@ const JournalPage = () => {
           </CardHeader>
           <CardContent>
             <p className="text-lg italic">"{motivation}"</p>
+          </CardContent>
+        </Card>
+      </motion.div>
+
+      {/* Entry Heading */}
+      <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.03 }}>
+        <Card className="glass border-border/50">
+          <CardHeader>
+            <CardTitle>Entry Heading</CardTitle>
+            <CardDescription>Give your journal entry a title</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <Input
+              value={entryHeading}
+              onChange={(e) => setEntryHeading(e.target.value)}
+              placeholder="e.g., A Great Day at Work, Weekend Reflections..."
+              className="bg-secondary/30 border-border text-lg font-medium"
+              required
+            />
           </CardContent>
         </Card>
       </motion.div>
@@ -361,7 +391,7 @@ const JournalPage = () => {
                       <CardContent className="p-6">
                         {/* Header with Date, Time, Mood, and Delete */}
                         <div className="flex justify-between items-start mb-6">
-                          <div>
+                          <div className="flex-1">
                             <div className="flex items-center gap-3 mb-1">
                               <h3 className="text-xl font-semibold">
                                 {format(new Date(entry.reflection_date), "EEEE, MMMM dd, yyyy")}
@@ -370,6 +400,11 @@ const JournalPage = () => {
                                 <span className="text-3xl">{parsed.mood}</span>
                               )}
                             </div>
+                            {parsed.heading && (
+                              <h2 className="text-2xl font-bold text-primary mb-2 mt-3">
+                                {parsed.heading}
+                              </h2>
+                            )}
                             <p className="text-sm text-muted-foreground">
                               {format(new Date(entry.created_at), "hh:mm:ss a")}
                             </p>

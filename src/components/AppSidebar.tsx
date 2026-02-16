@@ -1,6 +1,6 @@
 import { NavLink, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { useAuth } from "@/components/AuthProvider";
 import {
@@ -49,6 +49,7 @@ const AppSidebar = ({ isCollapsed, setIsCollapsed }: AppSidebarProps) => {
 
   const userName = user?.user_metadata?.full_name || user?.email?.split("@")[0] || "User";
   const userEmail = user?.email || "";
+  const avatarUrl = user?.user_metadata?.avatar_url || "";
   const initials = userName.slice(0, 2).toUpperCase();
 
   const handleSignOut = async () => {
@@ -58,9 +59,8 @@ const AppSidebar = ({ isCollapsed, setIsCollapsed }: AppSidebarProps) => {
 
   return (
     <aside
-      className={`fixed left-0 top-0 h-screen z-40 flex flex-col border-r border-sidebar-border transition-all duration-300 ${
-        isCollapsed ? "w-16" : "w-64"
-      }`}
+      className={`fixed left-0 top-0 h-screen z-40 flex flex-col border-r border-sidebar-border transition-all duration-300 ${isCollapsed ? "w-16" : "w-64"
+        }`}
       style={{ background: "hsl(var(--sidebar-background))" }}
     >
       {/* Logo */}
@@ -84,7 +84,16 @@ const AppSidebar = ({ isCollapsed, setIsCollapsed }: AppSidebarProps) => {
       <div className={`px-4 py-4 border-b border-sidebar-border ${isCollapsed ? "flex justify-center" : ""}`}>
         <div className={`flex items-center gap-3 ${isCollapsed ? "justify-center" : ""}`}>
           <Avatar className="h-9 w-9 border-2 border-primary/30">
-            <AvatarFallback className="bg-primary/20 text-primary text-sm">{initials}</AvatarFallback>
+            {avatarUrl && !avatarUrl.startsWith("http") ? (
+              <div className="w-full h-full flex items-center justify-center text-2xl bg-primary/10">
+                {avatarUrl}
+              </div>
+            ) : (
+              <>
+                <AvatarImage src={avatarUrl} alt={userName} />
+                <AvatarFallback className="bg-primary/20 text-primary text-sm">{initials}</AvatarFallback>
+              </>
+            )}
           </Avatar>
           {!isCollapsed && (
             <div className="flex-1 min-w-0">
@@ -103,10 +112,9 @@ const AppSidebar = ({ isCollapsed, setIsCollapsed }: AppSidebarProps) => {
               <NavLink
                 to={link.to}
                 className={({ isActive }) =>
-                  `flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm transition-smooth ${
-                    isActive
-                      ? "bg-sidebar-primary text-sidebar-primary-foreground shadow-primary-glow"
-                      : "text-sidebar-foreground hover:bg-sidebar-accent"
+                  `flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm transition-smooth ${isActive
+                    ? "bg-sidebar-primary text-sidebar-primary-foreground shadow-primary-glow"
+                    : "text-sidebar-foreground hover:bg-sidebar-accent"
                   } ${isCollapsed ? "justify-center" : ""}`
                 }
               >
@@ -128,9 +136,8 @@ const AppSidebar = ({ isCollapsed, setIsCollapsed }: AppSidebarProps) => {
         <Button
           variant="ghost"
           onClick={handleSignOut}
-          className={`w-full text-sidebar-foreground hover:bg-sidebar-accent ${
-            isCollapsed ? "justify-center px-0" : "justify-start"
-          }`}
+          className={`w-full text-sidebar-foreground hover:bg-sidebar-accent ${isCollapsed ? "justify-center px-0" : "justify-start"
+            }`}
         >
           <LogOut className="h-5 w-5 flex-shrink-0" />
           {!isCollapsed && <span className="ml-3">Sign Out</span>}
