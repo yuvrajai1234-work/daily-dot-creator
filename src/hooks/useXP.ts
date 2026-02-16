@@ -1,4 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/components/AuthProvider";
 import { toast } from "sonner";
@@ -68,8 +69,40 @@ export const getLevelInfo = (profile: {
 };
 
 // Hook to get user's level info
+// Hook to get user's level info
 export const useLevelInfo = () => {
     const { user } = useAuth();
+    const queryClient = useQueryClient();
+
+    // Subscribe to real-time profile updates
+    useEffect(() => {
+        if (!user) return;
+
+        const channel = supabase
+            .channel('profile-updates')
+            .on(
+                'postgres_changes',
+                {
+                    event: 'UPDATE',
+                    schema: 'public',
+                    table: 'profiles',
+                    filter: `user_id=eq.${user.id}`,
+                },
+                (payload) => {
+                    // Invalidate queries to refetch latest data
+                    queryClient.invalidateQueries({ queryKey: ["level-info"] });
+                    queryClient.invalidateQueries({ queryKey: ["profile"] });
+
+                    // Show a toast for XP gain if we can calculate it (optional enhancement)
+                    // For now, simpler invalidation ensures UI is up to date
+                }
+            )
+            .subscribe();
+
+        return () => {
+            supabase.removeChannel(channel);
+        };
+    }, [user, queryClient]);
 
     return useQuery({
         queryKey: ["level-info", user?.id],
@@ -176,15 +209,20 @@ export const useLevelLeaderboard = () => {
     });
 };
 
+// Level Tier Definitions
+export const TIERS = [
+    { min: 90, name: "Legendary", color: "hsl(48, 100%, 50%)", range: "90-100" }, // Gold
+    { min: 75, name: "Master", color: "hsl(270, 100%, 60%)", range: "75-89" },    // Purple
+    { min: 60, name: "Expert", color: "hsl(180, 100%, 50%)", range: "60-74" },    // Cyan
+    { min: 45, name: "Advanced", color: "hsl(120, 100%, 40%)", range: "45-59" },  // Green
+    { min: 30, name: "Intermediate", color: "hsl(30, 100%, 50%)", range: "30-44" }, // Orange
+    { min: 15, name: "Apprentice", color: "hsl(0, 0%, 75%)", range: "15-29" },    // Silver
+    { min: 0, name: "Novice", color: "hsl(0, 0%, 50%)", range: "1-14" },         // Gray
+] as const;
+
 // Get level tier/name based on level
-export const getLevelTier = (level: number): { name: string; color: string } => {
-    if (level >= 90) return { name: "Legendary", color: "hsl(45, 100%, 50%)" };
-    if (level >= 75) return { name: "Master", color: "hsl(280, 100%, 60%)" };
-    if (level >= 60) return { name: "Expert", color: "hsl(200, 100%, 50%)" };
-    if (level >= 45) return { name: "Advanced", color: "hsl(150, 100%, 40%)" };
-    if (level >= 30) return { name: "Intermediate", color: "hsl(30, 100%, 50%)" };
-    if (level >= 15) return { name: "Apprentice", color: "hsl(0, 0%, 70%)" };
-    return { name: "Novice", color: "hsl(0, 0%, 50%)" };
+export const getLevelTier = (level: number) => {
+    return TIERS.find((t) => level >= t.min) || TIERS[TIERS.length - 1];
 };
 
 // Activity type labels

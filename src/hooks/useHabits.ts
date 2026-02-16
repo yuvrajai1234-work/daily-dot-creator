@@ -247,14 +247,10 @@ export const useLogEffort = () => {
       }
     },
     onSuccess: async (result, variables) => {
-      queryClient.invalidateQueries({ queryKey: ["completions"] });
-      queryClient.invalidateQueries({ queryKey: ["week-completions"] });
-      queryClient.invalidateQueries({ queryKey: ["all-completions"] });
-      queryClient.invalidateQueries({ queryKey: ["profile"] });
-
       // Award XP for new habit log (not for updates)
       if (!result.isUpdate) {
         try {
+          // Add XP first so invalidation fetches updated data
           await supabase.rpc("add_xp_to_user", {
             p_user_id: user!.id,
             p_xp_amount: 10,
@@ -266,6 +262,13 @@ export const useLogEffort = () => {
           console.error("Failed to award XP:", error);
         }
       }
+
+      // Invalidate queries after XP update
+      queryClient.invalidateQueries({ queryKey: ["completions"] });
+      queryClient.invalidateQueries({ queryKey: ["week-completions"] });
+      queryClient.invalidateQueries({ queryKey: ["all-completions"] });
+      queryClient.invalidateQueries({ queryKey: ["profile"] });
+      queryClient.invalidateQueries({ queryKey: ["level-info"] });
 
       if (result.isUpdate) {
         toast.success("Effort level updated!");
@@ -374,9 +377,6 @@ export const useSaveReflection = () => {
       return data;
     },
     onSuccess: async () => {
-      queryClient.invalidateQueries({ queryKey: ["reflections"] });
-      queryClient.invalidateQueries({ queryKey: ["profile"] });
-
       // Award XP for journal entry
       try {
         await supabase.rpc("add_xp_to_user", {
@@ -388,6 +388,10 @@ export const useSaveReflection = () => {
       } catch (error) {
         console.error("Failed to award XP:", error);
       }
+
+      queryClient.invalidateQueries({ queryKey: ["reflections"] });
+      queryClient.invalidateQueries({ queryKey: ["profile"] });
+      queryClient.invalidateQueries({ queryKey: ["level-info"] });
 
       toast.success("Reflection saved! (-5 B Coins, +15 XP)");
     },
