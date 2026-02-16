@@ -111,7 +111,7 @@ export const useClaimBCoins = () => {
     mutationFn: async ({ amount, rewardId }: { amount: number; rewardId?: string }) => {
       const { data: profile, error: fetchErr } = await supabase
         .from("profiles")
-        .select("b_coin_balance, b_coin_level, b_coin_last_reset")
+        .select("b_coin_balance, level, b_coin_level, b_coin_last_reset")
         .eq("user_id", user!.id)
         .single();
       if (fetchErr) throw fetchErr;
@@ -129,7 +129,8 @@ export const useClaimBCoins = () => {
         resetDate = now.toISOString();
       }
 
-      const maxB = getMaxBCoins(profile.b_coin_level || 1);
+      // Use XP Level for B Coin Limit
+      const maxB = getMaxBCoins(profile.level || 1);
       const newBalance = Math.min(currentBalance + amount, maxB);
 
       const { error } = await supabase

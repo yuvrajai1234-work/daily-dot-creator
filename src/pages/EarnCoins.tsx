@@ -43,7 +43,7 @@ const EarnCoinsPage = () => {
   const claimBCoins = useClaimBCoins();
 
   const bCoins = (profile as any)?.b_coin_balance || 0;
-  const bLevel = (profile as any)?.b_coin_level || 1;
+  const bLevel = (profile as any)?.level || 1;
   const maxB = getMaxBCoins(bLevel);
   const bProgress = Math.round((bCoins / maxB) * 100);
 
