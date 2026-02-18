@@ -24,18 +24,31 @@ export interface Friend {
     direction: 'sent' | 'received';
 }
 
-export const useCommunityMessages = (communityId: string) => {
+export const useCommunityMessages = (communityIdOrChannelId: string) => {
     const { user } = useAuth();
     const queryClient = useQueryClient();
 
+    // To prevent breaking changes, we might need logic.
+    // If it's a channelId (UUID), we fetch by channel_id.
+    // If it's a communityId (UUID), we potentially fetch legacy?
+    // For now, let's assume the UI passes a valid ID and we try both or rely on the caller know what ID it is.
+    // But actually, we are shifting to channel-based.
+    // Let's rename this hook variable internally to `resourceId`.
+
+    // HOWEVER, to support the transition:
+    // If we only query `channel_id`, then `community_id` messages (legacy) won't show.
+    // My migration moves everything to `general` channel. So we should query by `channel_id`.
+
+    const channelId = communityIdOrChannelId;
+
     const query = useQuery({
-        queryKey: ["community-messages", communityId],
+        queryKey: ["channel-messages", channelId],
         queryFn: async () => {
             // 1. Fetch raw messages (cast to any to avoid type errors for missing tables)
             const { data: messages, error: msgError } = await supabase
                 .from("community_messages" as any)
                 .select("*")
-                .eq("community_id", communityId)
+                .eq("channel_id", channelId)
                 .order("created_at", { ascending: true })
                 .limit(50);
 
@@ -46,7 +59,7 @@ export const useCommunityMessages = (communityId: string) => {
             const userIds = [...new Set(messages.map((m: any) => m.user_id))];
             const { data: profiles, error: profError } = await supabase
                 .from("profiles")
-                .select("id, username, avatar_url")
+                .select("id, full_name, avatar_url")
                 .in("id", userIds);
 
             if (profError) {
@@ -61,28 +74,31 @@ export const useCommunityMessages = (communityId: string) => {
                 content: m.content,
                 user_id: m.user_id,
                 created_at: m.created_at,
-                profile: profileMap.get(m.user_id) || { username: 'Unknown', avatar_url: '' }
+                profile: {
+                    username: profileMap.get(m.user_id)?.full_name || 'Unknown',
+                    avatar_url: profileMap.get(m.user_id)?.avatar_url || ''
+                }
             })) as Message[];
         },
-        enabled: !!communityId && !!user,
+        enabled: !!channelId && !!user,
     });
 
     // Real-time subscription
     useEffect(() => {
-        if (!communityId) return;
+        if (!channelId) return;
 
         const channel = supabase
-            .channel(`community-chat:${communityId}`)
+            .channel(`channel-chat:${channelId}`)
             .on(
                 "postgres_changes",
                 {
                     event: "INSERT",
                     schema: "public",
                     table: "community_messages",
-                    filter: `community_id=eq.${communityId}`,
+                    filter: `channel_id=eq.${channelId}`,
                 },
                 (payload) => {
-                    queryClient.invalidateQueries({ queryKey: ["community-messages", communityId] });
+                    queryClient.invalidateQueries({ queryKey: ["channel-messages", channelId] });
                 }
             )
             .subscribe();
@@ -90,14 +106,15 @@ export const useCommunityMessages = (communityId: string) => {
         return () => {
             supabase.removeChannel(channel);
         };
-    }, [communityId, queryClient]);
+    }, [channelId, queryClient]);
 
     const sendMessage = useMutation({
-        mutationFn: async (content: string) => {
+        mutationFn: async ({ content, communityId }: { content: string, communityId: string }) => {
             const { error } = await supabase
                 .from("community_messages" as any)
                 .insert({
-                    community_id: communityId,
+                    community_id: communityId, // Still need this for RLS/Reference? Depends on schema. Schema has both.
+                    channel_id: channelId,
                     user_id: user!.id,
                     content,
                 });
@@ -125,8 +142,8 @@ export const useFriendships = () => {
                 .select(`
           id,
           status,
-          sender:sender_id(id, username, avatar_url),
-          receiver:receiver_id(id, username, avatar_url)
+          sender:sender_id(id, full_name, avatar_url),
+          receiver:receiver_id(id, full_name, avatar_url)
         `)
                 .or(`sender_id.eq.${user!.id},receiver_id.eq.${user!.id}`);
 
@@ -137,7 +154,7 @@ export const useFriendships = () => {
                 const friend = isSender ? f.receiver : f.sender;
                 return {
                     id: friend.id,
-                    username: friend.username,
+                    username: friend.full_name, // Map full_name to username
                     avatar_url: friend.avatar_url,
                     status: f.status,
                     friendship_id: f.id,

@@ -1,7 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/components/AuthProvider";
-import { toast } from "@/hooks/use-toast";
+import { toast } from "sonner";
 import { useSpendBCoins } from "@/hooks/useCoins";
 
 export interface Community {
@@ -13,6 +13,16 @@ export interface Community {
   created_by: string;
   created_at: string;
   member_count?: number;
+  rules_content?: string;
+}
+
+export interface Channel {
+  id: string;
+  community_id: string;
+  name: string;
+  type: 'text' | 'voice';
+  category: string;
+  is_readonly: boolean;
 }
 
 export const JOIN_COST = 10;
@@ -76,15 +86,16 @@ export const useCommunities = () => {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["communities"] });
       queryClient.invalidateQueries({ queryKey: ["my-memberships"] });
-      toast({ title: "Joined!", description: `Spent ${JOIN_COST} B Coins to join.` });
+      toast.success(`Joined! Spent ${JOIN_COST} B Coins.`);
     },
-    onError: (err: Error) => {
-      toast({ title: "Error", description: err.message, variant: "destructive" });
+    onError: (err: any) => {
+      toast.error(err.message);
     },
   });
 
   const leaveCommunity = useMutation({
     mutationFn: async (communityId: string) => {
+      // First retrieve user role to handle creator case if necessary, but skipping for now
       const { error } = await supabase
         .from("community_members")
         .delete()
@@ -95,8 +106,11 @@ export const useCommunities = () => {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["communities"] });
       queryClient.invalidateQueries({ queryKey: ["my-memberships"] });
-      toast({ title: "Left community" });
+      toast.success("Left community");
     },
+    onError: (err: any) => {
+      toast.error(err.message);
+    }
   });
 
   const createCommunity = useMutation({
@@ -113,20 +127,23 @@ export const useCommunities = () => {
       await supabase
         .from("community_members")
         .insert({ community_id: community.id, user_id: user!.id, role: "admin" });
+
+      // Channels are created by Database Trigger (handle_new_community)
+
       return community;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["communities"] });
       queryClient.invalidateQueries({ queryKey: ["my-memberships"] });
-      toast({ title: "Community created!", description: `Spent ${CREATE_COST} B Coins.` });
+      toast.success(`Community created! Spent ${CREATE_COST} B Coins.`);
     },
-    onError: (err: Error) => {
-      toast({ title: "Error", description: err.message, variant: "destructive" });
+    onError: (err: any) => {
+      toast.error(err.message);
     },
   });
 
   const updateCommunity = useMutation({
-    mutationFn: async ({ id, ...updates }: { id: string; name?: string; tagline?: string; emoji?: string; habit_category?: string }) => {
+    mutationFn: async ({ id, ...updates }: { id: string; name?: string; tagline?: string; emoji?: string; habit_category?: string; rules_content?: string }) => {
       const { error } = await supabase
         .from("communities")
         .update(updates)
@@ -135,10 +152,10 @@ export const useCommunities = () => {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["communities"] });
-      toast({ title: "Community updated!" });
+      toast.success("Community updated!");
     },
-    onError: (err: Error) => {
-      toast({ title: "Error", description: err.message, variant: "destructive" });
+    onError: (err: any) => {
+      toast.error(err.message);
     },
   });
 
@@ -153,10 +170,10 @@ export const useCommunities = () => {
     },
     onSuccess: (_, vars) => {
       queryClient.invalidateQueries({ queryKey: ["community-members", vars.communityId] });
-      toast({ title: "Member role updated!" });
+      toast.success("Member role updated!");
     },
-    onError: (err: Error) => {
-      toast({ title: "Error", description: err.message, variant: "destructive" });
+    onError: (err: any) => {
+      toast.error(err.message);
     },
   });
 
@@ -171,10 +188,10 @@ export const useCommunities = () => {
     },
     onSuccess: (_, vars) => {
       queryClient.invalidateQueries({ queryKey: ["community-members", vars.communityId] });
-      toast({ title: "Member removed" });
+      toast.success("Member removed");
     },
-    onError: (err: Error) => {
-      toast({ title: "Error", description: err.message, variant: "destructive" });
+    onError: (err: any) => {
+      toast.error(err.message);
     },
   });
 
@@ -214,23 +231,74 @@ export const useCommunityMembers = (communityId: string) => {
       const userIds = members.map((m: any) => m.user_id);
       const { data: profiles, error: profError } = await supabase
         .from("profiles")
-        .select("id, username, avatar_url")
-        .in("id", userIds);
+        .select("id, user_id, full_name, avatar_url")
+        .in("user_id", userIds);
 
       if (profError) {
         console.error("Error fetching member profiles:", profError);
       }
 
-      const profileMap = new Map((profiles || []).map((p: any) => [p.id, p]));
+      const profileMap = new Map((profiles || []).map((p: any) => [p.user_id, p]));
 
       // 3. Combine data
       return members.map((m: any) => ({
         userId: m.user_id,
         role: m.role,
-        username: profileMap.get(m.user_id)?.username || "Unknown member",
+        username: profileMap.get(m.user_id)?.full_name || "Unknown member",
         avatarUrl: profileMap.get(m.user_id)?.avatar_url,
       }));
     },
     enabled: !!communityId && !!user,
   });
 };
+
+export const useChannels = (communityId: string) => {
+  const { user } = useAuth();
+  const queryClient = useQueryClient();
+
+  const query = useQuery({
+    queryKey: ["channels", communityId],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("channels" as any)
+        .select("*")
+        .eq("community_id", communityId)
+        .order("created_at", { ascending: true });
+
+      if (error) {
+        // If table doesn't exist yet (migration pending), return default structure mocked
+        console.error("Error fetching channels (migration might be missing):", error);
+        return [];
+      }
+      return data as Channel[];
+    },
+    enabled: !!communityId && !!user,
+  });
+
+  const createChannel = useMutation({
+    mutationFn: async (channel: { community_id: string; name: string; type: 'text' | 'voice'; category: string }) => {
+      const { error } = await supabase
+        .from("channels" as any)
+        .insert(channel);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["channels", communityId] });
+      toast.success("Channel created");
+    },
+    onError: (e: any) => toast.error(e.message)
+  });
+
+  const deleteChannel = useMutation({
+    mutationFn: async (channelId: string) => {
+      const { error } = await supabase.from("channels" as any).delete().eq('id', channelId);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["channels", communityId] });
+      toast.success("Channel deleted");
+    },
+  });
+
+  return { ...query, createChannel, deleteChannel };
+}
