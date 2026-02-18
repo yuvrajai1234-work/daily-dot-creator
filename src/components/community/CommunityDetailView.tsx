@@ -44,6 +44,16 @@ export const CommunityDetailView = ({ community, onBack }: CommunityDetailViewPr
     const [activeChannelId, setActiveChannelId] = useState<string | null>(null);
     const [showMembers, setShowMembers] = useState(true);
 
+    // Collapsed state
+    const [collapsedCategories, setCollapsedCategories] = useState<Record<string, boolean>>({});
+
+    const toggleCategory = (category: string) => {
+        setCollapsedCategories(prev => ({
+            ...prev,
+            [category]: !prev[category]
+        }));
+    };
+
     // Set default channel when channels load
     useEffect(() => {
         if (channels.length > 0 && !activeChannelId) {
@@ -148,7 +158,7 @@ export const CommunityDetailView = ({ community, onBack }: CommunityDetailViewPr
     );
 
     return (
-        <div className="flex h-full bg-[#1e1e24] -m-4 sm:-m-6 text-gray-100 overflow-hidden">
+        <div className="flex h-full bg-background -m-4 sm:-m-6 text-foreground overflow-hidden">
             <CommunitySettingsDialog
                 community={community}
                 open={settingsOpen}
@@ -156,85 +166,94 @@ export const CommunityDetailView = ({ community, onBack }: CommunityDetailViewPr
             />
 
             {/* LEFT SIDEBAR: Channels */}
-            <div className="w-[240px] flex flex-col bg-[#2b2d31] flex-shrink-0">
+            <div className="w-[240px] flex flex-col bg-card border-r border-border flex-shrink-0">
                 {/* Header */}
-                <div className="h-12 border-b border-[#1e1f22] flex items-center justify-between px-4 hover:bg-[#35373c] transition-colors cursor-pointer" onClick={onBack}>
-                    <h1 className="font-bold truncate text-sm">{community.name}</h1>
+                <div className="h-12 border-b border-border flex items-center justify-between px-4 hover:bg-accent transition-colors cursor-pointer" onClick={onBack}>
+                    <h1 className="font-bold truncate text-sm text-foreground">{community.name}</h1>
                     <div className="flex gap-1">
-                        {isAdmin && <Settings className="w-4 h-4 text-gray-400 hover:text-white" onClick={(e) => { e.stopPropagation(); setSettingsOpen(true); }} />}
-                        <X className="w-4 h-4 text-gray-400 hover:text-white" />
+                        {isAdmin && <Settings className="w-4 h-4 text-muted-foreground hover:text-foreground" onClick={(e) => { e.stopPropagation(); setSettingsOpen(true); }} />}
+                        <X className="w-4 h-4 text-muted-foreground hover:text-foreground" />
                     </div>
                 </div>
 
                 {/* Channel List */}
                 <ScrollArea className="flex-1">
                     <div className="p-2 space-y-4">
-                        {Object.entries(groupedChannels).map(([categoryName, categoryChannels]) => (
-                            <div key={categoryName}>
-                                <div className="flex items-center justify-between px-2 mb-1 text-xs font-bold text-gray-400 hover:text-gray-300 group/cat cursor-pointer">
-                                    <div className="flex items-center gap-0.5">
-                                        <ChevronDown className="w-3 h-3" />
-                                        {categoryName}
+                        {Object.entries(groupedChannels).map(([categoryName, categoryChannels]) => {
+                            const isCollapsed = collapsedCategories[categoryName];
+                            return (
+                                <div key={categoryName}>
+                                    <div
+                                        className="flex items-center justify-between px-2 mb-1 text-xs font-bold text-gray-400 hover:text-gray-300 group/cat cursor-pointer select-none"
+                                        onClick={() => toggleCategory(categoryName)}
+                                    >
+                                        <div className="flex items-center gap-0.5">
+                                            <ChevronDown className={`w-3 h-3 transition-transform duration-200 ${isCollapsed ? "-rotate-90" : ""}`} />
+                                            {categoryName}
+                                        </div>
+                                        {canManageChannels && categoryName !== 'WELCOME' && (
+                                            <Plus
+                                                className="w-4 h-4 opacity-0 group-hover/cat:opacity-100 hover:text-white"
+                                                onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    handleCreateChannel(categoryName, categoryName === 'VOICE CHANNELS' ? 'voice' : 'text');
+                                                }}
+                                            />
+                                        )}
                                     </div>
-                                    {canManageChannels && categoryName !== 'WELCOME' && (
-                                        <Plus
-                                            className="w-4 h-4 opacity-0 group-hover/cat:opacity-100 hover:text-white"
-                                            onClick={(e) => {
-                                                e.stopPropagation();
-                                                handleCreateChannel(categoryName, categoryName === 'VOICE CHANNELS' ? 'voice' : 'text');
-                                            }}
-                                        />
+                                    {!isCollapsed && (
+                                        <div className="space-y-0.5 animate-in fade-in slide-in-from-top-1 duration-200">
+                                            {categoryChannels.map((channel) => (
+                                                <div
+                                                    key={channel.id}
+                                                    onClick={() => setActiveChannelId(channel.id)}
+                                                    className={`group flex items-center gap-1.5 px-2 py-1 rounded-md cursor-pointer transition-colors ${activeChannelId === channel.id
+                                                        ? "bg-primary/20 text-primary font-semibold"
+                                                        : "text-muted-foreground hover:bg-accent hover:text-foreground"
+                                                        }`}
+                                                >
+                                                    {channel.type === 'voice' ? (
+                                                        <Volume2 className={`w-4 h-4 ${activeChannelId === channel.id ? "text-primary" : "text-muted-foreground"}`} />
+                                                    ) : (
+                                                        <Hash className={`w-4 h-4 ${activeChannelId === channel.id ? "text-primary" : "text-muted-foreground"}`} />
+                                                    )}
+                                                    <span className="truncate font-medium text-sm">{channel.name}</span>
+                                                </div>
+                                            ))}
+                                        </div>
                                     )}
                                 </div>
-                                <div className="space-y-0.5">
-                                    {categoryChannels.map((channel) => (
-                                        <div
-                                            key={channel.id}
-                                            onClick={() => setActiveChannelId(channel.id)}
-                                            className={`group flex items-center gap-1.5 px-2 py-1 rounded-md cursor-pointer transition-colors ${activeChannelId === channel.id
-                                                ? "bg-[#404249] text-white"
-                                                : "text-gray-400 hover:bg-[#35373c] hover:text-gray-200"
-                                                }`}
-                                        >
-                                            {channel.type === 'voice' ? (
-                                                <Volume2 className="w-4 h-4 text-gray-400" />
-                                            ) : (
-                                                <Hash className="w-4 h-4 text-gray-400" />
-                                            )}
-                                            <span className="truncate font-medium text-sm">{channel.name}</span>
-                                        </div>
-                                    ))}
-                                </div>
-                            </div>
-                        ))}
+                            );
+                        })}
                     </div>
                 </ScrollArea>
             </div>
 
             {/* CENTER: Chat Area */}
-            <div className="flex-1 flex flex-col bg-[#313338] min-w-0">
+            <div className="flex-1 flex flex-col bg-background min-w-0">
                 {/* Header */}
-                <div className="h-12 border-b border-[#26272d] flex items-center justify-between px-4 shadow-sm flex-shrink-0">
+                <div className="h-12 border-b border-border flex items-center justify-between px-4 shadow-sm flex-shrink-0">
                     <div className="flex items-center gap-2 overflow-hidden">
-                        <Hash className="w-5 h-5 text-gray-400 flex-shrink-0" />
-                        <h2 className="font-bold text-white truncate">{activeChannelObj?.name || "Select a channel"}</h2>
+                        {/* Removed Hash icon */}
+                        <h2 className="font-bold text-foreground truncate">{activeChannelObj?.name || "Select a channel"}</h2>
                         {activeChannelObj?.category === 'WELCOME' && <span className="text-xs text-yellow-500 font-bold px-2 border border-yellow-500/20 rounded-full bg-yellow-500/10">Read Only</span>}
                     </div>
-                    <div className="flex items-center gap-3 text-gray-400">
+                    <div className="flex items-center gap-3 text-muted-foreground">
                         {/* Desktop Member Toggle */}
-                        <Users
-                            className={`w-5 h-5 cursor-pointer transition-colors hidden lg:block ${showMembers ? 'text-white' : 'text-gray-400 hover:text-gray-200'}`}
-                            onClick={() => setShowMembers(!showMembers)}
-                            title={showMembers ? "Hide Member List" : "Show Member List"}
-                        />
-                        <Bell className="w-5 h-5 cursor-pointer hover:text-gray-200" />
-                        <Pin className="w-5 h-5 cursor-pointer hover:text-gray-200" />
-                        <Users className="w-5 h-5 cursor-pointer hover:text-gray-200 lg:hidden" />
-                        <div className="bg-[#1e1f22] flex items-center px-2 py-1 rounded text-sm w-36 overflow-hidden">
-                            <input className="bg-transparent border-none outline-none text-gray-200 placeholder-gray-500 w-full" placeholder="Search" />
-                            <Search className="w-3 h-3 text-gray-400" />
+                        <div title={showMembers ? "Hide Member List" : "Show Member List"}>
+                            <Users
+                                className={`w-5 h-5 cursor-pointer transition-colors hidden lg:block ${showMembers ? 'text-foreground' : 'text-muted-foreground hover:text-foreground'}`}
+                                onClick={() => setShowMembers(!showMembers)}
+                            />
                         </div>
-                        <HelpCircle className="w-5 h-5 cursor-pointer hover:text-gray-200" />
+                        <Bell className="w-5 h-5 cursor-pointer hover:text-foreground" />
+                        <Pin className="w-5 h-5 cursor-pointer hover:text-foreground" />
+                        <Users className="w-5 h-5 cursor-pointer hover:text-foreground lg:hidden" />
+                        <div className="bg-secondary/50 flex items-center px-2 py-1 rounded text-sm w-36 overflow-hidden">
+                            <input className="bg-transparent border-none outline-none text-foreground placeholder-muted-foreground w-full" placeholder="Search" />
+                            <Search className="w-3 h-3 text-muted-foreground" />
+                        </div>
+                        <HelpCircle className="w-5 h-5 cursor-pointer hover:text-foreground" />
                     </div>
                 </div>
 
@@ -243,83 +262,81 @@ export const CommunityDetailView = ({ community, onBack }: CommunityDetailViewPr
                     {activeChannelObj?.name === 'rules' ? (
                         <RulesView />
                     ) : activeChannelObj?.type === 'voice' ? (
-                        <div className="flex flex-col items-center justify-center h-full text-gray-400 gap-4">
-                            <div className="w-16 h-16 rounded-full bg-[#2b2d31] flex items-center justify-center">
+                        <div className="flex flex-col items-center justify-center h-full text-muted-foreground gap-4">
+                            <div className="w-16 h-16 rounded-full bg-card flex items-center justify-center">
                                 <Volume2 className="w-8 h-8" />
                             </div>
                             <h3 className="text-xl font-semibold">Voice Chat</h3>
                             <p>Voice channels are coming soon!</p>
                         </div>
                     ) : (
-                        activeChannelId && <CommunityChat communityId={community.id} channelId={activeChannelId} channelName={activeChannelObj?.name} />
+                        activeChannelId && <CommunityChat communityId={community.id} channelId={activeChannelId} channelName={activeChannelObj?.name} members={members} />
                     )}
                 </div>
             </div>
 
             {/* RIGHT SIDEBAR: Member List (Desktop only) */}
-            {
-                showMembers && (
-                    <div className="w-[240px] bg-[#2b2d31] flex-col hidden lg:flex flex-shrink-0 border-l border-[#1e1f22]">
-                        <div className="h-12 border-b border-[#1e1f22] flex items-center px-4 font-bold text-gray-400 text-xs tracking-wider">
-                            MEMBERS — {members.length}
-                        </div>
-                        <ScrollArea className="flex-1 p-3">
-                            <div className="space-y-5">
-                                {/* Group by Role */}
-                                {['admin', 'moderator', 'member'].map(role => {
-                                    const roleMembers = sortedMembers.filter((m: any) => m.role === role);
-                                    if (roleMembers.length === 0) return null;
-
-                                    const roleLabel = role === 'admin' ? "CHIEF" : role === 'moderator' ? "ELDERS" : "TRIBE MEMBERS";
-                                    const roleColor = role === 'admin' ? "text-yellow-500" : role === 'moderator' ? "text-purple-400" : "text-gray-400";
-
-                                    return (
-                                        <div key={role}>
-                                            <div className={`text-xs font-bold ${roleColor} mb-2 uppercase`}>{roleLabel} — {roleMembers.length}</div>
-                                            <div className="space-y-2">
-                                                {roleMembers.map((member: any) => {
-                                                    const isMe = member.userId === user?.id;
-                                                    const friendStatus = !isMe ? getFriendStatus(member.userId) : null;
-
-                                                    return (
-                                                        <div key={member.userId} className="group flex items-center gap-2 px-2 py-1.5 rounded hover:bg-[#35373c] cursor-pointer opacity-90 hover:opacity-100 transition-all">
-                                                            <div className="relative">
-                                                                <Avatar className={`w-8 h-8 ${member.role === 'admin' ? 'ring-2 ring-yellow-500/50' : ''}`}>
-                                                                    <AvatarImage src={member.avatarUrl} />
-                                                                    <AvatarFallback>{member.username?.charAt(0).toUpperCase()}</AvatarFallback>
-                                                                </Avatar>
-                                                                <div className={`absolute bottom-0 right-0 w-2.5 h-2.5 rounded-full border-2 border-[#2b2d31] ${isMe ? "bg-green-500" : "bg-gray-500"
-                                                                    }`}></div>
-                                                            </div>
-                                                            <div className="flex-1 min-w-0">
-                                                                <div className={`text-sm font-medium truncate ${member.role === 'admin' ? 'text-yellow-100' :
-                                                                    member.role === 'moderator' ? 'text-purple-100' :
-                                                                        'text-gray-300'
-                                                                    }`}>
-                                                                    {member.username}
-                                                                </div>
-                                                            </div>
-
-                                                            {!isMe && !friendStatus && (
-                                                                <div className="opacity-0 group-hover:opacity-100" onClick={(e) => { e.stopPropagation(); sendRequest.mutate(member.userId); }}>
-                                                                    <UserPlus className="w-4 h-4 text-gray-400 hover:text-green-400" />
-                                                                </div>
-                                                            )}
-                                                            {friendStatus?.status === 'pending' && (
-                                                                <div title="Request Pending"><Clock className="w-3 h-3 text-yellow-500" /></div>
-                                                            )}
-                                                        </div>
-                                                    );
-                                                })}
-                                            </div>
-                                        </div>
-                                    );
-                                })}
-                            </div>
-                        </ScrollArea>
+            {showMembers && (
+                <div className="w-[240px] bg-card flex-col hidden lg:flex flex-shrink-0 border-l border-border">
+                    <div className="h-12 border-b border-border flex items-center px-4 font-bold text-muted-foreground text-xs tracking-wider">
+                        MEMBERS — {members.length}
                     </div>
-                )
-            }
+                    <ScrollArea className="flex-1 p-3">
+                        <div className="space-y-5">
+                            {/* Group by Role */}
+                            {['admin', 'moderator', 'member'].map(role => {
+                                const roleMembers = sortedMembers.filter((m: any) => m.role === role);
+                                if (roleMembers.length === 0) return null;
+
+                                const roleLabel = role === 'admin' ? "CHIEF" : role === 'moderator' ? "ELDERS" : "TRIBE MEMBERS";
+                                const roleColor = role === 'admin' ? "text-yellow-500" : role === 'moderator' ? "text-purple-400" : "text-muted-foreground";
+
+                                return (
+                                    <div key={role}>
+                                        <div className={`text-xs font-bold ${roleColor} mb-2 uppercase`}>{roleLabel} — {roleMembers.length}</div>
+                                        <div className="space-y-2">
+                                            {roleMembers.map((member: any) => {
+                                                const isMe = member.userId === user?.id;
+                                                const friendStatus = !isMe ? getFriendStatus(member.userId) : null;
+
+                                                return (
+                                                    <div key={member.userId} className="group flex items-center gap-2 px-2 py-1.5 rounded hover:bg-accent cursor-pointer opacity-90 hover:opacity-100 transition-all">
+                                                        <div className="relative">
+                                                            <Avatar className={`w-8 h-8 ${member.role === 'admin' ? 'ring-2 ring-yellow-500/50' : ''}`}>
+                                                                <AvatarImage src={member.avatarUrl} />
+                                                                <AvatarFallback>{member.username?.charAt(0).toUpperCase()}</AvatarFallback>
+                                                            </Avatar>
+                                                            <div className={`absolute bottom-0 right-0 w-2.5 h-2.5 rounded-full border-2 border-card ${isMe ? "bg-green-500" : "bg-muted-foreground"
+                                                                }`}></div>
+                                                        </div>
+                                                        <div className="flex-1 min-w-0">
+                                                            <div className={`text-sm font-medium truncate ${member.role === 'admin' ? 'text-yellow-500' :
+                                                                member.role === 'moderator' ? 'text-purple-400' :
+                                                                    'text-foreground'
+                                                                }`}>
+                                                                {member.username}
+                                                            </div>
+                                                        </div>
+
+                                                        {!isMe && !friendStatus && (
+                                                            <div className="opacity-0 group-hover:opacity-100" onClick={(e) => { e.stopPropagation(); sendRequest.mutate(member.userId); }}>
+                                                                <UserPlus className="w-4 h-4 text-muted-foreground hover:text-green-400" />
+                                                            </div>
+                                                        )}
+                                                        {friendStatus?.status === 'pending' && (
+                                                            <div title="Request Pending"><Clock className="w-3 h-3 text-yellow-500" /></div>
+                                                        )}
+                                                    </div>
+                                                );
+                                            })}
+                                        </div>
+                                    </div>
+                                );
+                            })}
+                        </div>
+                    </ScrollArea>
+                </div>
+            )}
         </div>
     );
 };

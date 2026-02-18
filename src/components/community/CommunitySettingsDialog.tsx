@@ -5,12 +5,13 @@ import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Settings, Shield, User, Users, Trash2, Camera } from "lucide-react";
-import { Community, useCommunities, useCommunityMembers } from "@/hooks/useCommunities";
+import { Settings, Shield, User, Users, Trash2, Camera, Hash, Volume2, Lock, Unlock, Plus, Edit2, Eye, EyeOff } from "lucide-react";
+import { Community, useCommunities, useCommunityMembers, useChannels } from "@/hooks/useCommunities"; // Added useChannels
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Badge } from "@/components/ui/badge";
 import { useAuth } from "@/components/AuthProvider";
+import { Switch } from "@/components/ui/switch"; // Assuming we have a Switch component or use standard checkbox
 
 interface CommunitySettingsDialogProps {
     community: Community;
@@ -20,11 +21,13 @@ interface CommunitySettingsDialogProps {
 
 const EMOJIS = ["🎯", "🌅", "💻", "🥗", "🧘", "📚", "🏋️", "🎨", "🎵", "🌿", "🔥", "⭐", "🚀", "💡", "🎮", "🌍"];
 const CATEGORIES = ["General", "Health", "Productivity", "Mindfulness", "Coding", "Fitness", "Learning", "Social", "Creative", "Gaming"];
+const CATEGORY_NAMES = ["WELCOME", "TEXT CHANNELS", "VOICE CHANNELS"];
 
 export const CommunitySettingsDialog = ({ community, open, onOpenChange }: CommunitySettingsDialogProps) => {
     const { user } = useAuth();
     const { updateCommunity, updateMemberRole, kickMember } = useCommunities();
     const { data: members = [] } = useCommunityMembers(community.id);
+    const { data: channels = [], createChannel, updateChannel, deleteChannel } = useChannels(community.id); // Use channels
 
     const [form, setForm] = useState({
         name: community.name,
@@ -35,6 +38,14 @@ export const CommunitySettingsDialog = ({ community, open, onOpenChange }: Commu
 
     const [activeTab, setActiveTab] = useState("general");
     const [emojiPickerOpen, setEmojiPickerOpen] = useState(false);
+
+    // New Channel State
+    const [newChannelName, setNewChannelName] = useState("");
+    const [newChannelType, setNewChannelType] = useState<"text" | "voice">("text");
+    const [newChannelCategory, setNewChannelCategory] = useState("TEXT CHANNELS");
+
+    const [editingChannelId, setEditingChannelId] = useState<string | null>(null);
+    const [editChannelName, setEditChannelName] = useState("");
 
     const handleUpdate = () => {
         updateCommunity.mutate({ id: community.id, ...form }, {
@@ -51,6 +62,35 @@ export const CommunitySettingsDialog = ({ community, open, onOpenChange }: Commu
             kickMember.mutate({ communityId: community.id, userId });
         }
     };
+
+    const handleCreateChannel = () => {
+        if (!newChannelName) return;
+        createChannel.mutate({
+            community_id: community.id,
+            name: newChannelName.toLowerCase().replace(/\s+/g, '-'),
+            type: newChannelType,
+            category: newChannelCategory
+        });
+        setNewChannelName("");
+    };
+
+    const handleDeleteChannel = (id: string) => {
+        if (confirm("Are you sure you want to delete this channel? Messages will be lost.")) {
+            deleteChannel.mutate(id);
+        }
+    }
+
+    const startEditing = (channel: any) => {
+        setEditingChannelId(channel.id);
+        setEditChannelName(channel.name);
+    }
+
+    const saveChannelName = () => {
+        if (editingChannelId && editChannelName) {
+            updateChannel.mutate({ id: editingChannelId, name: editChannelName });
+            setEditingChannelId(null);
+        }
+    }
 
     const sortedMembers = [...members].sort((a, b) => {
         const roleOrder = { admin: 0, moderator: 1, member: 2 };
@@ -92,6 +132,16 @@ export const CommunitySettingsDialog = ({ community, open, onOpenChange }: Commu
                             <Users className="w-4 h-4" />
                             Members & Roles
                         </button>
+                        <button
+                            onClick={() => setActiveTab("channels")}
+                            className={`w-full text-left px-3 py-2 rounded-md text-sm font-medium transition-all flex items-center gap-2 ${activeTab === "channels"
+                                ? "bg-primary/10 text-primary"
+                                : "text-muted-foreground hover:bg-muted/50 hover:text-foreground"
+                                }`}
+                        >
+                            <Hash className="w-4 h-4" />
+                            Channels
+                        </button>
                     </div>
 
                     <div className="px-4 mt-auto">
@@ -106,7 +156,7 @@ export const CommunitySettingsDialog = ({ community, open, onOpenChange }: Commu
                     {/* Header */}
                     <div className="h-14 border-b border-border/40 flex items-center px-6 flex-shrink-0">
                         <h3 className="font-bold text-lg">
-                            {activeTab === "general" ? "Server Overview" : "Manage Members"}
+                            {activeTab === "general" ? "Server Overview" : activeTab === "members" ? "Manage Members" : "Manage Channels"}
                         </h3>
                     </div>
 
@@ -246,8 +296,131 @@ export const CommunitySettingsDialog = ({ community, open, onOpenChange }: Commu
                                     </div>
                                 </div>
                             )}
+
+                            {activeTab === "channels" && (
+                                <div className="space-y-6">
+                                    {/* Create Channel */}
+                                    <div className="bg-muted/20 p-4 rounded-lg border border-border/40">
+                                        <h4 className="text-sm font-semibold mb-3">Create New Channel</h4>
+                                        <div className="flex flex-col sm:flex-row gap-2">
+                                            <Input
+                                                placeholder="Channel name"
+                                                value={newChannelName}
+                                                onChange={(e) => setNewChannelName(e.target.value)}
+                                                className="h-9"
+                                            />
+                                            <Select value={newChannelType} onValueChange={(v: any) => setNewChannelType(v)}>
+                                                <SelectTrigger className="w-[120px] h-9">
+                                                    <SelectValue />
+                                                </SelectTrigger>
+                                                <SelectContent>
+                                                    <SelectItem value="text">Text</SelectItem>
+                                                    <SelectItem value="voice">Voice</SelectItem>
+                                                </SelectContent>
+                                            </Select>
+                                            <Select value={newChannelCategory} onValueChange={setNewChannelCategory}>
+                                                <SelectTrigger className="w-[160px] h-9">
+                                                    <SelectValue />
+                                                </SelectTrigger>
+                                                <SelectContent>
+                                                    {CATEGORY_NAMES.map(cat => (
+                                                        <SelectItem key={cat} value={cat}>{cat}</SelectItem>
+                                                    ))}
+                                                </SelectContent>
+                                            </Select>
+                                            <Button size="sm" onClick={handleCreateChannel} disabled={createChannel.isPending}>
+                                                <Plus className="w-4 h-4 mr-1" /> Create
+                                            </Button>
+                                        </div>
+                                    </div>
+
+                                    {/* Channels List */}
+                                    <div className="space-y-4">
+                                        {CATEGORY_NAMES.map(category => {
+                                            const catChannels = channels.filter(c => c.category === category);
+                                            if (catChannels.length === 0) return null;
+
+                                            return (
+                                                <div key={category}>
+                                                    <div className="text-xs font-bold text-muted-foreground mb-2 flex items-center gap-2">
+                                                        <span className="opacity-70">{category}</span>
+                                                        <div className="h-[1px] bg-border flex-1"></div>
+                                                    </div>
+                                                    <div className="space-y-1">
+                                                        {catChannels.map(channel => (
+                                                            <div key={channel.id} className="flex items-center justify-between p-2 rounded-md hover:bg-muted/30 group border border-transparent hover:border-border/30 transition-all">
+                                                                <div className="flex items-center gap-2 min-w-0">
+                                                                    {channel.type === 'voice' ? <Volume2 className="w-4 h-4 text-muted-foreground" /> : <Hash className="w-4 h-4 text-muted-foreground" />}
+
+                                                                    {editingChannelId === channel.id ? (
+                                                                        <div className="flex items-center gap-1">
+                                                                            <Input
+                                                                                value={editChannelName}
+                                                                                onChange={(e) => setEditChannelName(e.target.value)}
+                                                                                className="h-7 w-32 px-1 text-sm bg-background"
+                                                                                autoFocus
+                                                                            />
+                                                                            <Button size="icon" variant="ghost" className="h-7 w-7 text-green-500" onClick={saveChannelName}>
+                                                                                <Plus className="w-4 h-4 rotate-45" /> {/* Use Check icon if available, reusing Plus rotated for now or just generic save */}
+                                                                            </Button>
+                                                                        </div>
+                                                                    ) : (
+                                                                        <span className="text-sm font-medium truncate">{channel.name}</span>
+                                                                    )}
+                                                                </div>
+
+                                                                <div className="flex items-center gap-1">
+                                                                    {editingChannelId !== channel.id && (
+                                                                        <Button variant="ghost" size="icon" className="h-7 w-7 text-muted-foreground hover:text-foreground opacity-0 group-hover:opacity-100" onClick={() => startEditing(channel)}>
+                                                                            <Edit2 className="w-3 h-3" />
+                                                                        </Button>
+                                                                    )}
+
+                                                                    {/* Lock Toggle */}
+                                                                    <Button
+                                                                        variant="ghost"
+                                                                        size="icon"
+                                                                        className={`h-7 w-7 ${channel.is_locked ? "text-orange-500 bg-orange-500/10" : "text-muted-foreground hover:text-foreground opacity-50 group-hover:opacity-100"}`}
+                                                                        onClick={() => updateChannel.mutate({ id: channel.id, is_locked: !channel.is_locked })}
+                                                                        title={channel.is_locked ? "Unlock Channel" : "Lock Channel (Admins Only)"}
+                                                                    >
+                                                                        {channel.is_locked ? <Lock className="w-3 h-3" /> : <Unlock className="w-3 h-3" />}
+                                                                    </Button>
+
+                                                                    {/* Read Only Toggle (Text only) */}
+                                                                    {channel.type === "text" && (
+                                                                        <Button
+                                                                            variant="ghost"
+                                                                            size="icon"
+                                                                            className={`h-7 w-7 ${channel.is_readonly ? "text-blue-500 bg-blue-500/10" : "text-muted-foreground hover:text-foreground opacity-50 group-hover:opacity-100"}`}
+                                                                            onClick={() => updateChannel.mutate({ id: channel.id, is_readonly: !channel.is_readonly })}
+                                                                            title={channel.is_readonly ? "Enable Posting" : "Make Read-Only"}
+                                                                        >
+                                                                            {channel.is_readonly ? <Eye className="w-3 h-3" /> : <EyeOff className="w-3 h-3" />}
+                                                                        </Button>
+                                                                    )}
+
+                                                                    <Button
+                                                                        variant="ghost"
+                                                                        size="icon"
+                                                                        className="h-7 w-7 text-muted-foreground hover:text-destructive hover:bg-destructive/10 opacity-0 group-hover:opacity-100"
+                                                                        onClick={() => handleDeleteChannel(channel.id)}
+                                                                    >
+                                                                        <Trash2 className="w-3 h-3" />
+                                                                    </Button>
+                                                                </div>
+                                                            </div>
+                                                        ))}
+                                                    </div>
+                                                </div>
+                                            );
+                                        })}
+                                    </div>
+                                </div>
+                            )}
                         </div>
                     </ScrollArea>
+
 
                     {/* Footer Actions (Only for General) */}
                     {activeTab === "general" && (

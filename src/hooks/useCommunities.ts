@@ -23,6 +23,7 @@ export interface Channel {
   type: 'text' | 'voice';
   category: string;
   is_readonly: boolean;
+  is_locked?: boolean;
 }
 
 export const JOIN_COST = 10;
@@ -289,6 +290,21 @@ export const useChannels = (communityId: string) => {
     onError: (e: any) => toast.error(e.message)
   });
 
+  const updateChannel = useMutation({
+    mutationFn: async ({ id, ...updates }: Partial<Channel> & { id: string }) => {
+      const { error } = await supabase
+        .from("channels" as any)
+        .update(updates)
+        .eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["channels", communityId] });
+      toast.success("Channel updated");
+    },
+    onError: (e: any) => toast.error(e.message)
+  });
+
   const deleteChannel = useMutation({
     mutationFn: async (channelId: string) => {
       const { error } = await supabase.from("channels" as any).delete().eq('id', channelId);
@@ -300,5 +316,5 @@ export const useChannels = (communityId: string) => {
     },
   });
 
-  return { ...query, createChannel, deleteChannel };
+  return { ...query, createChannel, updateChannel, deleteChannel };
 }
