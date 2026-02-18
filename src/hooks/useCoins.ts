@@ -184,6 +184,70 @@ export const useClaimBCoins = () => {
   });
 };
 
+export const useClaimStreakReward = () => {
+  const queryClient = useQueryClient();
+  const { user } = useAuth();
+
+  return useMutation({
+    mutationFn: async ({ amount, rewardId }: { amount: number; rewardId: string }) => {
+      const { data: profile, error: fetchErr } = await supabase
+        .from("profiles")
+        .select("a_coin_balance")
+        .eq("user_id", user!.id)
+        .single();
+      if (fetchErr) throw fetchErr;
+
+      const newBalance = (profile.a_coin_balance || 0) + amount;
+
+      const { error } = await supabase
+        .from("profiles")
+        .update({ a_coin_balance: newBalance })
+        .eq("user_id", user!.id);
+      if (error) throw error;
+
+      // Record the claim
+      const { error: claimError } = await supabase
+        .from("claimed_rewards")
+        .insert({
+          user_id: user!.id,
+          reward_id: rewardId,
+          reward_type: "streak",
+          claim_date: getAppDate(), // Use IST date explicitly
+          coins_claimed: amount,
+        });
+      if (claimError) throw claimError;
+
+      return newBalance;
+    },
+    onSuccess: async (_, vars) => {
+      queryClient.invalidateQueries({ queryKey: ["profile"] });
+      queryClient.invalidateQueries({ queryKey: ["claimed-rewards"] });
+
+      // Award XP for claiming streak reward
+      try {
+        await supabase.rpc("add_xp_to_user", {
+          p_user_id: user!.id,
+          p_xp_amount: 30, // Higher XP for streaks
+          p_activity_type: "streak", // Ensure this activity type exists in XP_REWARDS or is handled
+          p_activity_id: vars.rewardId,
+          p_description: "Claimed a streak reward"
+        });
+      } catch (error) {
+        console.error("Failed to award XP:", error);
+      }
+
+      toast.success(`🏆 Claimed ${vars.amount} A Coins! (+30 XP)`);
+    },
+    onError: (error: any) => {
+      if (error.message?.includes("duplicate") || error.code === "23505") {
+        toast.info("Already claimed today!");
+      } else {
+        toast.error(error.message || "Failed to claim");
+      }
+    },
+  });
+};
+
 export const useSpendBCoins = () => {
   const queryClient = useQueryClient();
   const { user } = useAuth();

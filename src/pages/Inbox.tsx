@@ -9,7 +9,7 @@ import { motion } from "framer-motion";
 import { useAuth } from "@/components/AuthProvider";
 import { useTodayCompletions, useTodayReflection } from "@/hooks/useHabits";
 import { useUserStats } from "@/hooks/useAchievements";
-import { useClaimedRewards, useClaimBCoins } from "@/hooks/useCoins";
+import { useClaimedRewards, useClaimBCoins, useClaimStreakReward } from "@/hooks/useCoins";
 import { toast } from "sonner";
 
 const InboxPage = () => {
@@ -19,6 +19,7 @@ const InboxPage = () => {
   const { data: stats } = useUserStats();
   const { data: claimedRewards = [] } = useClaimedRewards();
   const claimBCoins = useClaimBCoins();
+  const claimStreakReward = useClaimStreakReward();
   const [expirationText, setExpirationText] = useState("");
 
   const hasCompletedHabitToday = todayCompletions.length > 0;
@@ -104,6 +105,10 @@ const InboxPage = () => {
     claimBCoins.mutate({ amount: reward, rewardId: questId });
   };
 
+  const handleStreakClaim = (streakId: string, streakTitle: string, reward: number) => {
+    claimStreakReward.mutate({ amount: reward, rewardId: streakId });
+  };
+
   return (
     <div className="space-y-6">
       <div>
@@ -175,7 +180,7 @@ const InboxPage = () => {
                       <p className="text-sm text-muted-foreground">{quest.description}</p>
                       <div className="flex items-center gap-1 mt-1">
                         <Gift className="w-3 h-3 text-warning" />
-                        <span className="text-xs text-warning font-medium">+{quest.reward} coins</span>
+                        <span className="text-xs text-warning font-medium">+{quest.reward} B Coins</span>
                       </div>
                     </div>
                   </div>
@@ -226,8 +231,8 @@ const InboxPage = () => {
                             Maintain a {milestone.days}-day streak
                           </p>
                           <div className="flex items-center gap-1 mt-1">
-                            <Gift className="w-3 h-3 text-warning" />
-                            <span className="text-xs text-warning font-medium">+{milestone.reward} coins</span>
+                            <Gift className="w-3 h-3 text-success" />
+                            <span className="text-xs text-success font-medium">+{milestone.reward} A coins</span>
                           </div>
                         </div>
                       </div>
@@ -235,8 +240,8 @@ const InboxPage = () => {
                         <Button
                           className="gradient-success border-0 hover:opacity-90"
                           size="sm"
-                          onClick={() => handleClaim(`streak-${milestone.days}`, milestone.label, milestone.reward)}
-                          disabled={claimBCoins.isPending}
+                          onClick={() => handleStreakClaim(`streak-${milestone.days}`, milestone.label, milestone.reward)}
+                          disabled={claimStreakReward.isPending}
                         >
                           <CheckCircle className="w-4 h-4 mr-1" /> Claim
                         </Button>
