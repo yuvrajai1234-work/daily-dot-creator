@@ -138,3 +138,31 @@ export const useCommunities = () => {
     createCommunity,
   };
 };
+
+export const useCommunityMembers = (communityId: string) => {
+  const { user } = useAuth();
+
+  return useQuery({
+    queryKey: ["community-members", communityId],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("community_members")
+        .select(`
+          user_id,
+          role,
+          profile:profiles(username, avatar_url)
+        `)
+        .eq("community_id", communityId);
+
+      if (error) throw error;
+
+      return data.map((m: any) => ({
+        userId: m.user_id,
+        role: m.role,
+        username: m.profile?.username,
+        avatarUrl: m.profile?.avatar_url,
+      }));
+    },
+    enabled: !!communityId && !!user,
+  });
+};
