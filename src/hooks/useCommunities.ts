@@ -125,6 +125,59 @@ export const useCommunities = () => {
     },
   });
 
+  const updateCommunity = useMutation({
+    mutationFn: async ({ id, ...updates }: { id: string; name?: string; tagline?: string; emoji?: string; habit_category?: string }) => {
+      const { error } = await supabase
+        .from("communities")
+        .update(updates)
+        .eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["communities"] });
+      toast({ title: "Community updated!" });
+    },
+    onError: (err: Error) => {
+      toast({ title: "Error", description: err.message, variant: "destructive" });
+    },
+  });
+
+  const updateMemberRole = useMutation({
+    mutationFn: async ({ communityId, userId, role }: { communityId: string; userId: string; role: 'admin' | 'moderator' | 'member' }) => {
+      const { error } = await supabase
+        .from("community_members")
+        .update({ role })
+        .eq("community_id", communityId)
+        .eq("user_id", userId);
+      if (error) throw error;
+    },
+    onSuccess: (_, vars) => {
+      queryClient.invalidateQueries({ queryKey: ["community-members", vars.communityId] });
+      toast({ title: "Member role updated!" });
+    },
+    onError: (err: Error) => {
+      toast({ title: "Error", description: err.message, variant: "destructive" });
+    },
+  });
+
+  const kickMember = useMutation({
+    mutationFn: async ({ communityId, userId }: { communityId: string; userId: string }) => {
+      const { error } = await supabase
+        .from("community_members")
+        .delete()
+        .eq("community_id", communityId)
+        .eq("user_id", userId);
+      if (error) throw error;
+    },
+    onSuccess: (_, vars) => {
+      queryClient.invalidateQueries({ queryKey: ["community-members", vars.communityId] });
+      toast({ title: "Member removed" });
+    },
+    onError: (err: Error) => {
+      toast({ title: "Error", description: err.message, variant: "destructive" });
+    },
+  });
+
   const isMember = (communityId: string) =>
     myMembershipsQuery.data?.some((m) => m.community_id === communityId) ?? false;
 
@@ -136,6 +189,9 @@ export const useCommunities = () => {
     joinCommunity,
     leaveCommunity,
     createCommunity,
+    updateCommunity,
+    updateMemberRole,
+    kickMember,
   };
 };
 
@@ -145,22 +201,34 @@ export const useCommunityMembers = (communityId: string) => {
   return useQuery({
     queryKey: ["community-members", communityId],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from("community_members")
-        .select(`
-          user_id,
-          role,
-          profile:profiles(username, avatar_url)
-        `)
+      // 1. Fetch raw members data
+      const { data: members, error: memError } = await supabase
+        .from("community_members" as any)
+        .select("user_id, role")
         .eq("community_id", communityId);
 
-      if (error) throw error;
+      if (memError) throw memError;
+      if (!members || members.length === 0) return [];
 
-      return data.map((m: any) => ({
+      // 2. Fetch profiles for these members
+      const userIds = members.map((m: any) => m.user_id);
+      const { data: profiles, error: profError } = await supabase
+        .from("profiles")
+        .select("id, username, avatar_url")
+        .in("id", userIds);
+
+      if (profError) {
+        console.error("Error fetching member profiles:", profError);
+      }
+
+      const profileMap = new Map((profiles || []).map((p: any) => [p.id, p]));
+
+      // 3. Combine data
+      return members.map((m: any) => ({
         userId: m.user_id,
         role: m.role,
-        username: m.profile?.username,
-        avatarUrl: m.profile?.avatar_url,
+        username: profileMap.get(m.user_id)?.username || "Unknown member",
+        avatarUrl: profileMap.get(m.user_id)?.avatar_url,
       }));
     },
     enabled: !!communityId && !!user,

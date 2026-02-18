@@ -31,18 +31,38 @@ export const useCommunityMessages = (communityId: string) => {
     const query = useQuery({
         queryKey: ["community-messages", communityId],
         queryFn: async () => {
-            const { data, error } = await supabase
-                .from("community_messages")
-                .select(`
-          *,
-          profile:profiles(username, avatar_url)
-        `)
+            // 1. Fetch raw messages (cast to any to avoid type errors for missing tables)
+            const { data: messages, error: msgError } = await supabase
+                .from("community_messages" as any)
+                .select("*")
                 .eq("community_id", communityId)
                 .order("created_at", { ascending: true })
                 .limit(50);
 
-            if (error) throw error;
-            return data as Message[];
+            if (msgError) throw msgError;
+            if (!messages || messages.length === 0) return [];
+
+            // 2. Fetch profiles manually
+            const userIds = [...new Set(messages.map((m: any) => m.user_id))];
+            const { data: profiles, error: profError } = await supabase
+                .from("profiles")
+                .select("id, username, avatar_url")
+                .in("id", userIds);
+
+            if (profError) {
+                console.error("Error fetching profiles:", profError);
+            }
+
+            const profileMap = new Map((profiles || []).map((p: any) => [p.id, p]));
+
+            // 3. Combine
+            return messages.map((m: any) => ({
+                id: m.id,
+                content: m.content,
+                user_id: m.user_id,
+                created_at: m.created_at,
+                profile: profileMap.get(m.user_id) || { username: 'Unknown', avatar_url: '' }
+            })) as Message[];
         },
         enabled: !!communityId && !!user,
     });
@@ -75,7 +95,7 @@ export const useCommunityMessages = (communityId: string) => {
     const sendMessage = useMutation({
         mutationFn: async (content: string) => {
             const { error } = await supabase
-                .from("community_messages")
+                .from("community_messages" as any)
                 .insert({
                     community_id: communityId,
                     user_id: user!.id,
@@ -101,7 +121,7 @@ export const useFriendships = () => {
         queryFn: async () => {
             // Fetch where user is sender or receiver
             const { data, error } = await supabase
-                .from("friendships")
+                .from("friendships" as any)
                 .select(`
           id,
           status,
@@ -131,7 +151,7 @@ export const useFriendships = () => {
     const sendRequest = useMutation({
         mutationFn: async (friendId: string) => {
             const { error } = await supabase
-                .from("friendships")
+                .from("friendships" as any)
                 .insert({
                     sender_id: user!.id,
                     receiver_id: friendId,
@@ -155,10 +175,10 @@ export const useFriendships = () => {
     const updateStatus = useMutation({
         mutationFn: async ({ friendshipId, status }: { friendshipId: string; status: 'accepted' | 'rejected' }) => {
             if (status === 'rejected') {
-                const { error } = await supabase.from('friendships').delete().eq('id', friendshipId);
+                const { error } = await supabase.from('friendships' as any).delete().eq('id', friendshipId);
                 if (error) throw error;
             } else {
-                const { error } = await supabase.from('friendships').update({ status }).eq('id', friendshipId);
+                const { error } = await supabase.from('friendships' as any).update({ status }).eq('id', friendshipId);
                 if (error) throw error;
             }
         },
