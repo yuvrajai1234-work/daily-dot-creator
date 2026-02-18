@@ -1,5 +1,7 @@
 import { useState, useEffect } from "react";
 import { Community, useCommunityMembers, useCommunities, useChannels } from "@/hooks/useCommunities"; // Imported useChannels
+import { MemberProfileCard } from "./MemberProfileCard";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { CommunityChat } from "./CommunityChat";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Button } from "@/components/ui/button";
@@ -300,33 +302,44 @@ export const CommunityDetailView = ({ community, onBack }: CommunityDetailViewPr
                                                 const friendStatus = !isMe ? getFriendStatus(member.userId) : null;
 
                                                 return (
-                                                    <div key={member.userId} className="group flex items-center gap-2 px-2 py-1.5 rounded hover:bg-accent cursor-pointer opacity-90 hover:opacity-100 transition-all">
-                                                        <div className="relative">
-                                                            <Avatar className={`w-8 h-8 ${member.role === 'admin' ? 'ring-2 ring-yellow-500/50' : ''}`}>
-                                                                <AvatarImage src={member.avatarUrl} />
-                                                                <AvatarFallback>{member.username?.charAt(0).toUpperCase()}</AvatarFallback>
-                                                            </Avatar>
-                                                            <div className={`absolute bottom-0 right-0 w-2.5 h-2.5 rounded-full border-2 border-card ${isMe ? "bg-green-500" : "bg-muted-foreground"
-                                                                }`}></div>
-                                                        </div>
-                                                        <div className="flex-1 min-w-0">
-                                                            <div className={`text-sm font-medium truncate ${member.role === 'admin' ? 'text-yellow-500' :
-                                                                member.role === 'moderator' ? 'text-purple-400' :
-                                                                    'text-foreground'
-                                                                }`}>
-                                                                {member.username}
-                                                            </div>
-                                                        </div>
+                                                    <Popover key={member.userId}>
+                                                        <PopoverTrigger asChild>
+                                                            <div className="group flex items-center gap-2 px-2 py-1.5 rounded hover:bg-accent cursor-pointer opacity-90 hover:opacity-100 transition-all">
+                                                                <div className="relative">
+                                                                    <Avatar className={`w-8 h-8 ${member.role === 'admin' ? 'ring-2 ring-yellow-500/50' : ''}`}>
+                                                                        <AvatarImage src={member.avatarUrl} />
+                                                                        <AvatarFallback>{member.username?.charAt(0).toUpperCase()}</AvatarFallback>
+                                                                    </Avatar>
+                                                                    <div className={`absolute bottom-0 right-0 w-2.5 h-2.5 rounded-full border-2 border-card ${isMe ? "bg-green-500" : "bg-muted-foreground"
+                                                                        }`}></div>
+                                                                </div>
+                                                                <div className="flex-1 min-w-0">
+                                                                    <div className={`text-sm font-medium truncate ${member.role === 'admin' ? 'text-yellow-500' :
+                                                                        member.role === 'moderator' ? 'text-purple-400' :
+                                                                            'text-foreground'
+                                                                        }`}>
+                                                                        {member.username}
+                                                                    </div>
+                                                                </div>
 
-                                                        {!isMe && !friendStatus && (
-                                                            <div className="opacity-0 group-hover:opacity-100" onClick={(e) => { e.stopPropagation(); sendRequest.mutate(member.userId); }}>
-                                                                <UserPlus className="w-4 h-4 text-muted-foreground hover:text-green-400" />
+                                                                {!isMe && !friendStatus && (
+                                                                    <div className="opacity-0 group-hover:opacity-100" onClick={(e) => { e.stopPropagation(); sendRequest.mutate(member.userId); }}>
+                                                                        <UserPlus className="w-4 h-4 text-muted-foreground hover:text-green-400" />
+                                                                    </div>
+                                                                )}
+                                                                {friendStatus?.status === 'pending' && (
+                                                                    <div title="Request Pending"><Clock className="w-3 h-3 text-yellow-500" /></div>
+                                                                )}
                                                             </div>
-                                                        )}
-                                                        {friendStatus?.status === 'pending' && (
-                                                            <div title="Request Pending"><Clock className="w-3 h-3 text-yellow-500" /></div>
-                                                        )}
-                                                    </div>
+                                                        </PopoverTrigger>
+                                                        <PopoverContent className="w-auto p-0 border-none bg-transparent shadow-none" side="left" align="start">
+                                                            <MemberProfileCard
+                                                                userId={member.userId}
+                                                                communityId={community.id}
+                                                                role={member.role}
+                                                            />
+                                                        </PopoverContent>
+                                                    </Popover>
                                                 );
                                             })}
                                         </div>

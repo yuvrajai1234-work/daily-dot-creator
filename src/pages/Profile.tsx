@@ -99,10 +99,15 @@ const ProfilePage = () => {
 
     // Sync with public profiles table
     if (!error && user) {
-      await supabase.from("profiles").update({
+      const publicUpdates: any = {
         full_name: name,
-        avatar_url: avatarUrl
-      }).eq("user_id", user.id);
+        avatar_url: avatarUrl,
+        bio,
+        location,
+        gender,
+        designation,
+      };
+      await supabase.from("profiles").update(publicUpdates).eq("user_id", user.id);
     }
 
     if (error) {
