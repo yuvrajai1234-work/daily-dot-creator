@@ -96,6 +96,15 @@ const ProfilePage = () => {
     };
 
     const { error } = await supabase.auth.updateUser({ data: updates });
+
+    // Sync with public profiles table
+    if (!error && user) {
+      await supabase.from("profiles").update({
+        full_name: name,
+        avatar_url: avatarUrl
+      }).eq("user_id", user.id);
+    }
+
     if (error) {
       toast.error("Failed to update profile");
     } else {
@@ -132,6 +141,13 @@ const ProfilePage = () => {
     const { error } = await supabase.auth.updateUser({
       data: { avatar_url: newAvatarUrl }
     });
+
+    // Sync with public profiles table
+    if (!error && user) {
+      await supabase.from("profiles").update({
+        avatar_url: newAvatarUrl
+      }).eq("user_id", user.id);
+    }
 
     if (error) {
       toast.error("Failed to update avatar");
