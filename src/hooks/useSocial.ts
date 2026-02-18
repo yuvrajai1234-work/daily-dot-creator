@@ -4,11 +4,20 @@ import { useAuth } from "@/components/AuthProvider";
 import { useEffect } from "react";
 import { toast } from "sonner";
 
+export interface MessageReaction {
+    id: string;
+    emoji: string;
+    user_id: string;
+}
+
 export interface Message {
     id: string;
     content: string;
     user_id: string;
     created_at: string;
+    is_pinned?: boolean;
+    reply_to_id?: string;
+    reactions?: MessageReaction[];
     profile?: {
         username: string;
         avatar_url: string;
@@ -27,24 +36,12 @@ export interface Friend {
 export const useCommunityMessages = (communityIdOrChannelId: string) => {
     const { user } = useAuth();
     const queryClient = useQueryClient();
-
-    // To prevent breaking changes, we might need logic.
-    // If it's a channelId (UUID), we fetch by channel_id.
-    // If it's a communityId (UUID), we potentially fetch legacy?
-    // For now, let's assume the UI passes a valid ID and we try both or rely on the caller know what ID it is.
-    // But actually, we are shifting to channel-based.
-    // Let's rename this hook variable internally to `resourceId`.
-
-    // HOWEVER, to support the transition:
-    // If we only query `channel_id`, then `community_id` messages (legacy) won't show.
-    // My migration moves everything to `general` channel. So we should query by `channel_id`.
-
     const channelId = communityIdOrChannelId;
 
     const query = useQuery({
         queryKey: ["channel-messages", channelId],
         queryFn: async () => {
-            // 1. Fetch raw messages (cast to any to avoid type errors for missing tables)
+            // 1. Fetch raw messages
             const { data: messages, error: msgError } = await supabase
                 .from("community_messages" as any)
                 .select("*")
@@ -55,25 +52,37 @@ export const useCommunityMessages = (communityIdOrChannelId: string) => {
             if (msgError) throw msgError;
             if (!messages || messages.length === 0) return [];
 
-            // 2. Fetch profiles manually
+            const messageIds = messages.map((m: any) => m.id);
+
+            // 2. Fetch profiles
             const userIds = [...new Set(messages.map((m: any) => m.user_id))];
             const { data: profiles, error: profError } = await supabase
-                .from("profiles")
+                .from("profiles" as any)
                 .select("id, user_id, full_name, avatar_url")
                 .in("user_id", userIds);
 
             if (profError) {
                 console.error("Error fetching profiles:", profError);
             }
-
             const profileMap = new Map((profiles || []).map((p: any) => [p.user_id, p]));
 
-            // 3. Combine
+            // 3. Fetch reactions
+            const { data: reactions, error: reactError } = await supabase
+                .from("message_reactions" as any)
+                .select("*")
+                .in("message_id", messageIds);
+
+            if (reactError) console.error("Error fetching reactions:", reactError);
+
+            // 4. Combine
             return messages.map((m: any) => ({
                 id: m.id,
                 content: m.content,
                 user_id: m.user_id,
                 created_at: m.created_at,
+                is_pinned: m.is_pinned,
+                reply_to_id: m.reply_to_id,
+                reactions: (reactions as any[])?.filter((r: any) => r.message_id === m.id) || [],
                 profile: {
                     username: profileMap.get(m.user_id)?.full_name || 'Unknown',
                     avatar_url: profileMap.get(m.user_id)?.avatar_url || ''
@@ -83,7 +92,8 @@ export const useCommunityMessages = (communityIdOrChannelId: string) => {
         enabled: !!channelId && !!user,
     });
 
-    // Real-time subscription
+    // Real-time subscription (expanded to listen to reactions too if possible, but for MVP just messages)
+    // To listen to reactions we need another channel or wildcard
     useEffect(() => {
         if (!channelId) return;
 
@@ -92,12 +102,19 @@ export const useCommunityMessages = (communityIdOrChannelId: string) => {
             .on(
                 "postgres_changes",
                 {
-                    event: "INSERT",
+                    event: "*",
                     schema: "public",
                     table: "community_messages",
                     filter: `channel_id=eq.${channelId}`,
                 },
+                () => queryClient.invalidateQueries({ queryKey: ["channel-messages", channelId] })
+            )
+            .on(
+                "postgres_changes",
+                { event: "*", schema: "public", table: "message_reactions" },
                 (payload) => {
+                    // Invalidate if the reaction belongs to one of our messages?
+                    // Hard to filter without message_id in filter, so just invalidate
                     queryClient.invalidateQueries({ queryKey: ["channel-messages", channelId] });
                 }
             )
@@ -109,14 +126,15 @@ export const useCommunityMessages = (communityIdOrChannelId: string) => {
     }, [channelId, queryClient]);
 
     const sendMessage = useMutation({
-        mutationFn: async ({ content, communityId }: { content: string, communityId: string }) => {
+        mutationFn: async ({ content, communityId, replyToId }: { content: string, communityId: string, replyToId?: string }) => {
             const { error } = await supabase
                 .from("community_messages" as any)
                 .insert({
-                    community_id: communityId, // Still need this for RLS/Reference? Depends on schema. Schema has both.
+                    community_id: communityId,
                     channel_id: channelId,
                     user_id: user!.id,
                     content,
+                    reply_to_id: replyToId
                 });
             if (error) throw error;
         },
@@ -125,7 +143,35 @@ export const useCommunityMessages = (communityIdOrChannelId: string) => {
         },
     });
 
-    return { ...query, sendMessage };
+    const pinMessage = useMutation({
+        mutationFn: async ({ messageId, isPinned }: { messageId: string, isPinned: boolean }) => {
+            const { error } = await supabase
+                .from("community_messages" as any)
+                .update({ is_pinned: isPinned })
+                .eq("id", messageId);
+            if (error) throw error;
+        },
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ["channel-messages", channelId] });
+            toast.success("Message pinned/unpinned");
+        }
+    });
+
+    const addReaction = useMutation({
+        mutationFn: async ({ messageId, emoji }: { messageId: string, emoji: string }) => {
+            const { error } = await supabase
+                .from("message_reactions" as any)
+                .insert({
+                    message_id: messageId,
+                    user_id: user!.id,
+                    emoji
+                });
+            if (error) throw error;
+        },
+        onSuccess: () => queryClient.invalidateQueries({ queryKey: ["channel-messages", channelId] })
+    });
+
+    return { ...query, sendMessage, pinMessage, addReaction };
 };
 
 export const useFriendships = () => {

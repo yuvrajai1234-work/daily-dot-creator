@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
-import { Community, useCommunityMembers, useCommunities, useChannels } from "@/hooks/useCommunities"; // Imported useChannels
+import { Community, useCommunityMembers, useCommunities, useChannels } from "@/hooks/useCommunities";
+import { usePinnedMessages } from "@/hooks/usePinnedMessages";
 import { MemberProfileCard } from "./MemberProfileCard";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { CommunityChat } from "./CommunityChat";
@@ -44,6 +45,7 @@ export const CommunityDetailView = ({ community, onBack }: CommunityDetailViewPr
     // Fetch Channels
     const { data: channels = [], isLoading: channelsLoading, createChannel } = useChannels(community.id);
     const [activeChannelId, setActiveChannelId] = useState<string | null>(null);
+    const { data: pinnedMessages = [] } = usePinnedMessages(activeChannelId || "");
     const [showMembers, setShowMembers] = useState(true);
 
     // Collapsed state
@@ -249,7 +251,45 @@ export const CommunityDetailView = ({ community, onBack }: CommunityDetailViewPr
                             />
                         </div>
                         <Bell className="w-5 h-5 cursor-pointer hover:text-foreground" />
-                        <Pin className="w-5 h-5 cursor-pointer hover:text-foreground" />
+                        <Bell className="w-5 h-5 cursor-pointer hover:text-foreground" />
+                        <Popover>
+                            <PopoverTrigger asChild>
+                                <div className="relative cursor-pointer group">
+                                    <Pin className="w-5 h-5 group-hover:text-foreground" />
+                                    {pinnedMessages.length > 0 && <span className="absolute -top-1 -right-1 flex h-2.5 w-2.5 items-center justify-center rounded-full bg-red-500 text-[8px] text-white"></span>}
+                                </div>
+                            </PopoverTrigger>
+                            <PopoverContent className="w-80 p-0" align="end">
+                                <div className="p-3 font-semibold border-b bg-muted/40 text-sm">Pinned Messages</div>
+                                <ScrollArea className="h-64">
+                                    {pinnedMessages.length === 0 ? (
+                                        <div className="p-4 text-center text-sm text-muted-foreground">
+                                            No pinned messages in this channel.
+                                        </div>
+                                    ) : (
+                                        <div className="flex flex-col">
+                                            {pinnedMessages.map((msg: any) => (
+                                                <div key={msg.id} className="p-3 border-b last:border-0 hover:bg-muted/20 transition-colors">
+                                                    <div className="flex items-center gap-2 mb-1">
+                                                        <Avatar className="w-5 h-5">
+                                                            <AvatarImage src={msg.profile?.avatar_url} />
+                                                            <AvatarFallback>{msg.profile?.username?.charAt(0)}</AvatarFallback>
+                                                        </Avatar>
+                                                        <span className="text-xs font-bold text-foreground">{msg.profile?.username}</span>
+                                                        <span className="text-[10px] text-muted-foreground ml-auto">
+                                                            {new Date(msg.created_at).toLocaleDateString()}
+                                                        </span>
+                                                    </div>
+                                                    <div className="text-sm text-foreground/90 pl-7 break-words">
+                                                        {msg.content}
+                                                    </div>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    )}
+                                </ScrollArea>
+                            </PopoverContent>
+                        </Popover>
                         <Users className="w-5 h-5 cursor-pointer hover:text-foreground lg:hidden" />
                         <div className="bg-secondary/50 flex items-center px-2 py-1 rounded text-sm w-36 overflow-hidden">
                             <input className="bg-transparent border-none outline-none text-foreground placeholder-muted-foreground w-full" placeholder="Search" />
