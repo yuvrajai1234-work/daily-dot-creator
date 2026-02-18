@@ -1,4 +1,4 @@
-import { format } from "date-fns";
+import { format, isBefore, startOfDay } from "date-fns";
 import { useState } from "react";
 import { useReminders } from "@/hooks/useReminders";
 import { AddReminderDialog } from "./AddReminderDialog";
@@ -16,6 +16,8 @@ export const RemindersSection = ({ date }: RemindersSectionProps) => {
     const { deleteReminder, getRemindersForDate, addReminder } = useReminders();
 
     if (!date) return null;
+
+    const isPastDate = isBefore(startOfDay(date), startOfDay(new Date()));
 
     const dateStr = format(date, "yyyy-MM-dd");
     const dayReminders = getRemindersForDate(dateStr);
@@ -37,7 +39,11 @@ export const RemindersSection = ({ date }: RemindersSectionProps) => {
                             <h2 className="text-2xl font-bold">Reminders for {format(date, "MMMM d, yyyy")}</h2>
                             <p className="text-muted-foreground text-sm">Manage your reminders for the selected date.</p>
                         </div>
-                        <Button onClick={() => setShowAddDialog(true)} className="bg-primary hover:bg-opacity-90 transition-colors">
+                        <Button
+                            onClick={() => setShowAddDialog(true)}
+                            className="bg-primary hover:bg-opacity-90 transition-colors"
+                            disabled={isPastDate}
+                        >
                             Add Reminder
                         </Button>
                     </div>
