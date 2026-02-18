@@ -70,39 +70,9 @@ export const getLevelInfo = (profile: {
 
 // Hook to get user's level info
 // Hook to get user's level info
+// Hook to get user's level info
 export const useLevelInfo = () => {
     const { user } = useAuth();
-    const queryClient = useQueryClient();
-
-    // Subscribe to real-time profile updates
-    useEffect(() => {
-        if (!user) return;
-
-        const channel = supabase
-            .channel('profile-updates')
-            .on(
-                'postgres_changes',
-                {
-                    event: 'UPDATE',
-                    schema: 'public',
-                    table: 'profiles',
-                    filter: `user_id=eq.${user.id}`,
-                },
-                (payload) => {
-                    // Invalidate queries to refetch latest data
-                    queryClient.invalidateQueries({ queryKey: ["level-info"] });
-                    queryClient.invalidateQueries({ queryKey: ["profile"] });
-
-                    // Show a toast for XP gain if we can calculate it (optional enhancement)
-                    // For now, simpler invalidation ensures UI is up to date
-                }
-            )
-            .subscribe();
-
-        return () => {
-            supabase.removeChannel(channel);
-        };
-    }, [user, queryClient]);
 
     return useQuery({
         queryKey: ["level-info", user?.id],
@@ -118,6 +88,54 @@ export const useLevelInfo = () => {
         },
         enabled: !!user,
     });
+};
+
+// Hook to sync profile updates in real-time
+export const useProfileRealtimeSync = () => {
+    const { user } = useAuth();
+    const queryClient = useQueryClient();
+
+    useEffect(() => {
+        if (!user) return;
+
+        // Use a unique channel name to prevent conflicts if multiple tabs/components subscribe
+        const channelId = `profile-updates-${user.id}-${Math.random().toString(36).substring(7)}`;
+
+        const channel = supabase
+            .channel(channelId)
+            .on(
+                'postgres_changes',
+                {
+                    event: 'UPDATE',
+                    schema: 'public',
+                    table: 'profiles',
+                    filter: `user_id=eq.${user.id}`,
+                },
+                (payload) => {
+                    const newProfile = payload.new as any;
+
+                    if (newProfile) {
+                        // Optimistically update the cache for immediate feedback
+                        const levelInfo = getLevelInfo({
+                            level: newProfile.level,
+                            current_xp: newProfile.current_xp,
+                            total_xp: newProfile.total_xp
+                        });
+
+                        // Update level-info query data
+                        queryClient.setQueryData(["level-info", user.id], levelInfo);
+
+                        // Update full profile query data if it exists
+                        queryClient.setQueryData(["profile", user.id], newProfile);
+                    }
+                }
+            )
+            .subscribe();
+
+        return () => {
+            supabase.removeChannel(channel);
+        };
+    }, [user, queryClient]);
 };
 
 // Hook to get XP transaction history
@@ -140,6 +158,50 @@ export const useXPTransactions = (limit: number = 50) => {
     });
 };
 
+// Helper for optimistic XP updates
+export const optimisticXPUpdate = (queryClient: any, userId: string, amount: number) => {
+    const currentLevelInfo = queryClient.getQueryData(["level-info", userId]) as LevelInfo | undefined;
+
+    if (currentLevelInfo) {
+        let { level, currentXP, totalXP, xpNeeded, progress } = currentLevelInfo;
+
+        // Update totals
+        totalXP += amount;
+        currentXP += amount;
+
+        // Handle level up(s)
+        while (currentXP >= xpNeeded) {
+            currentXP -= xpNeeded;
+            level++;
+            xpNeeded = calculateXPForLevel(level);
+        }
+
+        // Recalculate progress
+        progress = Math.min(100, (currentXP / xpNeeded) * 100);
+
+        const newLevelInfo = {
+            level,
+            currentXP,
+            totalXP,
+            xpNeeded,
+            progress
+        };
+
+        queryClient.setQueryData(["level-info", userId], newLevelInfo);
+
+        // Also update profile cache if it exists, to keep them in sync
+        const currentProfile = queryClient.getQueryData(["profile", userId]) as any;
+        if (currentProfile) {
+            queryClient.setQueryData(["profile", userId], {
+                ...currentProfile,
+                level,
+                current_xp: currentXP,
+                total_xp: totalXP
+            });
+        }
+    }
+};
+
 // Hook to add XP
 export const useAddXP = () => {
     const queryClient = useQueryClient();
@@ -157,6 +219,11 @@ export const useAddXP = () => {
             activityId?: string;
             description?: string;
         }) => {
+            // Optimistically update before the request finishes for instant feedback
+            // optimization: move to onMutate if we want true optimistic, but here is fine for "no delay" perception
+            // typically we do it in onSuccess to confirm server success, but user wants INSTANT. 
+            // Let's do it in onSuccess to be safe, but make it run BEFORE invalidation.
+
             const { data, error } = await supabase.rpc("add_xp_to_user", {
                 p_user_id: user!.id,
                 p_xp_amount: amount,
@@ -166,12 +233,15 @@ export const useAddXP = () => {
             });
 
             if (error) throw error;
-            return data as { new_level: number; level_up: boolean; xp_gained: number }[];
+            return { data, amount }; // Pass amount through for onSuccess
         },
-        onSuccess: (data) => {
-            const result = data[0];
+        onSuccess: ({ data, amount }) => {
+            const result = (data as any)[0];
 
-            // Invalidate queries
+            // Manually update cache immediately
+            optimisticXPUpdate(queryClient, user!.id, amount);
+
+            // Invalidate queries to ensure eventual consistency
             queryClient.invalidateQueries({ queryKey: ["level-info"] });
             queryClient.invalidateQueries({ queryKey: ["xp-transactions"] });
             queryClient.invalidateQueries({ queryKey: ["profile"] });

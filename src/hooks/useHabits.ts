@@ -3,6 +3,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/components/AuthProvider";
 import { toast } from "sonner";
 import { getAppDate } from "@/lib/dateUtils";
+import { optimisticXPUpdate } from "@/hooks/useXP";
 
 export interface Habit {
   id: string;
@@ -204,7 +205,7 @@ export const useLogEffort = () => {
   const today = getAppDate(); // Current date in IST (resets at midnight)
 
   return useMutation({
-    mutationFn: async ({ habitId, effortLevel }: { habitId: string; effortLevel: number }) => {
+    mutationFn: async ({ habitId, effortLevel, isNew }: { habitId: string; effortLevel: number; isNew?: boolean }) => {
       // Check if already logged today (update doesn't cost B coins)
       const { data: existing } = await supabase
         .from("habit_completions")
@@ -246,6 +247,14 @@ export const useLogEffort = () => {
         return { isUpdate: false };
       }
     },
+    onMutate: async ({ isNew }) => {
+      if (isNew) {
+        // Optimistically update XP immediately for 0ms delay
+        optimisticXPUpdate(queryClient, user!.id, 10);
+        return { xpAdded: true };
+      }
+      return { xpAdded: false };
+    },
     onSuccess: async (result, variables) => {
       // Award XP for new habit log (not for updates)
       if (!result.isUpdate) {
@@ -258,6 +267,8 @@ export const useLogEffort = () => {
             p_activity_id: variables.habitId,
             p_description: "Logged a habit"
           });
+
+          // Note: XP was already optimistically updated in onMutate
         } catch (error) {
           console.error("Failed to award XP:", error);
         }
@@ -276,7 +287,11 @@ export const useLogEffort = () => {
         toast.success("Effort logged! (-10 B Coins, +10 XP)");
       }
     },
-    onError: (error: any) => {
+    onError: (error: any, variables, context) => {
+      // Rollback optimistic XP update if it failed
+      if (context?.xpAdded) {
+        optimisticXPUpdate(queryClient, user!.id, -10);
+      }
       toast.error(error.message || "Failed to log effort");
     },
   });
@@ -385,6 +400,9 @@ export const useSaveReflection = () => {
           p_activity_type: "journal",
           p_description: "Wrote a journal entry"
         });
+
+        // Optimistically update XP
+        optimisticXPUpdate(queryClient, user!.id, 15);
       } catch (error) {
         console.error("Failed to award XP:", error);
       }

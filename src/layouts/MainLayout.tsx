@@ -5,11 +5,15 @@ import TopBar from "@/components/TopBar";
 import { useRewardNotifications } from "@/hooks/useRewardNotifications";
 import { useReminderToasts } from "@/hooks/useReminderToasts";
 import { LevelUpOverlay } from "@/components/LevelUpOverlay";
-import { useLevelInfo } from "@/hooks/useXP";
+import { useLevelInfo, useProfileRealtimeSync } from "@/hooks/useXP";
 import { AnimatePresence } from "framer-motion";
 
 const MainLayout = () => {
   const [isCollapsed, setIsCollapsed] = useState(false);
+
+  // Real-time synchronization
+  useProfileRealtimeSync();
+
   const { data: levelInfo } = useLevelInfo();
   const currentLevel = levelInfo?.level;
   const [prevLevel, setPrevLevel] = useState<number | undefined>(undefined);

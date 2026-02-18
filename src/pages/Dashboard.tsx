@@ -72,16 +72,19 @@ const Dashboard = () => {
             </div>
           ) : (
             <div className="grid sm:grid-cols-2 gap-4">
-              {habits.map((habit) => (
-                <HabitCard
-                  key={habit.id}
-                  habit={habit}
-                  weekCompletions={weekCompletions}
-                  todayCompletion={todayCompletions.find((c) => c.habit_id === habit.id)}
-                  onLogEffort={(habitId, level) => logEffort.mutate({ habitId, effortLevel: level })}
-                  onDelete={(habitId) => deleteHabit.mutate(habitId)}
-                />
-              ))}
+              {habits.map((habit) => {
+                const todayCompletion = todayCompletions.find((c) => c.habit_id === habit.id);
+                return (
+                  <HabitCard
+                    key={habit.id}
+                    habit={habit}
+                    weekCompletions={weekCompletions}
+                    todayCompletion={todayCompletion}
+                    onLogEffort={(habitId, level) => logEffort.mutate({ habitId, effortLevel: level, isNew: !todayCompletion })}
+                    onDelete={(habitId) => deleteHabit.mutate(habitId)}
+                  />
+                );
+              })}
             </div>
           )}
         </div>

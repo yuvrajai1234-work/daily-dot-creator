@@ -1,8 +1,4 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Textarea } from "@/components/ui/textarea";
-import { useState } from "react";
-import { useSaveReflection } from "@/hooks/useHabits";
 import { Sparkles } from "lucide-react";
 import { useAIReflection } from "@/hooks/useAIReflection";
 
@@ -12,8 +8,6 @@ interface AIReflectionProps {
 }
 
 const AIReflection = ({ completionRate, userName }: AIReflectionProps) => {
-  const [reflection, setReflection] = useState("");
-  const saveReflection = useSaveReflection();
   const { generateAIMessage } = useAIReflection();
 
   const aiMessage = generateAIMessage();
@@ -57,30 +51,6 @@ const AIReflection = ({ completionRate, userName }: AIReflectionProps) => {
             </p>
           </div>
         </div>
-
-        {/* User Reflection Input */}
-        <div className="space-y-2">
-          <p className="text-xs font-medium text-muted-foreground">Write your thoughts:</p>
-          <Textarea
-            placeholder="Write your thoughts and insights here..."
-            className="min-h-[100px] bg-secondary/30 border-border/50 resize-none text-sm"
-            value={reflection}
-            onChange={(e) => setReflection(e.target.value)}
-          />
-        </div>
-
-        <Button
-          className="w-full gradient-primary hover:opacity-90"
-          size="sm"
-          disabled={!reflection.trim() || saveReflection.isPending}
-          onClick={() => {
-            saveReflection.mutate(reflection, {
-              onSuccess: () => setReflection(""),
-            });
-          }}
-        >
-          {saveReflection.isPending ? "Saving..." : "Save Reflection"}
-        </Button>
       </CardContent>
     </Card>
   );
