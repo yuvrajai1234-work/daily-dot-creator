@@ -52,7 +52,7 @@ const CommunityPage = () => {
   }
 
   return (
-    <div className="space-y-6 animate-in fade-in duration-500">
+    <div className="space-y-6 animate-in fade-in duration-500 p-6 max-w-7xl mx-auto">
       <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
         <div>
           <h1 className="text-3xl font-bold">Community Hub</h1>
@@ -100,8 +100,8 @@ const CommunityPage = () => {
                         type="button"
                         onClick={() => setForm((f) => ({ ...f, emoji: e }))}
                         className={`text-2xl w-10 h-10 flex items-center justify-center rounded-md transition-all ${form.emoji === e
-                            ? "bg-primary text-primary-foreground scale-110 shadow-md ring-2 ring-offset-1 ring-offset-background ring-primary"
-                            : "hover:bg-secondary/50 hover:scale-105"
+                          ? "bg-primary text-primary-foreground scale-110 shadow-md ring-2 ring-offset-1 ring-offset-background ring-primary"
+                          : "hover:bg-secondary/50 hover:scale-105"
                           }`}
                       >
                         {e}

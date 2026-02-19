@@ -162,7 +162,7 @@ export const CommunityDetailView = ({ community, onBack }: CommunityDetailViewPr
     );
 
     return (
-        <div className="flex h-full bg-background -m-4 sm:-m-6 text-foreground overflow-hidden">
+        <div className="flex h-full w-full bg-background text-foreground overflow-hidden">
             <CommunitySettingsDialog
                 community={community}
                 open={settingsOpen}

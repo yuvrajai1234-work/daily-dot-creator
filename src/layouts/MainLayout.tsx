@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Outlet } from "react-router-dom";
+import { Outlet, useLocation } from "react-router-dom";
 import AppSidebar from "@/components/AppSidebar";
 import TopBar from "@/components/TopBar";
 import { useRewardNotifications } from "@/hooks/useRewardNotifications";
@@ -10,6 +10,7 @@ import { AnimatePresence } from "framer-motion";
 
 const MainLayout = () => {
   const [isCollapsed, setIsCollapsed] = useState(false);
+  const location = useLocation();
 
   // Real-time synchronization
   useProfileRealtimeSync();
@@ -54,7 +55,7 @@ const MainLayout = () => {
           }`}
       >
         <TopBar />
-        <div className="p-6 max-w-7xl mx-auto flex-1 w-full overflow-y-auto">
+        <div className={`flex-1 w-full overflow-y-auto ${location.pathname === '/community' ? 'h-[calc(100vh-4rem)] p-0' : 'p-6 max-w-7xl mx-auto'}`}>
           <Outlet />
         </div>
       </main>

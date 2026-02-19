@@ -162,7 +162,7 @@ export const CommunityChat = ({ communityId, channelId, channelName = "general",
                                             {format(new Date(msg.created_at), "MM/dd/yyyy h:mm a")}
                                         </span>
                                     </div>
-                                    <div className="text-foreground/90 whitespace-pre-wrap leading-relaxed">
+                                    <div className="text-foreground/90 whitespace-pre-wrap leading-relaxed break-all">
                                         {msg.reply_to_id && (
                                             <div className="text-xs text-muted-foreground mb-1 border-l-2 border-primary/30 pl-2 py-0.5 flex items-center gap-1">
                                                 <Reply className="w-3 h-3" />
