@@ -171,7 +171,24 @@ export const useCommunityMessages = (communityIdOrChannelId: string) => {
         onSuccess: () => queryClient.invalidateQueries({ queryKey: ["channel-messages", channelId] })
     });
 
-    return { ...query, sendMessage, pinMessage, addReaction };
+    const deleteMessage = useMutation({
+        mutationFn: async (messageId: string) => {
+            const { error } = await supabase
+                .from("community_messages" as any)
+                .delete()
+                .eq("id", messageId);
+            if (error) throw error;
+        },
+        onSuccess: () => {
+            toast.success("Message deleted");
+            queryClient.invalidateQueries({ queryKey: ["channel-messages", channelId] });
+        },
+        onError: (error: any) => {
+            toast.error("Failed to delete message: " + error.message);
+        }
+    });
+
+    return { ...query, sendMessage, pinMessage, addReaction, deleteMessage };
 };
 
 export const useFriendships = () => {

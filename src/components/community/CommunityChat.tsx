@@ -4,13 +4,14 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { PlusCircle, Smile, Reply, Pin, X } from "lucide-react";
+import { PlusCircle, Smile, Reply, Pin, X, Trash2 } from "lucide-react";
 import { format } from "date-fns";
 import { useAuth } from "@/components/AuthProvider";
 import { Loader2 } from "lucide-react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { toast } from "sonner";
 import { MemberProfileCard } from "./MemberProfileCard";
+import { Textarea } from "@/components/ui/textarea";
 
 interface CommunityChatProps {
     communityId: string;
@@ -25,13 +26,16 @@ const EMOJIS = [
     "🍺", "🎵", "🎮", "📚", "💻", "💡", "📅", "✅", "❌", "⚠️"
 ];
 
+const MAX_CHARS = 2000;
+
 export const CommunityChat = ({ communityId, channelId, channelName = "general", members = [] }: CommunityChatProps) => {
     const { user } = useAuth();
-    const { data: messages = [], isLoading, sendMessage, pinMessage, addReaction } = useCommunityMessages(channelId);
+    const { data: messages = [], isLoading, sendMessage, pinMessage, addReaction, deleteMessage } = useCommunityMessages(channelId);
     const [newMessage, setNewMessage] = useState("");
     const [replyingTo, setReplyingTo] = useState<any | null>(null);
     const scrollRef = useRef<HTMLDivElement>(null);
     const fileInputRef = useRef<HTMLInputElement>(null);
+    const textareaRef = useRef<HTMLTextAreaElement>(null);
 
     useEffect(() => {
         if (scrollRef.current) {
@@ -48,13 +52,30 @@ export const CommunityChat = ({ communityId, channelId, channelName = "general",
         });
         setNewMessage("");
         setReplyingTo(null);
+        if (textareaRef.current) {
+            textareaRef.current.style.height = '40px';
+        }
     };
 
     const handleReply = (msg: any) => {
         setReplyingTo(msg);
-        // Focus input? 
-        // We can't easily ref focus without forwarding ref to Input or getting element by ID.
-        // Assuming user will click or already focused.
+        textareaRef.current?.focus();
+    };
+
+    const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+        if (e.key === "Enter" && !e.shiftKey) {
+            e.preventDefault();
+            handleSend();
+        }
+    };
+
+    const handleTextareaChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+        const value = e.target.value;
+        if (value.length <= MAX_CHARS) {
+            setNewMessage(value);
+            e.target.style.height = 'auto';
+            e.target.style.height = `${Math.max(40, e.target.scrollHeight)}px`;
+        }
     };
 
     const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -74,7 +95,7 @@ export const CommunityChat = ({ communityId, channelId, channelName = "general",
 
     return (
         <div className="flex flex-col h-full bg-transparent">
-            <ScrollArea className="flex-1 p-4" ref={scrollRef}>
+            <div className="flex-1 overflow-y-auto p-4 custom-scrollbar" ref={scrollRef}>
                 <div className="space-y-4">
                     {/* Welcome message at top of channel */}
                     {messages.length < 5 && (
@@ -125,6 +146,21 @@ export const CommunityChat = ({ communityId, channelId, channelName = "general",
                                     >
                                         <Pin className={`w-4 h-4 ${msg.is_pinned ? 'fill-current' : 'text-muted-foreground hover:text-green-500'} transition-colors`} />
                                     </Button>
+                                    {isMe && (
+                                        <Button
+                                            variant="ghost"
+                                            size="icon"
+                                            className="h-7 w-7 hover:bg-destructive/10 hover:text-destructive rounded-sm"
+                                            onClick={() => {
+                                                if (confirm("Delete this message?")) {
+                                                    deleteMessage.mutate(msg.id);
+                                                }
+                                            }}
+                                            title="Delete Message"
+                                        >
+                                            <Trash2 className="w-4 h-4" />
+                                        </Button>
+                                    )}
                                 </div>
                                 <Popover>
                                     <PopoverTrigger asChild>
@@ -190,7 +226,7 @@ export const CommunityChat = ({ communityId, channelId, channelName = "general",
                         );
                     })}
                 </div>
-            </ScrollArea>
+            </div>
 
             <div className="p-4 px-4 bg-transparent space-y-2">
                 {replyingTo && (
@@ -204,7 +240,7 @@ export const CommunityChat = ({ communityId, channelId, channelName = "general",
                         </Button>
                     </div>
                 )}
-                <div className={`bg-secondary/50 rounded-lg p-2 flex items-center gap-2 ${replyingTo ? 'rounded-t-none' : ''}`}>
+                <div className={`bg-secondary/50 rounded-lg p-2 flex items-end gap-2 ${replyingTo ? 'rounded-t-none' : ''}`}>
                     <input
                         type="file"
                         ref={fileInputRef}
@@ -215,19 +251,26 @@ export const CommunityChat = ({ communityId, channelId, channelName = "general",
                     <Button
                         variant="ghost"
                         size="icon"
-                        className="h-8 w-8 text-muted-foreground hover:text-foreground rounded-full bg-muted/20"
+                        className="h-8 w-8 text-muted-foreground hover:text-foreground rounded-full bg-muted/20 mb-0.5"
                         onClick={() => fileInputRef.current?.click()}
                     >
                         <PlusCircle className="w-5 h-5" />
                     </Button>
-                    <Input
-                        placeholder={`Message #${channelName}`}
-                        value={newMessage}
-                        onChange={(e) => setNewMessage(e.target.value)}
-                        onKeyDown={(e) => e.key === "Enter" && handleSend()}
-                        className="bg-transparent border-none focus-visible:ring-0 text-foreground placeholder-muted-foreground h-9"
-                    />
-                    <div className="flex items-center gap-1 mr-2">
+                    <div className="flex-1 relative">
+                        <Textarea
+                            ref={textareaRef}
+                            placeholder={`Message #${channelName}`}
+                            value={newMessage}
+                            onChange={handleTextareaChange}
+                            onKeyDown={handleKeyDown}
+                            rows={1}
+                            className="bg-transparent border-none focus-visible:ring-0 text-foreground placeholder-muted-foreground min-h-[40px] max-h-[200px] resize-none py-2.5"
+                        />
+                        <div className={`text-[10px] text-muted-foreground absolute bottom-1 right-2 ${newMessage.length > MAX_CHARS * 0.9 ? 'text-destructive' : ''}`}>
+                            {newMessage.length > 0 && `${newMessage.length}/${MAX_CHARS}`}
+                        </div>
+                    </div>
+                    <div className="flex items-center gap-1 mb-0.5">
                         <Popover>
                             <PopoverTrigger asChild>
                                 <Smile className="w-6 h-6 text-muted-foreground hover:text-foreground cursor-pointer p-1" />

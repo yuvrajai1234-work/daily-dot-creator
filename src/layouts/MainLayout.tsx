@@ -38,7 +38,7 @@ const MainLayout = () => {
   }, [currentLevel, prevLevel]);
 
   return (
-    <div className="flex min-h-screen relative">
+    <div className="flex h-screen overflow-hidden bg-background text-foreground relative">
       <AnimatePresence>
         {showLevelUp && currentLevel && (
           <LevelUpOverlay
@@ -51,11 +51,14 @@ const MainLayout = () => {
 
       <AppSidebar isCollapsed={isCollapsed} setIsCollapsed={setIsCollapsed} />
       <main
-        className={`flex-1 flex flex-col transition-all duration-300 ${isCollapsed ? "ml-16" : "ml-64"
+        className={`flex-1 flex flex-col transition-all duration-300 h-full overflow-hidden ${isCollapsed ? "ml-16" : "ml-64"
           }`}
       >
         <TopBar />
-        <div className={`flex-1 w-full overflow-y-auto ${location.pathname === '/community' ? 'h-[calc(100vh-4rem)] p-0' : 'p-6 max-w-7xl mx-auto'}`}>
+        {/* Content Area */}
+        {/* If community page: remove padding/margin and hide overflow (inner components handle scroll) */}
+        {/* If other page: use standard padding and allow vertical scroll */}
+        <div className={`flex-1 w-full ${location.pathname === '/community' ? 'h-full overflow-hidden p-0' : 'overflow-y-auto p-6 max-w-7xl mx-auto'}`}>
           <Outlet />
         </div>
       </main>
