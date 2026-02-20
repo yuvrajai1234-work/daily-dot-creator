@@ -4,7 +4,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { PlusCircle, Smile, Reply, Pin, X, Trash2 } from "lucide-react";
+import { PlusCircle, Smile, Reply, Pin, X, Trash2, ChevronDown } from "lucide-react";
 import { format } from "date-fns";
 import { useAuth } from "@/components/AuthProvider";
 import { Loader2 } from "lucide-react";
@@ -12,12 +12,21 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { toast } from "sonner";
 import { MemberProfileCard } from "./MemberProfileCard";
 import { Textarea } from "@/components/ui/textarea";
+import {
+    Dialog,
+    DialogContent,
+    DialogHeader,
+    DialogTitle,
+} from "@/components/ui/dialog";
 
 interface CommunityChatProps {
     communityId: string;
     channelId: string;
     channelName?: string;
     members?: any[];
+    highlightMessageId?: string | null;
+    setHighlightMessageId?: (id: string | null) => void;
+    pinnedMessages?: any[];
 }
 
 const EMOJIS = [
@@ -28,7 +37,7 @@ const EMOJIS = [
 
 const MAX_CHARS = 2000;
 
-export const CommunityChat = ({ communityId, channelId, channelName = "general", members = [] }: CommunityChatProps) => {
+export const CommunityChat = ({ communityId, channelId, channelName = "general", members = [], highlightMessageId, setHighlightMessageId, pinnedMessages = [] }: CommunityChatProps) => {
     const { user } = useAuth();
     const { data: messages = [], isLoading, sendMessage, pinMessage, addReaction, deleteMessage } = useCommunityMessages(channelId);
     const [newMessage, setNewMessage] = useState("");
@@ -36,12 +45,45 @@ export const CommunityChat = ({ communityId, channelId, channelName = "general",
     const scrollRef = useRef<HTMLDivElement>(null);
     const fileInputRef = useRef<HTMLInputElement>(null);
     const textareaRef = useRef<HTMLTextAreaElement>(null);
+    const [showScrollButton, setShowScrollButton] = useState(false);
+
+    const [reactionModalData, setReactionModalData] = useState<{ messageId: string, reactions: any[] } | null>(null);
+    const [activeReactionTab, setActiveReactionTab] = useState<string>("all");
+
+    // Use passed pinned messages or fallback (though parent passes them now)
+    const latestPinned = pinnedMessages.length > 0 ? pinnedMessages[pinnedMessages.length - 1] : null;
 
     useEffect(() => {
-        if (scrollRef.current) {
+        if (scrollRef.current && !highlightMessageId) {
             scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
         }
-    }, [messages]);
+    }, [messages, highlightMessageId]); // Only scroll to bottom if NOT highlighting
+
+    // Handle highlight message scrolling
+    useEffect(() => {
+        if (highlightMessageId && messages.length > 0) {
+            const element = document.getElementById(`message-${highlightMessageId}`);
+            if (element) {
+                element.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                // Optional: flash effect handled by CSS or state
+                setTimeout(() => setHighlightMessageId?.(null), 2000);
+            }
+        }
+    }, [highlightMessageId, messages, setHighlightMessageId]);
+
+    const handleScroll = () => {
+        if (scrollRef.current) {
+            const { scrollTop, scrollHeight, clientHeight } = scrollRef.current;
+            const isNearBottom = scrollHeight - scrollTop - clientHeight < 100;
+            setShowScrollButton(!isNearBottom);
+        }
+    };
+
+    const scrollToBottom = () => {
+        if (scrollRef.current) {
+            scrollRef.current.scrollTo({ top: scrollRef.current.scrollHeight, behavior: 'smooth' });
+        }
+    };
 
     const handleSend = () => {
         if (!newMessage.trim()) return;
@@ -94,8 +136,35 @@ export const CommunityChat = ({ communityId, channelId, channelName = "general",
     }
 
     return (
-        <div className="flex flex-col h-full bg-transparent">
-            <div className="flex-1 overflow-y-auto p-4 custom-scrollbar" ref={scrollRef}>
+        <div className="flex flex-col h-full bg-transparent relative">
+            {/* Pinned Message Banner */}
+            {latestPinned && (
+                <div className="bg-[#1e2023]/95 backdrop-blur-md border-b border-border px-4 py-2 flex items-center gap-3 text-xs sticky top-0 z-20 shadow-sm cursor-pointer hover:bg-secondary/40 transition-colors"
+                    onClick={() => {
+                        const element = document.getElementById(`message-${latestPinned.id}`);
+                        if (element) {
+                            element.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                            setHighlightMessageId?.(latestPinned.id);
+                        } else {
+                            // If message not loaded, maybe just flash or something? 
+                            // In a real app we'd fetch it. For now, we assume it might be there or we can't scroll to it easily.
+                            // But usually pinned messages are important so we might want to handle this better later.
+                            toast.info("Pinned message is older and not currently visible");
+                        }
+                    }}
+                >
+                    <div className="flex-shrink-0 flex items-center justify-center w-6 h-6 rounded-full bg-primary/10 text-primary">
+                        <Pin className="w-3.5 h-3.5 fill-current" />
+                    </div>
+                    <div className="flex-1 min-w-0 flex flex-col justify-center">
+                        <span className="font-bold text-primary text-[10px] uppercase tracking-wide leading-tight">Pinned Message</span>
+                        <span className="truncate text-foreground/90 font-medium leading-tight">{latestPinned.content}</span>
+                    </div>
+                    <ChevronDown className="w-4 h-4 text-muted-foreground flex-shrink-0" />
+                </div>
+            )}
+
+            <div className="flex-1 overflow-y-auto p-4 custom-scrollbar" ref={scrollRef} onScroll={handleScroll}>
                 <div className="space-y-4">
                     {/* Welcome message at top of channel */}
                     {messages.length < 5 && (
@@ -111,7 +180,11 @@ export const CommunityChat = ({ communityId, channelId, channelName = "general",
                         const roleColor = member?.role === 'admin' ? 'text-yellow-500' : member?.role === 'moderator' ? 'text-purple-400' : 'text-foreground';
 
                         return (
-                            <div key={msg.id} className={`group relative flex gap-4 pr-4 hover:bg-accent/50 -mx-4 px-4 py-1`}>
+                            <div
+                                key={msg.id}
+                                id={`message-${msg.id}`}
+                                className={`group relative flex gap-4 pr-4 hover:bg-accent/50 -mx-4 px-4 py-1 transition-colors duration-500 ${highlightMessageId === msg.id ? 'bg-primary/20' : ''}`}
+                            >
                                 <div className="absolute right-4 -top-3 hidden group-hover:flex items-center gap-0.5 bg-popover shadow-md border border-border rounded-md p-0.5 z-10 transition-all animate-in fade-in zoom-in-95 duration-200">
                                     <Popover>
                                         <PopoverTrigger asChild>
@@ -211,12 +284,21 @@ export const CommunityChat = ({ communityId, channelId, channelName = "general",
                                     {msg.reactions && msg.reactions.length > 0 && (
                                         <div className="flex flex-wrap gap-1 mt-1.5">
                                             {Object.entries((msg.reactions || []).reduce((acc: any, curr: any) => {
-                                                acc[curr.emoji] = (acc[curr.emoji] || 0) + 1;
+                                                if (!acc[curr.emoji]) acc[curr.emoji] = [];
+                                                acc[curr.emoji].push(curr);
                                                 return acc;
-                                            }, {})).map(([emoji, count]: [string, any]) => (
-                                                <div key={emoji} className="flex items-center gap-1 bg-secondary/50 px-1.5 py-0.5 rounded-full text-xs hover:bg-secondary border border-transparent hover:border-border cursor-pointer transition-all">
+                                            }, {})).map(([emoji, reactions]: [string, any[]]) => (
+                                                <div
+                                                    key={emoji}
+                                                    className="flex items-center gap-1 bg-secondary/50 px-1.5 py-0.5 rounded-full text-xs hover:bg-secondary border border-transparent hover:border-border cursor-pointer transition-all"
+                                                    onClick={(e) => {
+                                                        e.stopPropagation();
+                                                        setReactionModalData({ messageId: msg.id, reactions: msg.reactions || [] });
+                                                        setActiveReactionTab(emoji);
+                                                    }}
+                                                >
                                                     <span>{emoji}</span>
-                                                    <span className="font-semibold text-muted-foreground">{count}</span>
+                                                    <span className="font-semibold text-muted-foreground">{reactions.length}</span>
                                                 </div>
                                             ))}
                                         </div>
@@ -227,6 +309,108 @@ export const CommunityChat = ({ communityId, channelId, channelName = "general",
                     })}
                 </div>
             </div>
+
+            {/* Reaction Details Dialog */}
+            <Dialog open={!!reactionModalData} onOpenChange={(open) => !open && setReactionModalData(null)}>
+                <DialogContent className="sm:max-w-2xl p-0 overflow-hidden bg-[#313338] border-[#2b2d31] text-gray-200">
+                    <DialogHeader className="p-4 bg-[#2b2d31] border-b border-[#1e1f22]">
+                        <DialogTitle className="text-base font-bold text-white">Reactions</DialogTitle>
+                    </DialogHeader>
+                    <div className="flex h-[400px]">
+                        {/* Sidebar: Emoji Tabs */}
+                        <div className="w-[180px] bg-[#2b2d31] flex flex-col gap-1 p-2 border-r border-[#1e1f22] overflow-y-auto custom-scrollbar">
+                            {(() => {
+                                if (!reactionModalData) return null;
+                                const groups = (reactionModalData.reactions || []).reduce((acc: any, curr: any) => {
+                                    if (!acc[curr.emoji]) acc[curr.emoji] = [];
+                                    acc[curr.emoji].push(curr);
+                                    return acc;
+                                }, {});
+
+                                return (
+                                    <>
+                                        {/* "All" Tab */}
+                                        <button
+                                            onClick={() => setActiveReactionTab("all")}
+                                            className={`flex items-center justify-between px-3 py-2 rounded-md text-sm font-medium transition-colors ${activeReactionTab === "all"
+                                                ? "bg-[#404249] text-white"
+                                                : "text-gray-400 hover:bg-[#35373c] hover:text-gray-200"
+                                                }`}
+                                        >
+                                            <span className="truncate">All</span>
+                                            <span className="ml-2 text-xs bg-[#1e1f22] px-1.5 py-0.5 rounded-full text-gray-400">
+                                                {reactionModalData.reactions.length}
+                                            </span>
+                                        </button>
+
+                                        {/* Emoji Tabs */}
+                                        {Object.entries(groups).map(([emoji, reactions]: [string, any]) => (
+                                            <button
+                                                key={emoji}
+                                                onClick={() => setActiveReactionTab(emoji)}
+                                                className={`flex items-center justify-between px-3 py-2 rounded-md text-sm font-medium transition-colors ${activeReactionTab === emoji
+                                                    ? "bg-[#404249] text-white"
+                                                    : "text-gray-400 hover:bg-[#35373c] hover:text-gray-200"
+                                                    }`}
+                                            >
+                                                <span className="truncate text-lg leading-none">{emoji}</span>
+                                                <span className="ml-2 text-xs bg-[#1e1f22] px-1.5 py-0.5 rounded-full text-gray-400">
+                                                    {(reactions as any[]).length}
+                                                </span>
+                                            </button>
+                                        ))}
+                                    </>
+                                );
+                            })()}
+                        </div>
+
+                        {/* Content: User List */}
+                        <div className="flex-1 bg-[#313338] flex flex-col">
+                            <ScrollArea className="flex-1 p-0">
+                                <div className="p-2 space-y-1">
+                                    {reactionModalData && (() => {
+                                        const filteredReactions = activeReactionTab === "all"
+                                            ? reactionModalData.reactions
+                                            : reactionModalData.reactions.filter((r: any) => r.emoji === activeReactionTab);
+
+                                        return filteredReactions.map((reaction: any) => (
+                                            <div key={`${reaction.id}-${reaction.user_id}`} className="flex items-center justify-between p-2 hover:bg-[#35373c] rounded-md group transition-colors cursor-pointer">
+                                                <div className="flex items-center gap-3">
+                                                    <Avatar className="h-8 w-8">
+                                                        <AvatarImage src={reaction.profile?.avatar_url} />
+                                                        <AvatarFallback className="bg-[#1e1f22] text-gray-300 text-xs">
+                                                            {reaction.profile?.username?.charAt(0) || "?"}
+                                                        </AvatarFallback>
+                                                    </Avatar>
+                                                    <div className="flex flex-col">
+                                                        <span className="text-sm font-bold text-gray-200">
+                                                            {reaction.profile?.username || "Unknown User"}
+                                                        </span>
+                                                    </div>
+                                                </div>
+                                                <div className="text-xl">
+                                                    {reaction.emoji}
+                                                </div>
+                                            </div>
+                                        ));
+                                    })()}
+                                </div>
+                            </ScrollArea>
+                        </div>
+                    </div>
+                </DialogContent>
+            </Dialog>
+
+            {/* Scroll to Bottom Button */}
+            {showScrollButton && (
+                <Button
+                    size="icon"
+                    className="absolute bottom-20 right-6 z-30 rounded-full shadow-lg bg-primary text-primary-foreground hover:bg-primary/90 animate-in fade-in zoom-in duration-200 h-8 w-8"
+                    onClick={scrollToBottom}
+                >
+                    <ChevronDown className="w-4 h-4" />
+                </Button>
+            )}
 
             <div className="p-4 px-4 bg-transparent space-y-2">
                 {replyingTo && (

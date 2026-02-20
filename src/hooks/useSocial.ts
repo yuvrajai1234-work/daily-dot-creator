@@ -8,6 +8,10 @@ export interface MessageReaction {
     id: string;
     emoji: string;
     user_id: string;
+    profile?: {
+        username: string;
+        avatar_url: string;
+    };
 }
 
 export interface Message {
@@ -55,24 +59,29 @@ export const useCommunityMessages = (communityIdOrChannelId: string) => {
             const messageIds = messages.map((m: any) => m.id);
 
             // 2. Fetch profiles
-            const userIds = [...new Set(messages.map((m: any) => m.user_id))];
+            const { data: reactionData } = await supabase
+                .from("message_reactions" as any)
+                .select("*")
+                .in("message_id", messageIds);
+
+            const allUserIds = new Set([
+                ...messages.map((m: any) => m.user_id),
+                ...(reactionData || []).map((r: any) => r.user_id)
+            ]);
+
             const { data: profiles, error: profError } = await supabase
                 .from("profiles" as any)
                 .select("id, user_id, full_name, avatar_url")
-                .in("user_id", userIds);
+                .in("user_id", Array.from(allUserIds));
 
             if (profError) {
                 console.error("Error fetching profiles:", profError);
             }
             const profileMap = new Map((profiles || []).map((p: any) => [p.user_id, p]));
 
-            // 3. Fetch reactions
-            const { data: reactions, error: reactError } = await supabase
-                .from("message_reactions" as any)
-                .select("*")
-                .in("message_id", messageIds);
-
-            if (reactError) console.error("Error fetching reactions:", reactError);
+            // 3. (Reactions already fetched above to get user IDs)
+            // const { data: reactions, error: reactError } = await supabase ... (Removed redundant call)
+            const reactions = reactionData || [];
 
             // 4. Combine
             return messages.map((m: any) => ({
@@ -82,7 +91,15 @@ export const useCommunityMessages = (communityIdOrChannelId: string) => {
                 created_at: m.created_at,
                 is_pinned: m.is_pinned,
                 reply_to_id: m.reply_to_id,
-                reactions: (reactions as any[])?.filter((r: any) => r.message_id === m.id) || [],
+                reactions: (reactions as any[])
+                    ?.filter((r: any) => r.message_id === m.id)
+                    .map((r: any) => ({
+                        ...r,
+                        profile: {
+                            username: profileMap.get(r.user_id)?.full_name || 'Unknown',
+                            avatar_url: profileMap.get(r.user_id)?.avatar_url || ''
+                        }
+                    })) || [],
                 profile: {
                     username: profileMap.get(m.user_id)?.full_name || 'Unknown',
                     avatar_url: profileMap.get(m.user_id)?.avatar_url || ''
@@ -153,7 +170,11 @@ export const useCommunityMessages = (communityIdOrChannelId: string) => {
         },
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ["channel-messages", channelId] });
+            queryClient.invalidateQueries({ queryKey: ["pinned-messages", channelId] });
             toast.success("Message pinned/unpinned");
+        },
+        onError: (error: any) => {
+            toast.error("Failed to pin message: " + error.message);
         }
     });
 
@@ -279,4 +300,76 @@ export const useFriendships = () => {
         rejectRequest,
         updateStatus
     };
+};
+
+export interface NotificationMessage extends Message {
+    type: 'mention' | 'reply';
+    channel_name?: string;
+}
+
+export const useCommunityNotifications = (communityId: string) => {
+    const { user } = useAuth();
+    const queryClient = useQueryClient();
+
+    return useQuery({
+        queryKey: ["community-notifications", communityId, user?.id],
+        queryFn: async () => {
+            if (!user) return [];
+
+            // 1. Get user profile for username
+            const { data: profileData } = await supabase
+                .from("profiles" as any)
+                .select("full_name")
+                .eq("user_id", user.id)
+                .single();
+
+            const profile = profileData as any;
+            const username = profile?.full_name || "";
+
+            // 2. Get my recent message IDs for reply check
+            const { data: myMessages } = await supabase
+                .from("community_messages" as any)
+                .select("id")
+                .eq("user_id", user.id)
+                .eq("community_id", communityId)
+                .order("created_at", { ascending: false })
+                .limit(50);
+
+            const myMessageIds = myMessages?.map((m: any) => m.id) || [];
+
+            // 3. Fetch notifications (mentions or replies)
+            // We'll do two parallel queries and merge
+            const mentionsPromise = username ? supabase
+                .from("community_messages" as any)
+                .select("*, channels:channel_id(name)") // Mocking channel join if possible, or just fetch all
+                .eq("community_id", communityId)
+                .ilike("content", `%@${username}%`)
+                .order("created_at", { ascending: false })
+                .limit(20) : Promise.resolve({ data: [] });
+
+            const repliesPromise = myMessageIds.length > 0 ? supabase
+                .from("community_messages" as any)
+                .select("*, channels:channel_id(name)")
+                .eq("community_id", communityId)
+                .in("reply_to_id", myMessageIds)
+                .order("created_at", { ascending: false })
+                .limit(20) : Promise.resolve({ data: [] });
+
+            const [mentionsResult, repliesResult] = await Promise.all([mentionsPromise, repliesPromise]);
+
+            const mentions = (mentionsResult.data || []).map((m: any) => ({ ...m, type: 'mention' }));
+            const replies = (repliesResult.data || []).map((m: any) => ({ ...m, type: 'reply' }));
+
+            // Merge and dedup
+            const all = [...mentions, ...replies];
+            const unique = Array.from(new Map(all.map(item => [item.id, item])).values());
+
+            // Sort by created_at desc
+            return unique.sort((a: any, b: any) =>
+                new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+            ) as NotificationMessage[];
+        },
+        enabled: !!user && !!communityId,
+        refetchInterval: 30000 // Poll every 30s
+    });
 };

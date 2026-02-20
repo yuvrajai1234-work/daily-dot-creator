@@ -8,24 +8,37 @@ export const usePinnedMessages = (channelId: string) => {
     return useQuery({
         queryKey: ["pinned-messages", channelId],
         queryFn: async () => {
-            const { data: messages, error } = await supabase
+            // 1. Fetch pinned messages
+            const { data: messages, error: msgError } = await supabase
                 .from("community_messages" as any)
-                .select("*, profile:profiles(username, avatar_url)")
+                .select("*")
                 .eq("channel_id", channelId)
                 .eq("is_pinned", true)
-                .order("created_at", { ascending: false });
+                .order("created_at", { ascending: true }); // Oldest at top of query result, so latest is last?
 
-            if (error) throw error;
+            if (msgError) throw msgError;
+            if (!messages || messages.length === 0) return [];
 
-            // Map to match Message interface roughly, or simpler type
+            // 2. Fetch profiles
+            const userIds = [...new Set(messages.map((m: any) => m.user_id))];
+            const { data: profiles, error: profError } = await supabase
+                .from("profiles" as any)
+                .select("user_id, full_name, avatar_url")
+                .in("user_id", userIds);
+
+            if (profError) console.error("Error fetching profiles:", profError);
+
+            const profileMap = new Map((profiles || []).map((p: any) => [p.user_id, p]));
+
             return messages.map((m: any) => ({
                 id: m.id,
                 content: m.content,
                 user_id: m.user_id,
                 created_at: m.created_at,
-                profile: { // Handle if profile is joined or fetched separately. Joined is nicer if it works.
-                    username: m.profile?.username || 'Unknown',
-                    avatar_url: m.profile?.avatar_url || ''
+                is_pinned: true,
+                profile: {
+                    username: profileMap.get(m.user_id)?.full_name || 'Unknown',
+                    avatar_url: profileMap.get(m.user_id)?.avatar_url || ''
                 }
             }));
         },

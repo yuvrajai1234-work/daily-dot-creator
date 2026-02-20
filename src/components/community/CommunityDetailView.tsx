@@ -26,7 +26,7 @@ import {
     Plus
 } from "lucide-react";
 import { useAuth } from "@/components/AuthProvider";
-import { useFriendships } from "@/hooks/useSocial";
+import { useFriendships, useCommunityNotifications } from "@/hooks/useSocial";
 import { CommunitySettingsDialog } from "./CommunitySettingsDialog";
 import { toast } from "sonner";
 
@@ -46,6 +46,8 @@ export const CommunityDetailView = ({ community, onBack }: CommunityDetailViewPr
     const { data: channels = [], isLoading: channelsLoading, createChannel } = useChannels(community.id);
     const [activeChannelId, setActiveChannelId] = useState<string | null>(null);
     const { data: pinnedMessages = [] } = usePinnedMessages(activeChannelId || "");
+    const { data: notifications = [] } = useCommunityNotifications(community.id);
+    const [highlightMessageId, setHighlightMessageId] = useState<string | null>(null);
     const [showMembers, setShowMembers] = useState(true);
 
     // Collapsed state
@@ -250,8 +252,67 @@ export const CommunityDetailView = ({ community, onBack }: CommunityDetailViewPr
                                 onClick={() => setShowMembers(!showMembers)}
                             />
                         </div>
-                        <Bell className="w-5 h-5 cursor-pointer hover:text-foreground" />
-                        <Bell className="w-5 h-5 cursor-pointer hover:text-foreground" />
+                        <Popover>
+                            <PopoverTrigger asChild>
+                                <div className="relative cursor-pointer group">
+                                    <Bell className="w-5 h-5 group-hover:text-foreground transition-colors" />
+                                    {notifications.length > 0 && (
+                                        <span className="absolute -top-1 -right-1 flex h-2.5 w-2.5 items-center justify-center rounded-full bg-red-500 text-[8px] text-white animate-pulse" />
+                                    )}
+                                </div>
+                            </PopoverTrigger>
+                            <PopoverContent className="w-80 p-0" align="end">
+                                <div className="p-3 font-semibold border-b bg-muted/40 text-sm flex justify-between items-center">
+                                    <span>Notifications</span>
+                                    {notifications.length > 0 && <span className="text-xs bg-red-500/10 text-red-500 px-1.5 py-0.5 rounded-full">{notifications.length}</span>}
+                                </div>
+                                <ScrollArea className="h-64">
+                                    {notifications.length === 0 ? (
+                                        <div className="p-8 text-center text-sm text-muted-foreground flex flex-col items-center gap-2">
+                                            <Bell className="w-8 h-8 opacity-20" />
+                                            <span>No new notifications</span>
+                                        </div>
+                                    ) : (
+                                        <div className="flex flex-col">
+                                            {notifications.map((notif: any) => (
+                                                <div
+                                                    key={notif.id}
+                                                    className="p-3 border-b last:border-0 hover:bg-muted/20 transition-colors cursor-pointer"
+                                                    onClick={() => {
+                                                        if (notif.channel_id) {
+                                                            setActiveChannelId(notif.channel_id);
+                                                            setHighlightMessageId(notif.id);
+                                                        }
+                                                    }}
+                                                >
+                                                    <div className="flex items-center gap-2 mb-1">
+                                                        <Avatar className="w-5 h-5">
+                                                            <AvatarImage src={notif.profile?.avatar_url} />
+                                                            <AvatarFallback>{notif.profile?.username?.charAt(0)}</AvatarFallback>
+                                                        </Avatar>
+                                                        <span className="text-xs font-bold text-foreground">{notif.profile?.username}</span>
+                                                        <span className="text-[10px] text-muted-foreground ml-auto">
+                                                            {new Date(notif.created_at).toLocaleDateString()}
+                                                        </span>
+                                                    </div>
+                                                    <div className="text-xs text-muted-foreground mb-1">
+                                                        {notif.type === 'mention' ? (
+                                                            <span className="text-blue-400">mentioned you</span>
+                                                        ) : (
+                                                            <span className="text-green-400">replied to you</span>
+                                                        )}
+                                                        {notif.channels?.name && <span className="ml-1 text-muted-foreground/60">in #{notif.channels.name}</span>}
+                                                    </div>
+                                                    <div className="text-sm text-foreground/90 pl-7 break-words line-clamp-2">
+                                                        {notif.content}
+                                                    </div>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    )}
+                                </ScrollArea>
+                            </PopoverContent>
+                        </Popover>
                         <Popover>
                             <PopoverTrigger asChild>
                                 <div className="relative cursor-pointer group">
@@ -269,7 +330,11 @@ export const CommunityDetailView = ({ community, onBack }: CommunityDetailViewPr
                                     ) : (
                                         <div className="flex flex-col">
                                             {pinnedMessages.map((msg: any) => (
-                                                <div key={msg.id} className="p-3 border-b last:border-0 hover:bg-muted/20 transition-colors">
+                                                <div
+                                                    key={msg.id}
+                                                    className="p-3 border-b last:border-0 hover:bg-muted/20 transition-colors cursor-pointer group"
+                                                    onClick={() => setHighlightMessageId(msg.id)}
+                                                >
                                                     <div className="flex items-center gap-2 mb-1">
                                                         <Avatar className="w-5 h-5">
                                                             <AvatarImage src={msg.profile?.avatar_url} />
@@ -280,7 +345,7 @@ export const CommunityDetailView = ({ community, onBack }: CommunityDetailViewPr
                                                             {new Date(msg.created_at).toLocaleDateString()}
                                                         </span>
                                                     </div>
-                                                    <div className="text-sm text-foreground/90 pl-7 break-words">
+                                                    <div className="text-sm text-foreground/90 pl-7 truncate">
                                                         {msg.content}
                                                     </div>
                                                 </div>
@@ -312,7 +377,15 @@ export const CommunityDetailView = ({ community, onBack }: CommunityDetailViewPr
                             <p>Voice channels are coming soon!</p>
                         </div>
                     ) : (
-                        activeChannelId && <CommunityChat communityId={community.id} channelId={activeChannelId} channelName={activeChannelObj?.name} members={members} />
+                        activeChannelId && <CommunityChat
+                            communityId={community.id}
+                            channelId={activeChannelId}
+                            channelName={activeChannelObj?.name}
+                            members={members}
+                            highlightMessageId={highlightMessageId}
+                            setHighlightMessageId={setHighlightMessageId}
+                            pinnedMessages={pinnedMessages}
+                        />
                     )}
                 </div>
             </div>
