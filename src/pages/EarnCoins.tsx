@@ -7,6 +7,7 @@ import { motion } from "framer-motion";
 import { useProfile } from "@/hooks/useProfile";
 import { useClaimBCoins, getMaxBCoins } from "@/hooks/useCoins";
 import { Progress } from "@/components/ui/progress";
+import { differenceInDays, endOfWeek } from "date-fns";
 
 const subscriptionPlans = [
   {
@@ -46,6 +47,7 @@ const EarnCoinsPage = () => {
   const bLevel = (profile as any)?.level || 1;
   const maxB = getMaxBCoins(bLevel);
   const bProgress = Math.round((bCoins / maxB) * 100);
+  const daysUntilReset = differenceInDays(endOfWeek(new Date(), { weekStartsOn: 1 }), new Date());
 
   const handleWatchAd = () => {
     if (adViews >= maxAds) return;
@@ -68,7 +70,7 @@ const EarnCoinsPage = () => {
                   B Coins
                 </h2>
                 <p className="text-sm text-muted-foreground mt-1">
-                  Level {bLevel} • Resets weekly • Max {maxB}
+                  Level {bLevel} • Resets weekly (in {daysUntilReset} days) • Max {maxB}
                 </p>
               </div>
               <div className="text-right">
