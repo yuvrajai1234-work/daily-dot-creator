@@ -12,6 +12,10 @@ export const LevelUpOverlay = ({ newLevel, onClose }: LevelUpOverlayProps) => {
     const [stage, setStage] = useState<"intro" | "shaking" | "transform" | "celebrate">("intro");
     const oldLevel = Math.max(1, newLevel - 1);
 
+    // Calculate rewards for the new level
+    const bCoinsReward = 9 + Math.floor(newLevel * (newLevel + 1) / 2);
+    const aCoinsReward = Math.round(bCoinsReward / 2);
+
     useEffect(() => {
         // Sequence the animation stages
         const sequence = async () => {
@@ -139,6 +143,34 @@ export const LevelUpOverlay = ({ newLevel, onClose }: LevelUpOverlayProps) => {
                         </motion.div>
                     )}
                 </div>
+
+                {/* Coin Rewards */}
+                {stage === "celebrate" && (
+                    <motion.div
+                        initial={{ opacity: 0, y: 30, scale: 0.8 }}
+                        animate={{ opacity: 1, y: 0, scale: 1 }}
+                        transition={{ delay: 1, type: "spring", bounce: 0.5 }}
+                        className="mt-8 flex gap-6 z-20"
+                    >
+                        {/* A Coins */}
+                        <div className="flex flex-col items-center justify-center p-3 px-6 bg-black/40 backdrop-blur-md rounded-2xl border border-yellow-500/30 shadow-[0_0_20px_rgba(234,179,8,0.3)]">
+                            <div className="w-10 h-10 rounded-full bg-yellow-500/20 border-2 border-yellow-500 flex items-center justify-center mb-1">
+                                <span className="text-yellow-500 font-bold text-lg">A</span>
+                            </div>
+                            <span className="text-white font-black text-2xl tracking-wide">+{aCoinsReward}</span>
+                            <span className="text-yellow-500/80 text-xs font-bold uppercase tracking-wider">A Coins</span>
+                        </div>
+
+                        {/* B Coins */}
+                        <div className="flex flex-col items-center justify-center p-3 px-6 bg-black/40 backdrop-blur-md rounded-2xl border border-primary/30 shadow-[0_0_20px_rgba(var(--primary),0.3)]">
+                            <div className="w-10 h-10 rounded-full bg-primary/20 border-2 border-primary flex items-center justify-center mb-1">
+                                <span className="text-primary font-bold text-lg">B</span>
+                            </div>
+                            <span className="text-white font-black text-2xl tracking-wide">+{bCoinsReward}</span>
+                            <span className="text-primary/80 text-xs font-bold uppercase tracking-wider">B Coins</span>
+                        </div>
+                    </motion.div>
+                )}
 
                 {/* Continue Text */}
                 {stage === "celebrate" && (

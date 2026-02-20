@@ -272,12 +272,31 @@ export const CommunityChat = ({ communityId, channelId, channelName = "general",
                                         </span>
                                     </div>
                                     <div className="text-foreground/90 whitespace-pre-wrap leading-relaxed break-all">
-                                        {msg.reply_to_id && (
-                                            <div className="text-xs text-muted-foreground mb-1 border-l-2 border-primary/30 pl-2 py-0.5 flex items-center gap-1">
-                                                <Reply className="w-3 h-3" />
-                                                <span>Replying to message...</span>
-                                            </div>
-                                        )}
+                                        {msg.reply_to_id && (() => {
+                                            const repliedMsg = messages.find(m => m.id === msg.reply_to_id);
+                                            const isMsgFound = !!repliedMsg;
+                                            const snippetText = isMsgFound ? (repliedMsg.content.length > 30 ? repliedMsg.content.substring(0, 30) + '...' : repliedMsg.content) : "message...";
+                                            const replyUsername = isMsgFound && repliedMsg.profile?.username ? `@${repliedMsg.profile.username}` : '';
+                                            return (
+                                                <div
+                                                    className={`text-xs text-muted-foreground mb-1 border-l-2 border-primary/30 pl-2 py-0.5 w-full block truncate ${isMsgFound ? "cursor-pointer hover:text-primary transition-colors" : ""}`}
+                                                    onClick={(e) => {
+                                                        if (!isMsgFound) return;
+                                                        e.stopPropagation();
+                                                        if (setHighlightMessageId) {
+                                                            setHighlightMessageId(msg.reply_to_id);
+                                                        }
+                                                        setTimeout(() => {
+                                                            const el = document.getElementById(`message-${msg.reply_to_id}`);
+                                                            if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                                                        }, 50);
+                                                    }}
+                                                >
+                                                    <Reply className="w-3 h-3 inline mr-1 flex-shrink-0 align-text-bottom" />
+                                                    <span className="truncate">Replying to {replyUsername ? `${replyUsername} ` : ''}({snippetText})</span>
+                                                </div>
+                                            );
+                                        })()}
                                         {msg.content}
                                     </div>
                                     {/* Reactions */}

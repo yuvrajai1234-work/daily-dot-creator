@@ -22,6 +22,7 @@ const CommunityPage = () => {
   const [createOpen, setCreateOpen] = useState(false);
   const [selectedCommunity, setSelectedCommunity] = useState<Community | null>(null);
   const [form, setForm] = useState({ name: "", tagline: "", emoji: "🎯", habit_category: "General" });
+  const [activeTab, setActiveTab] = useState<"communities" | "leaderboard" | "friends">("communities");
 
   const filtered = communities.filter(
     (c) =>
@@ -140,110 +141,145 @@ const CommunityPage = () => {
           </div>
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        {/* Tab Navigation */}
+        <div className="flex items-center gap-2 border-b border-border/50 pb-4 overflow-x-auto custom-scrollbar">
+          <Button
+            variant={activeTab === "communities" ? "default" : "ghost"}
+            onClick={() => setActiveTab("communities")}
+            className={`gap-2 ${activeTab === "communities" ? "gradient-primary border-0" : "text-muted-foreground hover:text-foreground"}`}
+          >
+            <Users className="w-4 h-4" /> Communities
+          </Button>
+          <Button
+            variant={activeTab === "leaderboard" ? "default" : "ghost"}
+            onClick={() => setActiveTab("leaderboard")}
+            className={`gap-2 ${activeTab === "leaderboard" ? "gradient-primary border-0" : "text-muted-foreground hover:text-foreground"}`}
+          >
+            <Trophy className="w-4 h-4" /> Leaderboard
+          </Button>
+          <Button
+            variant={activeTab === "friends" ? "default" : "ghost"}
+            onClick={() => setActiveTab("friends")}
+            className={`gap-2 ${activeTab === "friends" ? "gradient-primary border-0" : "text-muted-foreground hover:text-foreground"}`}
+          >
+            <Users className="w-4 h-4" /> Friends
+          </Button>
+        </div>
+
+        <div className="mt-6">
           {/* Main Content: Community List */}
-          <div className="lg:col-span-2 space-y-6">
-            <Card className="glass border-border/50 sticky top-0 z-10">
-              <CardContent className="p-4">
-                <div className="relative">
-                  <Search className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
-                  <Input
-                    placeholder="Search communities..."
-                    className="pl-9 bg-secondary/30 border-border focus-visible:ring-primary/20"
-                    value={search}
-                    onChange={(e) => setSearch(e.target.value)}
-                  />
-                </div>
-              </CardContent>
-            </Card>
-
-            {isLoading ? (
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {[1, 2, 3, 4].map((i) => (
-                  <Skeleton key={i} className="h-56 rounded-xl w-full" />
-                ))}
-              </div>
-            ) : filtered.length === 0 ? (
-              <Card className="glass border-border/50 p-12 text-center flex flex-col items-center justify-center min-h-[300px]">
-                <div className="w-16 h-16 rounded-full bg-secondary/50 flex items-center justify-center mb-4">
-                  <Users className="w-8 h-8 text-muted-foreground" />
-                </div>
-                <h3 className="text-xl font-semibold mb-2">No communities found</h3>
-                <p className="text-muted-foreground max-w-sm mb-6">
-                  Be the first to create a community for "{search}" or browse other categories.
-                </p>
-                <Button onClick={() => setCreateOpen(true)} variant="outline">Create New Community</Button>
+          {activeTab === "communities" && (
+            <div className="space-y-6">
+              <Card className="glass border-border/50 sticky top-0 z-10">
+                <CardContent className="p-4">
+                  <div className="relative">
+                    <Search className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
+                    <Input
+                      placeholder="Search communities..."
+                      className="pl-9 bg-secondary/30 border-border focus-visible:ring-primary/20"
+                      value={search}
+                      onChange={(e) => setSearch(e.target.value)}
+                    />
+                  </div>
+                </CardContent>
               </Card>
-            ) : (
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <AnimatePresence>
-                  {filtered.map((community, i) => {
-                    const joined = isMember(community.id);
-                    return (
-                      <motion.div
-                        key={community.id}
-                        initial={{ opacity: 0, y: 20 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        transition={{ delay: i * 0.05 }}
-                        layoutId={community.id}
-                      >
-                        <Card className={`glass border-border/50 overflow-hidden h-full flex flex-col hover:border-primary/30 transition-colors group ${joined ? "ring-1 ring-primary/20" : ""}`}>
-                          <div className="h-24 bg-gradient-to-br from-primary/10 via-background to-secondary/10 flex items-center justify-center relative">
-                            <span className="text-5xl drop-shadow-lg transform group-hover:scale-110 transition-transform duration-300">{community.emoji}</span>
-                            {joined && (
-                              <div className="absolute top-2 right-2">
-                                <span className="bg-primary text-primary-foreground text-[10px] px-2 py-0.5 rounded-full font-bold shadow-sm">MEMBER</span>
-                              </div>
-                            )}
-                          </div>
-                          <CardHeader className="pb-2">
-                            <CardTitle className="truncate" title={community.name}>{community.name}</CardTitle>
-                            <p className="text-sm text-muted-foreground line-clamp-2 min-h-[40px]">{community.tagline}</p>
-                          </CardHeader>
-                          <CardContent className="pb-2 flex-grow">
-                            <div className="flex justify-between text-sm text-muted-foreground mt-2">
-                              <span className="flex items-center gap-1 bg-secondary/30 px-2 py-1 rounded-md text-xs">
-                                <Users className="w-3 h-3" /> {community.member_count}
-                              </span>
-                              <span className="font-medium text-primary text-xs bg-primary/5 px-2 py-1 rounded-md border border-primary/10">
-                                {community.habit_category}
-                              </span>
-                            </div>
-                          </CardContent>
-                          <CardFooter className="pt-2">
-                            {joined ? (
-                              <Button
-                                className="w-full gap-2 gradient-primary border-0 shadow-md hover:shadow-lg transition-all"
-                                onClick={() => setSelectedCommunity(community)}
-                              >
-                                <MessageSquare className="w-4 h-4" /> Open Chat
-                              </Button>
-                            ) : (
-                              <Button
-                                className="w-full border-primary/20 hover:bg-primary/5 hover:border-primary/50 text-primary gap-2"
-                                variant="outline"
-                                onClick={() => joinCommunity.mutate(community.id)}
-                                disabled={joinCommunity.isPending}
-                              >
-                                {joinCommunity.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Plus className="w-4 h-4" />}
-                                Join ({JOIN_COST} 🪙)
-                              </Button>
-                            )}
-                          </CardFooter>
-                        </Card>
-                      </motion.div>
-                    );
-                  })}
-                </AnimatePresence>
-              </div>
-            )}
-          </div>
 
-          {/* Sidebar: Leaderboard & Friends */}
-          <div className="space-y-6">
-            <CommunityLeaderboard communities={communities} />
-            <FriendList />
-          </div>
+              {isLoading ? (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {[1, 2, 3, 4].map((i) => (
+                    <Skeleton key={i} className="h-56 rounded-xl w-full" />
+                  ))}
+                </div>
+              ) : filtered.length === 0 ? (
+                <Card className="glass border-border/50 p-12 text-center flex flex-col items-center justify-center min-h-[300px]">
+                  <div className="w-16 h-16 rounded-full bg-secondary/50 flex items-center justify-center mb-4">
+                    <Users className="w-8 h-8 text-muted-foreground" />
+                  </div>
+                  <h3 className="text-xl font-semibold mb-2">No communities found</h3>
+                  <p className="text-muted-foreground max-w-sm mb-6">
+                    Be the first to create a community for "{search}" or browse other categories.
+                  </p>
+                  <Button onClick={() => setCreateOpen(true)} variant="outline">Create New Community</Button>
+                </Card>
+              ) : (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <AnimatePresence>
+                    {filtered.map((community, i) => {
+                      const joined = isMember(community.id);
+                      return (
+                        <motion.div
+                          key={community.id}
+                          initial={{ opacity: 0, y: 20 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          transition={{ delay: i * 0.05 }}
+                          layoutId={community.id}
+                        >
+                          <Card className={`glass border-border/50 overflow-hidden h-full flex flex-col hover:border-primary/30 transition-colors group ${joined ? "ring-1 ring-primary/20" : ""}`}>
+                            <div className="h-24 bg-gradient-to-br from-primary/10 via-background to-secondary/10 flex items-center justify-center relative">
+                              <span className="text-5xl drop-shadow-lg transform group-hover:scale-110 transition-transform duration-300">{community.emoji}</span>
+                              {joined && (
+                                <div className="absolute top-2 right-2">
+                                  <span className="bg-primary text-primary-foreground text-[10px] px-2 py-0.5 rounded-full font-bold shadow-sm">MEMBER</span>
+                                </div>
+                              )}
+                            </div>
+                            <CardHeader className="pb-2">
+                              <CardTitle className="truncate" title={community.name}>{community.name}</CardTitle>
+                              <p className="text-sm text-muted-foreground line-clamp-2 min-h-[40px]">{community.tagline}</p>
+                            </CardHeader>
+                            <CardContent className="pb-2 flex-grow">
+                              <div className="flex justify-between text-sm text-muted-foreground mt-2">
+                                <span className="flex items-center gap-1 bg-secondary/30 px-2 py-1 rounded-md text-xs">
+                                  <Users className="w-3 h-3" /> {community.member_count}
+                                </span>
+                                <span className="font-medium text-primary text-xs bg-primary/5 px-2 py-1 rounded-md border border-primary/10">
+                                  {community.habit_category}
+                                </span>
+                              </div>
+                            </CardContent>
+                            <CardFooter className="pt-2">
+                              {joined ? (
+                                <Button
+                                  className="w-full gap-2 gradient-primary border-0 shadow-md hover:shadow-lg transition-all"
+                                  onClick={() => setSelectedCommunity(community)}
+                                >
+                                  <MessageSquare className="w-4 h-4" /> Open Chat
+                                </Button>
+                              ) : (
+                                <Button
+                                  className="w-full border-primary/20 hover:bg-primary/5 hover:border-primary/50 text-primary gap-2"
+                                  variant="outline"
+                                  onClick={() => joinCommunity.mutate(community.id)}
+                                  disabled={joinCommunity.isPending}
+                                >
+                                  {joinCommunity.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Plus className="w-4 h-4" />}
+                                  Join ({JOIN_COST} 🪙)
+                                </Button>
+                              )}
+                            </CardFooter>
+                          </Card>
+                        </motion.div>
+                      );
+                    })}
+                  </AnimatePresence>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Leaderboard Tab */}
+          {activeTab === "leaderboard" && (
+            <div className="max-w-4xl mx-auto space-y-6">
+              <CommunityLeaderboard communities={communities} />
+            </div>
+          )}
+
+          {/* Friends Tab */}
+          {activeTab === "friends" && (
+            <div className="max-w-4xl mx-auto space-y-6">
+              <FriendList />
+            </div>
+          )}
         </div>
       </div>
     </div>
