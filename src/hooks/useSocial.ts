@@ -216,30 +216,42 @@ export const useFriendships = () => {
     const { user } = useAuth();
     const queryClient = useQueryClient();
 
-    // Fetch friends (accepted only for now, or all?)
     const friendsQuery = useQuery({
         queryKey: ["friends", user?.id],
         queryFn: async () => {
             // Fetch where user is sender or receiver
             const { data, error } = await supabase
                 .from("friendships" as any)
-                .select(`
-          id,
-          status,
-          sender:sender_id(id, full_name, avatar_url),
-          receiver:receiver_id(id, full_name, avatar_url)
-        `)
+                .select("*")
                 .or(`sender_id.eq.${user!.id},receiver_id.eq.${user!.id}`);
 
             if (error) throw error;
+            if (!data || data.length === 0) return [];
+
+            // Get all unique user IDs involved in these friendships (excluding current user)
+            const otherUserIds = new Set(
+                data.map((f: any) => f.sender_id === user!.id ? f.receiver_id : f.sender_id)
+            );
+
+            // Fetch profiles
+            const { data: profiles, error: profError } = await supabase
+                .from("profiles")
+                .select("user_id, full_name, avatar_url")
+                .in("user_id", Array.from(otherUserIds));
+
+            if (profError) throw profError;
+
+            const profileMap = new Map((profiles || []).map((p: any) => [p.user_id, p]));
 
             return data.map((f: any) => {
-                const isSender = f.sender.id === user!.id;
-                const friend = isSender ? f.receiver : f.sender;
+                const isSender = f.sender_id === user!.id;
+                const friendId = isSender ? f.receiver_id : f.sender_id;
+                const friendProfile = profileMap.get(friendId) || {};
+
                 return {
-                    id: friend.id,
-                    username: friend.full_name, // Map full_name to username
-                    avatar_url: friend.avatar_url,
+                    id: friendId,
+                    username: friendProfile.full_name || 'Unknown User',
+                    avatar_url: friendProfile.avatar_url || '',
                     status: f.status,
                     friendship_id: f.id,
                     direction: isSender ? 'sent' : 'received',
@@ -248,6 +260,28 @@ export const useFriendships = () => {
         },
         enabled: !!user,
     });
+
+    useEffect(() => {
+        if (!user) return;
+
+        const channel = supabase
+            .channel('friendships-changes')
+            .on(
+                'postgres_changes',
+                { event: '*', schema: 'public', table: 'friendships', filter: `receiver_id=eq.${user.id}` },
+                () => queryClient.invalidateQueries({ queryKey: ["friends", user.id] })
+            )
+            .on(
+                'postgres_changes',
+                { event: '*', schema: 'public', table: 'friendships', filter: `sender_id=eq.${user.id}` },
+                () => queryClient.invalidateQueries({ queryKey: ["friends", user.id] })
+            )
+            .subscribe();
+
+        return () => {
+            supabase.removeChannel(channel);
+        };
+    }, [user, queryClient]);
 
     const sendRequest = useMutation({
         mutationFn: async (friendId: string) => {
@@ -262,7 +296,7 @@ export const useFriendships = () => {
         },
         onSuccess: () => {
             toast.success("Friend request sent!");
-            queryClient.invalidateQueries({ queryKey: ["friends"] });
+            queryClient.invalidateQueries({ queryKey: ["friends", user?.id] });
         },
         onError: (error: any) => {
             if (error.code === '23505') { // Unique violation
@@ -284,7 +318,7 @@ export const useFriendships = () => {
             }
         },
         onSuccess: () => {
-            queryClient.invalidateQueries({ queryKey: ["friends"] });
+            queryClient.invalidateQueries({ queryKey: ["friends", user?.id] });
             toast.success("Updated friend status");
         },
     });
@@ -300,6 +334,27 @@ export const useFriendships = () => {
         rejectRequest,
         updateStatus
     };
+};
+
+export const useUserSearch = (searchQuery: string) => {
+    const { user } = useAuth();
+    return useQuery({
+        queryKey: ["user-search", searchQuery],
+        queryFn: async () => {
+            if (!searchQuery || searchQuery.trim() === '') return [];
+
+            const { data, error } = await supabase
+                .from("profiles")
+                .select("user_id, full_name, avatar_url")
+                .ilike("full_name", `%${searchQuery}%`)
+                .neq("user_id", user?.id)
+                .limit(10);
+
+            if (error) throw error;
+            return data;
+        },
+        enabled: !!user && searchQuery.trim().length > 0,
+    });
 };
 
 export interface NotificationMessage extends Message {
