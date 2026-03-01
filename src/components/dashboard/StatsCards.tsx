@@ -6,15 +6,15 @@ import { ImprovementDialog } from "./ImprovementDialog";
 interface StatsCardsProps {
   todayScore: number;
   currentStreak: number;
-  cycleScore: number;
+  cycleDay: number;
   improvement: number;
 }
 
-const StatsCards = ({ todayScore, currentStreak, cycleScore, improvement }: StatsCardsProps) => {
+const StatsCards = ({ todayScore, currentStreak, cycleDay, improvement }: StatsCardsProps) => {
   const stats = [
     { label: "Today's Score", value: `${todayScore}`, icon: Calendar, color: "text-primary" },
     { label: "Current Streak", value: `${currentStreak} Days`, icon: Flame, color: "text-warning" },
-    { label: "Cycle Score", value: `${cycleScore}`, icon: Trophy, color: "text-primary" },
+    { label: "Cycle Day", value: `${cycleDay}`, icon: Trophy, color: "text-primary" },
     { label: "Improvement", value: `${improvement >= 0 ? "+" : ""}${improvement}%`, icon: TrendingUp, color: "text-emerald-400" },
   ];
 

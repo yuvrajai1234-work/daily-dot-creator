@@ -10,66 +10,78 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Trash2 } from "lucide-react";
-import { getAppDate, formatLocalISODate } from "@/lib/dateUtils";
+import { Trash2, Archive } from "lucide-react";
+import { getAppDate } from "@/lib/dateUtils";
 import { ImprovementDialog } from "./ImprovementDialog";
 
 interface HabitCardProps {
   habit: Habit;
   weekCompletions: HabitCompletion[];
   todayCompletion: HabitCompletion | undefined;
+  cycleWeekDates: string[];     // 7 dates for the current cycle week
+  prevCycleWeekDates: string[]; // 7 dates for the previous cycle week (empty in Week 1)
+  daysElapsedInWeek: number;    // how many days have passed in current cycle week (min 1)
   onLogEffort: (habitId: string, level: number) => void;
-  onDelete: (habitId: string) => void;
+  onArchive: (habitId: string) => void;
+  onImprovementCalculated?: (habitId: string, improvement: number) => void;
 }
 
-const HabitCard = ({ habit, weekCompletions, todayCompletion, onLogEffort, onDelete }: HabitCardProps) => {
+const HabitCard = ({
+  habit, weekCompletions, todayCompletion,
+  cycleWeekDates, prevCycleWeekDates, daysElapsedInWeek,
+  onLogEffort, onArchive, onImprovementCalculated
+}: HabitCardProps) => {
 
+  // Mini chart: current cycle week (7 fixed dates passed from parent)
+  // Future dates in the week show as 0 so the whole week slot is visible
   const weeklyData = useMemo(() => {
-    const days = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
+    const DAY_LABELS = ["Su", "Mo", "Tu", "We", "Th", "Fr", "Sa"];
     const todayStr = getAppDate();
-    const todayDate = new Date(todayStr + "T00:00:00");
 
-    return Array.from({ length: 7 }, (_, i) => {
-      const date = new Date(todayDate);
-      date.setDate(date.getDate() - (6 - i));
-      const dateStr = formatLocalISODate(date);
-      const completion = weekCompletions.find(
-        (c) => c.habit_id === habit.id && c.completion_date === dateStr
-      );
+    return cycleWeekDates.map((dateStr) => {
+      const date = new Date(dateStr + "T00:00:00");
+      const isFuture = dateStr > todayStr;
+      const completion = isFuture
+        ? undefined
+        : weekCompletions.find((c) => c.habit_id === habit.id && c.completion_date === dateStr);
+
+      const label = DAY_LABELS[date.getDay()];
       return {
-        day: days[date.getDay() === 0 ? 6 : date.getDay() - 1],
+        day: label,
+        date: dateStr,
         effort: completion?.effort_level || 0,
+        isFuture,
       };
     });
-  }, [weekCompletions, habit.id]);
+  }, [weekCompletions, habit.id, cycleWeekDates]);
 
   const currentEffort = todayCompletion?.effort_level || 0;
 
+  // Improvement: current cycle week (paced) vs previous cycle week (full 7 days)
+  // This matches ImprovementDialog and Dashboard stats — all consistent.
+  // If Week 2 had 0% and Week 3 has any activity → correctly shows positive.
   const improvement = useMemo(() => {
-    let currentWeekScore = 0;
-    let previousWeekScore = 0;
+    const currSet = new Set(cycleWeekDates);
+    const prevSet = new Set(prevCycleWeekDates);
 
-    const todayDate = new Date(getAppDate() + "T00:00:00");
-    const todayTime = todayDate.getTime();
+    let currScore = 0;
+    let prevScore = 0;
 
     weekCompletions.forEach((c) => {
       if (c.habit_id !== habit.id) return;
-      const compDate = new Date(c.completion_date + "T00:00:00");
-      const diffDays = Math.round((todayTime - compDate.getTime()) / (1000 * 60 * 60 * 24));
-
-      if (diffDays >= 0 && diffDays <= 6) {
-        currentWeekScore += (c.effort_level || 0);
-      } else if (diffDays >= 7 && diffDays <= 13) {
-        previousWeekScore += (c.effort_level || 0);
-      }
+      if (currSet.has(c.completion_date)) currScore += c.effort_level || 0;
+      else if (prevSet.has(c.completion_date)) prevScore += c.effort_level || 0;
     });
 
-    const maxScore = 7 * 4;
-    const currentRate = (currentWeekScore / maxScore) * 100;
-    const previousRate = (previousWeekScore / maxScore) * 100;
+    // Current week paced: score / (days elapsed × max effort 4)
+    const currRate = (currScore / (daysElapsedInWeek * 4)) * 100;
+    // Previous week full: score / (7 days × max effort 4), 0 if no prior week
+    const prevRate = prevCycleWeekDates.length > 0 ? (prevScore / (7 * 4)) * 100 : 0;
 
-    return Math.round(currentRate - previousRate);
-  }, [weekCompletions, habit.id]);
+    const diff = Math.round(currRate - prevRate);
+    onImprovementCalculated?.(habit.id, diff);
+    return diff;
+  }, [weekCompletions, habit.id, cycleWeekDates, prevCycleWeekDates, daysElapsedInWeek, onImprovementCalculated]);
 
   return (
     <motion.div
@@ -108,11 +120,11 @@ const HabitCard = ({ habit, weekCompletions, todayCompletion, onLogEffort, onDel
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end" className="glass border-border/50">
                   <DropdownMenuItem
-                    className="text-destructive focus:text-destructive cursor-pointer"
-                    onClick={() => onDelete(habit.id)}
+                    className="cursor-pointer"
+                    onClick={() => onArchive(habit.id)}
                   >
-                    <Trash2 className="w-4 h-4 mr-2" />
-                    Delete Habit
+                    <Archive className="w-4 h-4 mr-2" />
+                    Archive Habit
                   </DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
@@ -126,9 +138,11 @@ const HabitCard = ({ habit, weekCompletions, todayCompletion, onLogEffort, onDel
                 <XAxis
                   dataKey="day"
                   stroke="rgba(255,255,255,0.5)"
-                  fontSize={10}
+                  fontSize={9}
                   tickLine={false}
                   axisLine={false}
+                  interval={0}
+                  minTickGap={0}
                 />
                 <Line
                   type="monotone"

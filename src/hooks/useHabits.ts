@@ -375,6 +375,28 @@ export const useUnarchiveHabit = () => {
   });
 };
 
+export const useArchiveHabit = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (habitId: string) => {
+      const { error } = await supabase
+        .from("habits")
+        .update({ is_archived: true })
+        .eq("id", habitId);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["habits"] });
+      queryClient.invalidateQueries({ queryKey: ["archived-habits"] });
+      toast.success("Habit archived!");
+    },
+    onError: (error: any) => {
+      toast.error(error.message || "Failed to archive habit");
+    },
+  });
+};
+
 export const useReflections = () => {
   const { user } = useAuth();
 

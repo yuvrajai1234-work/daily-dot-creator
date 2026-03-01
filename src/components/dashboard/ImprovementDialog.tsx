@@ -1,10 +1,12 @@
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
+import { Collapsible, CollapsibleTrigger, CollapsibleContent } from "@/components/ui/collapsible";
+import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, ReferenceLine } from "recharts";
 import { useHabits, useAllCompletions } from "@/hooks/useHabits";
 import { getAppDate, getCycleStartDate, formatLocalISODate } from "@/lib/dateUtils";
 import { useProfile } from "@/hooks/useProfile";
+import { TrendingUp, TrendingDown, Minus, ChevronDown, ChevronUp } from "lucide-react";
 
 interface ImprovementDialogProps {
     trigger: React.ReactNode;
@@ -12,117 +14,213 @@ interface ImprovementDialogProps {
     singleHabitId?: string;
 }
 
+// Small reusable collapsible stat row
+const CollapsibleStat = ({
+    label,
+    improvement,
+    children,
+}: {
+    label: string;
+    improvement: number;
+    children: React.ReactNode;
+}) => {
+    const [open, setOpen] = useState(false);
+    const color = improvement > 0 ? "text-emerald-400" : improvement < 0 ? "text-red-400" : "text-muted-foreground";
+    const Icon = improvement > 0 ? TrendingUp : improvement < 0 ? TrendingDown : Minus;
+
+    return (
+        <Collapsible open={open} onOpenChange={setOpen}>
+            <CollapsibleTrigger asChild>
+                <button className="w-full flex items-center justify-between px-4 py-3 rounded-xl bg-secondary/30 hover:bg-secondary/50 transition-colors">
+                    <span className="font-semibold text-sm">{label}</span>
+                    <div className="flex items-center gap-3">
+                        <span className={`flex items-center gap-1 text-sm font-bold ${color}`}>
+                            <Icon className="w-3.5 h-3.5" />
+                            {improvement > 0 ? "+" : ""}{improvement}%
+                        </span>
+                        {open ? <ChevronUp className="w-4 h-4 text-muted-foreground" /> : <ChevronDown className="w-4 h-4 text-muted-foreground" />}
+                    </div>
+                </button>
+            </CollapsibleTrigger>
+            <CollapsibleContent className="px-4 pt-3 pb-1 space-y-3 animate-in slide-in-from-top-1">
+                {children}
+            </CollapsibleContent>
+        </Collapsible>
+    );
+};
+
 export const ImprovementDialog = ({ trigger, overallImprovement, singleHabitId }: ImprovementDialogProps) => {
     const { data: allHabits = [] } = useHabits();
     const { data: allCompletions = [] } = useAllCompletions();
+    const { data: profile } = useProfile();
 
     // Filter to a single habit if singleHabitId is provided
     const habits = useMemo(() => {
-        if (singleHabitId) {
-            return allHabits.filter(h => h.id === singleHabitId);
-        }
+        if (singleHabitId) return allHabits.filter(h => h.id === singleHabitId);
         return allHabits;
     }, [allHabits, singleHabitId]);
 
-    const { data: profile } = useProfile();
+    const singleHabit = singleHabitId && habits.length === 1 ? habits[0] : null;
 
-    // Calculate which day of the journey the user is on
-    const journeyDay = useMemo(() => {
-        if (!profile?.created_at) return 1;
-        const istOffset = 5.5 * 60 * 60 * 1000;
-        const createdAtIst = new Date(new Date(profile.created_at).getTime() + istOffset);
-        const createdStr = createdAtIst.toISOString().split("T")[0];
-        const createdAt = new Date(createdStr + "T00:00:00");
+    // --- Cycle metadata (anchored to account creation date) ---
+    const cycleInfo = useMemo(() => {
+        const cycleStart = getCycleStartDate(profile?.created_at);
+        const todayStr = getAppDate();
+        const today = new Date(todayStr + "T00:00:00");
 
-        const today = new Date(getAppDate() + "T00:00:00");
-        const diffMs = today.getTime() - createdAt.getTime();
-        const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
-        return diffDays >= 0 ? diffDays + 1 : 1;
+        const diffDays = Math.floor(
+            (today.getTime() - cycleStart.getTime()) / (1000 * 60 * 60 * 24)
+        );
+        const currentWeekIndex = Math.min(Math.floor(Math.max(0, diffDays) / 7), 3);
+        const dayInWeek = diffDays - currentWeekIndex * 7;
+
+        const weekBoundaryLabels: string[] = [];
+        for (let w = 1; w <= 3; w++) {
+            const d = new Date(cycleStart);
+            d.setDate(d.getDate() + w * 7);
+            weekBoundaryLabels.push(d.toLocaleDateString("en-US", { month: "short", day: "numeric" }));
+        }
+
+        return { cycleStart, currentWeekIndex, dayInWeek, weekBoundaryLabels, todayStr };
     }, [profile?.created_at]);
 
-    // Chart Data (Current 28-day cycle percentage)
-    const monthlyData = useMemo(() => {
-        const data = [];
-        const cycleStart = getCycleStartDate(profile?.created_at);
+    // --- Cycle Score: total points in the current 28-day cycle ---
+    const monthlyStats = useMemo(() => {
+        const { cycleStart, todayStr } = cycleInfo;
+        const cycleEndDate = new Date(cycleStart);
+        cycleEndDate.setDate(cycleEndDate.getDate() + 27);
+        const cycleStartStr = formatLocalISODate(cycleStart);
+        const cycleEndStr = formatLocalISODate(cycleEndDate);
+        const maxCycleScore = 28 * 4; // 112
+
+        const cycleScore = allCompletions
+            .filter(c =>
+                c.completion_date >= cycleStartStr &&
+                c.completion_date <= cycleEndStr &&
+                (singleHabitId ? c.habit_id === singleHabitId : habits.some(h => h.id === c.habit_id))
+            )
+            .reduce((sum, c) => sum + (c.effort_level || 0), 0);
+
+        const pct = Math.round((cycleScore / maxCycleScore) * 100);
+        return { monthlyScore: cycleScore, maxMonthlyScore: maxCycleScore, pct };
+    }, [allCompletions, habits, singleHabitId, cycleInfo]);
+
+    // --- 28-day cycle chart data ---
+    const chartData = useMemo(() => {
+        const { cycleStart, todayStr } = cycleInfo;
         const maxDailyScore = habits.length > 0 ? habits.length * 4 : 4;
 
-        for (let i = 0; i < 28; i++) {
-            const dateObj = new Date(cycleStart.getTime());
-            dateObj.setDate(dateObj.getDate() + i);
-            const dateStr = formatLocalISODate(dateObj);
+        return Array.from({ length: 28 }, (_, i) => {
+            const date = new Date(cycleStart);
+            date.setDate(date.getDate() + i);
+            const dateStr = formatLocalISODate(date);
+            const isFuture = dateStr > todayStr;
+            const weekNum = Math.floor(i / 7) + 1;
+            const label = date.toLocaleDateString("en-US", { month: "short", day: "numeric" });
 
-            // format dateStr (YYYY-MM-DD) to MMM D
-            const formattedDate = dateObj.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+            if (isFuture) return { date: label, dateStr, percentage: null, week: weekNum };
 
-            const dailyCompletions = allCompletions.filter(c => c.completion_date === dateStr);
-            const score = dailyCompletions.reduce((sum, c) => sum + (c.effort_level || 0), 0);
-            const percentage = habits.length > 0 ? Math.round((score / maxDailyScore) * 100) : 0;
+            const dayCompletions = allCompletions.filter(c => {
+                if (c.completion_date !== dateStr) return false;
+                if (singleHabitId) return c.habit_id === singleHabitId;
+                return habits.some(h => h.id === c.habit_id);
+            });
 
-            data.push({ date: formattedDate, percentage, score });
+            const score = dayCompletions.reduce((sum, c) => sum + (c.effort_level || 0), 0);
+            const percentage = Math.round((score / maxDailyScore) * 100);
+            return { date: label, dateStr, percentage, week: weekNum };
+        });
+    }, [allCompletions, habits, singleHabitId, cycleInfo]);
+
+    // --- Per-habit stats: current vs previous cycle week ---
+    const habitStats = useMemo(() => {
+        const { cycleStart, currentWeekIndex, dayInWeek } = cycleInfo;
+
+        const currWeekStart = new Date(cycleStart);
+        currWeekStart.setDate(currWeekStart.getDate() + currentWeekIndex * 7);
+        const currWeekStartStr = formatLocalISODate(currWeekStart);
+        const currWeekEnd = new Date(currWeekStart);
+        currWeekEnd.setDate(currWeekEnd.getDate() + 6);
+        const currWeekEndStr = formatLocalISODate(currWeekEnd);
+
+        let prevWeekStartStr = "";
+        let prevWeekEndStr = "";
+        if (currentWeekIndex > 0) {
+            const prevWeekStart = new Date(cycleStart);
+            prevWeekStart.setDate(prevWeekStart.getDate() + (currentWeekIndex - 1) * 7);
+            prevWeekStartStr = formatLocalISODate(prevWeekStart);
+            const prevWeekEnd = new Date(prevWeekStart);
+            prevWeekEnd.setDate(prevWeekEnd.getDate() + 6);
+            prevWeekEndStr = formatLocalISODate(prevWeekEnd);
         }
-        return data;
-    }, [allCompletions, profile?.created_at, habits.length]);
 
-    // Habit Weekly Stats
-    const currentWeekIndex = Math.min(Math.floor((journeyDay - 1) / 7), 3); // week 0 to 3 limit
-    const daysInCurrentWeek = Math.min(Math.max(1, journeyDay - (currentWeekIndex * 7)), 7);
-
-    const weekStats = useMemo(() => {
-        const cycleStart = getCycleStartDate(profile?.created_at);
-        const previousWeekIndex = currentWeekIndex - 1;
-
-        const currentWeekStartDate = new Date(cycleStart.getTime());
-        currentWeekStartDate.setDate(currentWeekStartDate.getDate() + (currentWeekIndex * 7));
-        const currentWeekStartStr = formatLocalISODate(currentWeekStartDate);
-
-        const currentWeekEndDate = new Date(currentWeekStartDate.getTime());
-        currentWeekEndDate.setDate(currentWeekEndDate.getDate() + 6);
-        const currentWeekEndStr = formatLocalISODate(currentWeekEndDate);
-
-        let previousWeekStartStr = "";
-        let previousWeekEndStr = "";
-
-        if (previousWeekIndex >= 0) {
-            const prevWeekStartDate = new Date(cycleStart.getTime());
-            prevWeekStartDate.setDate(prevWeekStartDate.getDate() + (previousWeekIndex * 7));
-            previousWeekStartStr = formatLocalISODate(prevWeekStartDate);
-
-            const prevWeekEndDate = new Date(prevWeekStartDate.getTime());
-            prevWeekEndDate.setDate(prevWeekEndDate.getDate() + 6);
-            previousWeekEndStr = formatLocalISODate(prevWeekEndDate);
-        }
+        const daysElapsed = Math.max(1, dayInWeek + 1);
 
         return habits.map(habit => {
-            let currentScore = 0;
-            let previousScore = 0;
+            let currScore = 0;
+            let prevScore = 0;
+            let loggedDaysThisWeek = 0;
+
             allCompletions.forEach(c => {
                 if (c.habit_id !== habit.id) return;
-
-                if (c.completion_date >= currentWeekStartStr && c.completion_date <= currentWeekEndStr) {
-                    currentScore += (c.effort_level || 0);
-                } else if (previousWeekIndex >= 0 && c.completion_date >= previousWeekStartStr && c.completion_date <= previousWeekEndStr) {
-                    previousScore += (c.effort_level || 0);
+                if (c.completion_date >= currWeekStartStr && c.completion_date <= currWeekEndStr) {
+                    currScore += c.effort_level || 0;
+                    loggedDaysThisWeek++;
+                } else if (prevWeekStartStr && c.completion_date >= prevWeekStartStr && c.completion_date <= prevWeekEndStr) {
+                    prevScore += c.effort_level || 0;
                 }
             });
 
-            // Current week rate pacing is calculated by max score possible in elapsed days
-            const currentRate = daysInCurrentWeek > 0 ? (currentScore / (daysInCurrentWeek * 4)) * 100 : 0;
+            const currRate = Math.round((currScore / (daysElapsed * 4)) * 100);
+            const prevRate = currentWeekIndex > 0 ? Math.round((prevScore / (7 * 4)) * 100) : 0;
+            const improvement = currRate - prevRate;
+            const avg = (currScore / daysElapsed).toFixed(1); // paced avg per elapsed day, max 4
 
-            // Previous week rate is out of a full 7-day max score
-            const previousRate = previousWeekIndex >= 0 ? (previousScore / (7 * 4)) * 100 : 0;
-            const improvement = Math.round(currentRate - previousRate);
-
-            const avg = daysInCurrentWeek > 0 ? (currentScore / daysInCurrentWeek).toFixed(1) : "0.0";
-
-            return {
-                ...habit,
-                weekScore: currentScore,
-                rate: Math.round(currentRate),
-                improvement,
-                avg
-            };
+            return { ...habit, currScore, prevScore, currRate, prevRate, improvement, avg, loggedDaysThisWeek, daysElapsed };
         });
-    }, [habits, allCompletions, profile?.created_at, currentWeekIndex, daysInCurrentWeek]);
+    }, [habits, allCompletions, cycleInfo]);
+
+    // --- Overall 30-day stats (last 30 vs prior 30 days) ---
+    const overall30Stats = useMemo(() => {
+        const todayTime = new Date(getAppDate() + "T00:00:00").getTime();
+        const maxScore = 30 * 4;
+
+        let last30 = 0;
+        let prev30 = 0;
+
+        allCompletions.forEach(c => {
+            if (singleHabitId && c.habit_id !== singleHabitId) return;
+            if (!singleHabitId && !habits.some(h => h.id === c.habit_id)) return;
+            const diff = Math.round((todayTime - new Date(c.completion_date + "T00:00:00").getTime()) / (1000 * 60 * 60 * 24));
+            if (diff >= 0 && diff <= 29) last30 += c.effort_level || 0;
+            else if (diff >= 30 && diff <= 59) prev30 += c.effort_level || 0;
+        });
+
+        const last30Rate = Math.round((last30 / maxScore) * 100);
+        const prev30Rate = Math.round((prev30 / maxScore) * 100);
+        const improvement = last30Rate - prev30Rate;
+
+        return { last30, prev30, last30Rate, prev30Rate, improvement };
+    }, [allCompletions, habits, singleHabitId]);
+
+    // --- Total completions for this habit (all time) ---
+    const totalCompletions = useMemo(() => {
+        if (!singleHabitId) return 0;
+        return allCompletions.filter(c => c.habit_id === singleHabitId).length;
+    }, [allCompletions, singleHabitId]);
+
+    const ImprovementIcon = overallImprovement > 0 ? TrendingUp : overallImprovement < 0 ? TrendingDown : Minus;
+    const improvementColor = overallImprovement > 0 ? "text-emerald-400" : overallImprovement < 0 ? "text-red-400" : "text-muted-foreground";
+
+    const weekLabel = `Week ${cycleInfo.currentWeekIndex + 1}`;
+    const prevWeekLabel = cycleInfo.currentWeekIndex > 0 ? `Week ${cycleInfo.currentWeekIndex}` : null;
+
+    // Format habit created_at nicely
+    const habitCreatedOn = useMemo(() => {
+        if (!singleHabit?.created_at) return null;
+        const d = new Date(singleHabit.created_at);
+        return d.toLocaleDateString("en-GB"); // DD/MM/YYYY
+    }, [singleHabit?.created_at]);
 
     return (
         <Dialog>
@@ -132,74 +230,298 @@ export const ImprovementDialog = ({ trigger, overallImprovement, singleHabitId }
             <DialogContent className="max-w-3xl w-[90vw] max-h-[85vh] overflow-y-auto glass border-primary/20">
                 <DialogHeader>
                     <DialogTitle className="text-2xl font-bold">
-                        {singleHabitId && habits.length === 1 ? habits[0].name : "Improvement"}
+                        {singleHabit ? singleHabit.name : "Improvement"}
                     </DialogTitle>
+                    {habitCreatedOn && (
+                        <p className="text-sm text-muted-foreground">Created on: {habitCreatedOn}</p>
+                    )}
                 </DialogHeader>
 
                 <div className="space-y-6 mt-4">
-                    {/* Top Card */}
+                    {/* ── Single-habit extras ── */}
+                    {singleHabit && (
+                        <>
+                            {/* Monthly Score */}
+                            <Card className="glass border-border/50">
+                                <CardContent className="p-5 space-y-3">
+                                    <p className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">Cycle Score</p>
+                                    <p className="text-3xl font-bold">
+                                        {monthlyStats.monthlyScore}{" "}
+                                        <span className="text-muted-foreground font-normal text-xl">/ {monthlyStats.maxMonthlyScore}</span>
+                                    </p>
+                                    <div className="h-3 w-full bg-secondary rounded-full overflow-hidden">
+                                        <div
+                                            className="h-full rounded-full transition-all duration-700 ease-out"
+                                            style={{
+                                                width: `${Math.min(monthlyStats.pct, 100)}%`,
+                                                backgroundColor: singleHabit.color,
+                                            }}
+                                        />
+                                    </div>
+                                    <p className="text-xs text-muted-foreground">
+                                        You are at <span className="font-semibold text-foreground">{monthlyStats.pct}%</span> of your 28-day cycle goal!
+                                    </p>
+                                    {/* Total completions divider */}
+                                    <div className="pt-2 mt-1 border-t border-border/40 flex items-center justify-between">
+                                        <span className="text-xs text-muted-foreground">Total completions (all time)</span>
+                                        <span className="text-sm font-bold tabular-nums">{totalCompletions} days</span>
+                                    </div>
+                                </CardContent>
+                            </Card>
+
+                            {/* Habit Weekly Stats — collapsible */}
+                            <Card className="glass border-border/50 overflow-hidden">
+                                <CardContent className="p-3">
+                                    <CollapsibleStat
+                                        label={`Habit Weekly Stats`}
+                                        improvement={overallImprovement}
+                                    >
+                                        {habitStats.map(stat => {
+                                            const statColor = stat.improvement > 0 ? "text-emerald-400" : stat.improvement < 0 ? "text-red-400" : "text-muted-foreground";
+                                            return (
+                                                <div key={stat.id} className="space-y-2 pb-2">
+                                                    <div className="flex justify-between items-center text-sm">
+                                                        <span className="text-muted-foreground">{stat.loggedDaysThisWeek}/{stat.daysElapsed} days · avg {stat.avg}/4</span>
+                                                        <span className={`font-bold ${statColor}`}>{stat.improvement > 0 ? "+" : ""}{stat.improvement}%</span>
+                                                    </div>
+                                                    <div className="space-y-1">
+                                                        <div className="flex justify-between text-xs text-muted-foreground">
+                                                            <span>{weekLabel} (paced)</span>
+                                                            <span>{stat.currRate}%</span>
+                                                        </div>
+                                                        <div className="h-2.5 w-full bg-secondary rounded-full overflow-hidden">
+                                                            <div className="h-full rounded-full transition-all duration-700" style={{ width: `${Math.min(stat.currRate, 100)}%`, backgroundColor: stat.color }} />
+                                                        </div>
+                                                        {prevWeekLabel && (
+                                                            <>
+                                                                <div className="flex justify-between text-xs text-muted-foreground">
+                                                                    <span>{prevWeekLabel}</span>
+                                                                    <span>{stat.prevRate}%</span>
+                                                                </div>
+                                                                <div className="h-2 w-full bg-secondary/50 rounded-full overflow-hidden">
+                                                                    <div className="h-full rounded-full transition-all duration-700 opacity-50" style={{ width: `${Math.min(stat.prevRate, 100)}%`, backgroundColor: stat.color }} />
+                                                                </div>
+                                                            </>
+                                                        )}
+                                                    </div>
+                                                </div>
+                                            );
+                                        })}
+                                    </CollapsibleStat>
+                                </CardContent>
+                            </Card>
+
+                            {/* Overall Stats 30-day — collapsible */}
+                            <Card className="glass border-border/50 overflow-hidden">
+                                <CardContent className="p-3">
+                                    <CollapsibleStat
+                                        label="Overall Stats (30 days)"
+                                        improvement={overall30Stats.improvement}
+                                    >
+                                        <div className="space-y-2 pb-2">
+                                            <div className="space-y-1">
+                                                <div className="flex justify-between text-xs text-muted-foreground">
+                                                    <span>Last 30 days</span>
+                                                    <span>{overall30Stats.last30Rate}%</span>
+                                                </div>
+                                                <div className="h-2.5 w-full bg-secondary rounded-full overflow-hidden">
+                                                    <div className="h-full rounded-full transition-all duration-700" style={{ width: `${Math.min(overall30Stats.last30Rate, 100)}%`, backgroundColor: singleHabit.color }} />
+                                                </div>
+                                                <div className="flex justify-between text-xs text-muted-foreground">
+                                                    <span>Prior 30 days</span>
+                                                    <span>{overall30Stats.prev30Rate}%</span>
+                                                </div>
+                                                <div className="h-2 w-full bg-secondary/50 rounded-full overflow-hidden">
+                                                    <div className="h-full rounded-full transition-all duration-700 opacity-50" style={{ width: `${Math.min(overall30Stats.prev30Rate, 100)}%`, backgroundColor: singleHabit.color }} />
+                                                </div>
+                                            </div>
+                                            <p className="text-xs text-muted-foreground pt-1">
+                                                Total points last 30d: <span className="text-foreground font-semibold">{overall30Stats.last30}</span>
+                                                {" · "}Prior 30d: <span className="text-foreground font-semibold">{overall30Stats.prev30}</span>
+                                            </p>
+                                        </div>
+                                    </CollapsibleStat>
+                                </CardContent>
+                            </Card>
+                        </>
+                    )}
+
+                    {/* Top Improvement Card */}
                     <Card className="glass border-border/50">
                         <CardContent className="p-8 flex flex-col items-center justify-center space-y-2 relative">
-                            <span className="absolute top-4 right-4 text-xs font-semibold px-2 py-1 rounded-full bg-primary/20 text-primary">
-                                Day {journeyDay}
-                            </span>
-                            <h2 className="text-6xl font-bold">{overallImprovement >= 0 && overallImprovement !== 0 ? "+" : ""}{overallImprovement}%</h2>
-                            <p className="text-muted-foreground">Improvement (From Last Week)</p>
+                            <div className={`flex items-center gap-2 ${improvementColor}`}>
+                                <ImprovementIcon className="w-7 h-7" />
+                            </div>
+                            <h2 className={`text-6xl font-bold ${improvementColor}`}>
+                                {overallImprovement > 0 ? "+" : ""}{overallImprovement}%
+                            </h2>
+                            <p className="text-muted-foreground text-center">
+                                {weekLabel}{prevWeekLabel ? ` vs ${prevWeekLabel}` : " — first week"}
+                                {!singleHabitId && habits.length > 1 && (
+                                    <span className="ml-1 text-xs">(avg across {habits.length} habits)</span>
+                                )}
+                            </p>
                         </CardContent>
                     </Card>
 
-                    {/* Monthly Improvement Chart */}
+                    {/* 28-Day Cycle Chart */}
                     <Card className="glass border-border/50">
                         <CardHeader>
-                            <CardTitle>Daily Percentage Improvement</CardTitle>
+                            <div className="flex items-center justify-between">
+                                <div>
+                                    <CardTitle>28-Day Cycle — Daily Effort %</CardTitle>
+                                    <p className="text-sm text-muted-foreground mt-1">
+                                        Each day's effort as % of max. Dashed lines mark week boundaries.
+                                    </p>
+                                </div>
+                                <div className="flex gap-1">
+                                    {[1, 2, 3, 4].map(w => (
+                                        <span
+                                            key={w}
+                                            className={`text-xs px-2 py-0.5 rounded-full font-medium ${w === cycleInfo.currentWeekIndex + 1
+                                                ? "bg-primary/30 text-primary"
+                                                : "bg-secondary/50 text-muted-foreground"
+                                                }`}
+                                        >
+                                            W{w}
+                                        </span>
+                                    ))}
+                                </div>
+                            </div>
                         </CardHeader>
                         <CardContent>
-                            <ResponsiveContainer width="100%" height={250}>
-                                <LineChart data={monthlyData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+                            <ResponsiveContainer width="100%" height={260}>
+                                <AreaChart data={chartData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+                                    <defs>
+                                        <linearGradient id="cycleGradient" x1="0" y1="0" x2="0" y2="1">
+                                            <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.45} />
+                                            <stop offset="95%" stopColor="#3b82f6" stopOpacity={0} />
+                                        </linearGradient>
+                                    </defs>
                                     <CartesianGrid strokeDasharray="3 3" stroke="hsl(240, 3.7%, 15.9%)" vertical={false} />
-                                    <XAxis dataKey="date" stroke="hsl(240, 5%, 64.9%)" fontSize={12} tickLine={false} axisLine={false} minTickGap={20} />
-                                    <YAxis stroke="hsl(240, 5%, 64.9%)" fontSize={12} tickLine={false} axisLine={false} tickFormatter={(value) => `${value}%`} />
-                                    <Tooltip
-                                        contentStyle={{ background: "hsl(240, 10%, 6%)", border: "1px solid hsl(240, 3.7%, 15.9%)", borderRadius: "8px" }}
-                                        formatter={(value: number) => [`${value}%`, "Improvement"]}
+                                    <XAxis
+                                        dataKey="date"
+                                        stroke="hsl(240, 5%, 64.9%)"
+                                        fontSize={11}
+                                        tickLine={false}
+                                        axisLine={false}
+                                        minTickGap={20}
                                     />
-                                    <Line type="stepAfter" dataKey="percentage" stroke="#3b82f6" strokeWidth={2} dot={false} />
-                                </LineChart>
+                                    <YAxis
+                                        stroke="hsl(240, 5%, 64.9%)"
+                                        fontSize={11}
+                                        tickLine={false}
+                                        axisLine={false}
+                                        tickFormatter={(v) => `${v}%`}
+                                        domain={[0, 100]}
+                                    />
+                                    <Tooltip
+                                        contentStyle={{
+                                            background: "hsl(240, 10%, 6%)",
+                                            border: "1px solid hsl(240, 3.7%, 15.9%)",
+                                            borderRadius: "8px",
+                                        }}
+                                        formatter={(value: number, _name: string, props: any) => [
+                                            value != null ? `${value}%` : "—",
+                                            `Week ${props?.payload?.week ?? ""} effort`,
+                                        ]}
+                                    />
+                                    {cycleInfo.weekBoundaryLabels.map((label, idx) => (
+                                        <ReferenceLine
+                                            key={label}
+                                            x={label}
+                                            stroke="rgba(255,255,255,0.15)"
+                                            strokeDasharray="5 4"
+                                            label={{
+                                                value: `W${idx + 2}`,
+                                                position: "insideTopRight",
+                                                fill: "hsl(240, 5%, 55%)",
+                                                fontSize: 10,
+                                            }}
+                                        />
+                                    ))}
+                                    <Area
+                                        type="monotone"
+                                        dataKey="percentage"
+                                        stroke="#3b82f6"
+                                        strokeWidth={2}
+                                        fill="url(#cycleGradient)"
+                                        dot={false}
+                                        activeDot={{ r: 4, fill: "#3b82f6" }}
+                                        connectNulls={false}
+                                    />
+                                </AreaChart>
                             </ResponsiveContainer>
                         </CardContent>
                     </Card>
 
-                    {/* Habit Weekly Stats */}
-                    <Card className="glass border-border/50">
-                        <CardHeader className="flex flex-row items-center justify-between pb-2">
-                            <CardTitle>Habit Week {currentWeekIndex + 1} Stats</CardTitle>
-                            {!singleHabitId && (
+                    {/* Per-Habit Breakdown — only shown for multi-habit view */}
+                    {!singleHabitId && (
+                        <Card className="glass border-border/50">
+                            <CardHeader className="flex flex-row items-center justify-between pb-2">
+                                <div>
+                                    <CardTitle>Habit Breakdown</CardTitle>
+                                    <p className="text-sm text-muted-foreground mt-1">
+                                        {weekLabel} ({cycleInfo.dayInWeek + 1} day{cycleInfo.dayInWeek !== 0 ? "s" : ""} in)
+                                        {prevWeekLabel ? ` vs ${prevWeekLabel}` : " — first week, no prior week yet"}
+                                    </p>
+                                </div>
                                 <div className="text-right">
                                     <span className="text-3xl font-bold">{habits.length}</span>
-                                    <p className="text-sm text-muted-foreground">Total Habits</p>
+                                    <p className="text-sm text-muted-foreground">Habits</p>
                                 </div>
-                            )}
-                        </CardHeader>
-                        <CardContent className="space-y-8 pt-4">
-                            {weekStats.map(stat => (
-                                <div key={stat.id} className="space-y-3">
-                                    <div className="flex justify-between items-center">
-                                        <div className="flex items-center gap-3">
-                                            <div className="w-4 h-4 rounded-full" style={{ backgroundColor: stat.color }} />
-                                            <span className="font-semibold text-lg">{stat.name}</span>
+                            </CardHeader>
+                            <CardContent className="space-y-8 pt-4">
+                                {habitStats.map(stat => {
+                                    const statColor =
+                                        stat.improvement > 0 ? "text-emerald-400"
+                                            : stat.improvement < 0 ? "text-red-400"
+                                                : "text-muted-foreground";
+                                    return (
+                                        <div key={stat.id} className="space-y-3">
+                                            <div className="flex justify-between items-start">
+                                                <div className="flex items-center gap-3">
+                                                    <div className="w-4 h-4 rounded-full flex-shrink-0" style={{ backgroundColor: stat.color }} />
+                                                    <div>
+                                                        <span className="font-semibold text-base">{stat.name}</span>
+                                                        <p className="text-xs text-muted-foreground">
+                                                            {stat.loggedDaysThisWeek}/{stat.daysElapsed} days logged · avg {stat.avg}/4
+                                                        </p>
+                                                    </div>
+                                                </div>
+                                                <div className={`text-right font-bold text-base ${statColor}`}>
+                                                    {stat.improvement > 0 ? "+" : ""}{stat.improvement}%
+                                                    <p className="text-xs text-muted-foreground font-normal">
+                                                        {prevWeekLabel ? `vs ${prevWeekLabel}` : "first week"}
+                                                    </p>
+                                                </div>
+                                            </div>
+                                            <div className="space-y-1">
+                                                <div className="flex justify-between text-xs text-muted-foreground">
+                                                    <span>{weekLabel} (paced)</span>
+                                                    <span>{stat.currRate}%</span>
+                                                </div>
+                                                <div className="h-3 w-full bg-secondary rounded-full overflow-hidden">
+                                                    <div className="h-full transition-all duration-700 ease-out rounded-full" style={{ width: `${Math.min(stat.currRate, 100)}%`, backgroundColor: stat.color }} />
+                                                </div>
+                                                {prevWeekLabel && (
+                                                    <>
+                                                        <div className="flex justify-between text-xs text-muted-foreground">
+                                                            <span>{prevWeekLabel}</span>
+                                                            <span>{stat.prevRate}%</span>
+                                                        </div>
+                                                        <div className="h-2 w-full bg-secondary/50 rounded-full overflow-hidden">
+                                                            <div className="h-full transition-all duration-700 ease-out rounded-full opacity-50" style={{ width: `${Math.min(stat.prevRate, 100)}%`, backgroundColor: stat.color }} />
+                                                        </div>
+                                                    </>
+                                                )}
+                                            </div>
                                         </div>
-                                        <div className="text-right">
-                                            <span className="font-bold text-lg">{stat.improvement > 0 ? "+" : ""}{stat.improvement}% vs last week</span>
-                                            <p className="text-sm text-muted-foreground">Avg level: {stat.avg} / 4</p>
-                                        </div>
-                                    </div>
-                                    <div className="h-4 w-full bg-secondary rounded-full overflow-hidden">
-                                        <div className="h-full transition-all duration-500 ease-out" style={{ width: `${stat.rate}%`, backgroundColor: stat.color }} />
-                                    </div>
-                                </div>
-                            ))}
-                        </CardContent>
-                    </Card>
+                                    );
+                                })}
+                            </CardContent>
+                        </Card>
+                    )}
 
                 </div>
             </DialogContent>

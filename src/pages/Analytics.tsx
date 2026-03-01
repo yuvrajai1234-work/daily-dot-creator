@@ -1,12 +1,15 @@
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
-import { Trash2, Archive, ArchiveRestore, MoreHorizontal, TrendingUp, Target, Zap } from "lucide-react";
+import { Trash2, Archive, ArchiveRestore, MoreHorizontal, TrendingUp, Target, Zap, AlertTriangle } from "lucide-react";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
+  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { motion } from "framer-motion";
-import { subDays, format } from "date-fns";
 import { useHabits, useAllCompletions, useDeleteHabit, useArchivedHabits, useUnarchiveHabit } from "@/hooks/useHabits";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/components/AuthProvider";
@@ -24,6 +27,10 @@ const AnalyticsPage = () => {
   const deleteHabit = useDeleteHabit();
   const { data: archivedHabits = [] } = useArchivedHabits();
   const unarchiveHabit = useUnarchiveHabit();
+
+  // Track which archived habit is pending permanent deletion (for AlertDialog)
+  const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null);
+  const pendingDeleteHabit = archivedHabits.find(h => h.id === pendingDeleteId);
 
   const habitPointsBreakdown = useMemo(() => {
     return habits.map((habit) => ({
@@ -138,7 +145,7 @@ const AnalyticsPage = () => {
             <CardDescription>Your combined effort score over the last 28 days.</CardDescription>
           </CardHeader>
           <CardContent>
-            <ResponsiveContainer width="100%" height={350}>
+            <ResponsiveContainer width="100%" height={400}>
               <AreaChart data={chartData} margin={{ top: 10, right: 30, left: 0, bottom: 0 }}>
                 <defs>
                   <linearGradient id="colorScore" x1="0" y1="0" x2="0" y2="1">
@@ -147,7 +154,18 @@ const AnalyticsPage = () => {
                   </linearGradient>
                 </defs>
                 <CartesianGrid strokeDasharray="3 3" stroke="hsl(240, 3.7%, 15.9%)" />
-                <XAxis dataKey="date" stroke="hsl(240, 5%, 64.9%)" fontSize={12} />
+                <XAxis
+                  dataKey="date"
+                  stroke="hsl(240, 5%, 64.9%)"
+                  fontSize={10}
+                  tickLine={false}
+                  axisLine={false}
+                  interval={0}
+                  minTickGap={0}
+                  angle={-45}
+                  textAnchor="end"
+                  height={55}
+                />
                 <YAxis stroke="hsl(240, 5%, 64.9%)" fontSize={12} />
                 <Tooltip
                   contentStyle={{
@@ -180,6 +198,7 @@ const AnalyticsPage = () => {
                 <TableHeader>
                   <TableRow>
                     <TableHead>Habit</TableHead>
+                    <TableHead className="text-right">Completions</TableHead>
                     <TableHead className="text-right">Points</TableHead>
                     <TableHead className="text-right">Actions</TableHead>
                   </TableRow>
@@ -190,6 +209,9 @@ const AnalyticsPage = () => {
                       <TableCell className="flex items-center gap-2">
                         <span>{habit.icon}</span>
                         <span>{habit.name}</span>
+                      </TableCell>
+                      <TableCell className="text-right font-mono">
+                        {completions.filter(c => c.habit_id === habit.id).length}
                       </TableCell>
                       <TableCell className="text-right font-mono">{habit.points}</TableCell>
                       <TableCell className="text-right">
@@ -202,17 +224,7 @@ const AnalyticsPage = () => {
                           <DropdownMenuContent>
                             <DropdownMenuItem onSelect={() => handleArchiveToggle(habit.id)}>
                               <Archive className="mr-2 h-4 w-4" />
-                              <span>Archive</span>
-                            </DropdownMenuItem>
-                            <DropdownMenuItem
-                              onSelect={() => {
-                                if (confirm("Delete this habit and all its records?")) {
-                                  deleteHabit.mutate(habit.id);
-                                }
-                              }}
-                            >
-                              <Trash2 className="mr-2 h-4 w-4" />
-                              <span>Delete</span>
+                              <span>Move to Archive</span>
                             </DropdownMenuItem>
                           </DropdownMenuContent>
                         </DropdownMenu>
@@ -273,12 +285,8 @@ const AnalyticsPage = () => {
                                 <span>Unarchive</span>
                               </DropdownMenuItem>
                               <DropdownMenuItem
-                                onSelect={() => {
-                                  if (confirm("Permanently delete this habit and all its records?")) {
-                                    deleteHabit.mutate(habit.id);
-                                  }
-                                }}
-                                className="text-destructive"
+                                onSelect={() => setPendingDeleteId(habit.id)}
+                                className="text-destructive focus:text-destructive"
                               >
                                 <Trash2 className="mr-2 h-4 w-4" />
                                 <span>Delete Permanently</span>
@@ -295,6 +303,43 @@ const AnalyticsPage = () => {
           </CardContent>
         </Card>
       </motion.div>
+
+      {/* ── Permanent Delete AlertDialog ── */}
+      <AlertDialog open={!!pendingDeleteId} onOpenChange={(open) => { if (!open) setPendingDeleteId(null); }}>
+        <AlertDialogContent className="glass border-destructive/40">
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center gap-2 text-destructive">
+              <AlertTriangle className="w-5 h-5" />
+              Permanently Delete Habit?
+            </AlertDialogTitle>
+            <AlertDialogDescription className="space-y-2 text-sm">
+              <p>
+                You are about to permanently delete{" "}
+                <span className="font-semibold text-foreground">
+                  {pendingDeleteHabit?.icon} {pendingDeleteHabit?.name}
+                </span>.
+              </p>
+              <p className="text-destructive font-medium">
+                ⚠️ This will erase ALL completion history, effort scores, and streak data for this habit. This action cannot be undone.
+              </p>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-destructive hover:bg-destructive/90 text-destructive-foreground"
+              onClick={() => {
+                if (pendingDeleteId) {
+                  deleteHabit.mutate(pendingDeleteId);
+                  setPendingDeleteId(null);
+                }
+              }}
+            >
+              Yes, Delete Forever
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 };

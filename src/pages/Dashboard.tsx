@@ -1,5 +1,5 @@
 import { useMemo } from "react";
-import { useHabits, useTodayCompletions, useWeekCompletions, useLogEffort, useDeleteHabit } from "@/hooks/useHabits";
+import { useHabits, useTodayCompletions, useWeekCompletions, useLogEffort, useArchiveHabit } from "@/hooks/useHabits";
 import { useUserStats } from "@/hooks/useAchievements";
 import { useAuth } from "@/components/AuthProvider";
 import StatsCards from "@/components/dashboard/StatsCards";
@@ -9,6 +9,7 @@ import AddHabitDialog from "@/components/AddHabitDialog";
 import { getGreeting, getAppDate, getCycleStartDate, formatLocalISODate } from "@/lib/dateUtils";
 import { useProfile } from "@/hooks/useProfile";
 
+
 const Dashboard = () => {
   const { user } = useAuth();
   const { data: habits = [], isLoading: habitsLoading } = useHabits();
@@ -17,7 +18,7 @@ const Dashboard = () => {
   const { data: userStats } = useUserStats();
   const { data: profile } = useProfile();
   const logEffort = useLogEffort();
-  const deleteHabit = useDeleteHabit();
+  const archiveHabit = useArchiveHabit();
 
   const completedIds = useMemo(
     () => new Set(todayCompletions.map((c) => c.habit_id)),
@@ -31,72 +32,82 @@ const Dashboard = () => {
     return todayCompletions.reduce((sum, c) => sum + (c.effort_level || 0), 0);
   }, [todayCompletions]);
 
+  // ─── Cycle week metadata (all anchored to account creation date) ───────────
+  // Returns the date strings for the current and previous cycle weeks,
+  // plus how many days have elapsed in the current week.
+  const cycleData = useMemo(() => {
+    const cycleStart = getCycleStartDate(profile?.created_at);
+    const todayStr = getAppDate();
+    const today = new Date(todayStr + "T00:00:00");
+
+    const diffDays = Math.floor(
+      (today.getTime() - cycleStart.getTime()) / (1000 * 60 * 60 * 24)
+    );
+    const weekIndex = Math.min(Math.floor(Math.max(0, diffDays) / 7), 3); // 0–3
+    const dayInWeek = diffDays - weekIndex * 7; // 0–6
+
+    // Current cycle week dates (e.g. Feb 28 – Mar 6 for Week 3)
+    const currWeekStart = new Date(cycleStart);
+    currWeekStart.setDate(currWeekStart.getDate() + weekIndex * 7);
+    const cycleWeekDates = Array.from({ length: 7 }, (_, i) => {
+      const d = new Date(currWeekStart);
+      d.setDate(d.getDate() + i);
+      return formatLocalISODate(d);
+    });
+
+    // Previous cycle week dates (empty array if we're in Week 1)
+    let prevCycleWeekDates: string[] = [];
+    if (weekIndex > 0) {
+      const prevWeekStart = new Date(cycleStart);
+      prevWeekStart.setDate(prevWeekStart.getDate() + (weekIndex - 1) * 7);
+      prevCycleWeekDates = Array.from({ length: 7 }, (_, i) => {
+        const d = new Date(prevWeekStart);
+        d.setDate(d.getDate() + i);
+        return formatLocalISODate(d);
+      });
+    }
+
+    // Days elapsed in current week (at least 1 to avoid ÷0)
+    const daysElapsedInWeek = Math.max(1, dayInWeek + 1);
+
+    // Cycle day: which day of the 28-day cycle are we on (1-indexed, capped at 28)
+    const cycleDay = Math.min(Math.max(1, diffDays + 1), 28);
+
+    return { cycleWeekDates, prevCycleWeekDates, daysElapsedInWeek, cycleDay };
+  }, [profile?.created_at]);
+
+  // ─── Overall improvement = average of per-habit cycle-week improvement ─────
+  // Compares current cycle week (paced by days elapsed) vs previous cycle week (full 7 days).
+  // This matches exactly what ImprovementDialog and the HabitCard badge show.
   const improvement = useMemo(() => {
     if (habits.length === 0) return 0;
 
-    // 1. Calculate the user's journey day
-    let journeyDay = 1;
-    if (profile?.created_at) {
-      const istOffset = 5.5 * 60 * 60 * 1000;
-      const createdAtIst = new Date(new Date(profile.created_at).getTime() + istOffset);
-      const createdStr = createdAtIst.toISOString().split("T")[0];
-      const createdAt = new Date(createdStr + "T00:00:00");
-      const today = new Date(getAppDate() + "T00:00:00");
-      const diffMs = today.getTime() - createdAt.getTime();
-      const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
-      journeyDay = diffDays >= 0 ? diffDays + 1 : 1;
-    }
+    const { cycleWeekDates, prevCycleWeekDates, daysElapsedInWeek } = cycleData;
+    const currSet = new Set(cycleWeekDates);
+    const prevSet = new Set(prevCycleWeekDates);
 
-    // 2. Derive Current vs Previous Week
-    const currentWeekIndex = Math.min(Math.floor((journeyDay - 1) / 7), 3); // 0 to 3 limit
-    const previousWeekIndex = currentWeekIndex - 1;
-    const daysInCurrentWeek = Math.min(Math.max(1, journeyDay - (currentWeekIndex * 7)), 7);
+    let totalImprovement = 0;
 
-    const cycleStart = getCycleStartDate(profile?.created_at);
+    habits.forEach((habit) => {
+      let currScore = 0;
+      let prevScore = 0;
 
-    const currentWeekStartDate = new Date(cycleStart.getTime());
-    currentWeekStartDate.setDate(currentWeekStartDate.getDate() + (currentWeekIndex * 7));
-    const currentWeekStartStr = formatLocalISODate(currentWeekStartDate);
+      weekCompletions.forEach((c) => {
+        if (c.habit_id !== habit.id) return;
+        if (currSet.has(c.completion_date)) currScore += c.effort_level || 0;
+        else if (prevSet.has(c.completion_date)) prevScore += c.effort_level || 0;
+      });
 
-    const currentWeekEndDate = new Date(currentWeekStartDate.getTime());
-    currentWeekEndDate.setDate(currentWeekEndDate.getDate() + 6);
-    const currentWeekEndStr = formatLocalISODate(currentWeekEndDate);
+      // Paced rate: current score / (days elapsed × max effort 4)
+      const currRate = (currScore / (daysElapsedInWeek * 4)) * 100;
+      // Full rate for previous week (7 days × 4)
+      const prevRate = prevCycleWeekDates.length > 0 ? (prevScore / (7 * 4)) * 100 : 0;
 
-    let previousWeekStartStr = "";
-    let previousWeekEndStr = "";
-
-    if (previousWeekIndex >= 0) {
-      const prevWeekStartDate = new Date(cycleStart.getTime());
-      prevWeekStartDate.setDate(prevWeekStartDate.getDate() + (previousWeekIndex * 7));
-      previousWeekStartStr = formatLocalISODate(prevWeekStartDate);
-
-      const prevWeekEndDate = new Date(prevWeekStartDate.getTime());
-      prevWeekEndDate.setDate(prevWeekEndDate.getDate() + 6);
-      previousWeekEndStr = formatLocalISODate(prevWeekEndDate);
-    }
-
-    let currentWeekScore = 0;
-    let previousWeekScore = 0;
-
-    weekCompletions.forEach((c) => {
-      if (c.completion_date >= currentWeekStartStr && c.completion_date <= currentWeekEndStr) {
-        currentWeekScore += (c.effort_level || 0);
-      } else if (previousWeekIndex >= 0 && c.completion_date >= previousWeekStartStr && c.completion_date <= previousWeekEndStr) {
-        previousWeekScore += (c.effort_level || 0);
-      }
+      totalImprovement += Math.round(currRate - prevRate);
     });
 
-    const maxDailyScore = habits.length * 4;
-
-    // Calculate current pace: Out of max possible points over elapsed days of current week
-    const currentRate = daysInCurrentWeek > 0 && maxDailyScore > 0 ? (currentWeekScore / (daysInCurrentWeek * maxDailyScore)) * 100 : 0;
-
-    // To properly show pacing regressions, calculate what the previous week's score was *at this exact same point in the week*.
-    const previousPaceTargetScore = previousWeekScore * (daysInCurrentWeek / 7);
-    const previousRate = previousWeekIndex >= 0 && maxDailyScore > 0 ? (previousPaceTargetScore / (daysInCurrentWeek * maxDailyScore)) * 100 : 0;
-
-    return Math.round(currentRate - previousRate);
-  }, [weekCompletions, habits.length, profile?.created_at]);
+    return habits.length > 0 ? Math.round(totalImprovement / habits.length) : 0;
+  }, [weekCompletions, habits, cycleData]);
 
   const userName = user?.user_metadata?.full_name?.split(" ")[0] || user?.email?.split("@")[0] || "there";
 
@@ -119,7 +130,7 @@ const Dashboard = () => {
       <StatsCards
         todayScore={todayScore}
         currentStreak={userStats?.currentStreak || 0}
-        cycleScore={completedCount}
+        cycleDay={cycleData.cycleDay}
         improvement={improvement}
       />
 
@@ -149,8 +160,11 @@ const Dashboard = () => {
                     habit={habit}
                     weekCompletions={weekCompletions}
                     todayCompletion={todayCompletion}
+                    cycleWeekDates={cycleData.cycleWeekDates}
+                    prevCycleWeekDates={cycleData.prevCycleWeekDates}
+                    daysElapsedInWeek={cycleData.daysElapsedInWeek}
                     onLogEffort={(habitId, level) => logEffort.mutate({ habitId, effortLevel: level, isNew: !todayCompletion })}
-                    onDelete={(habitId) => deleteHabit.mutate(habitId)}
+                    onArchive={(habitId) => archiveHabit.mutate(habitId)}
                   />
                 );
               })}
