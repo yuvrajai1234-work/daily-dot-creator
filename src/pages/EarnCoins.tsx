@@ -2,12 +2,17 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Check, Play, Crown, Info } from "lucide-react";
+import { Check, Play, Crown, Info, Zap } from "lucide-react";
 import { motion } from "framer-motion";
 import { useProfile } from "@/hooks/useProfile";
-import { useClaimBCoins, getMaxBCoins } from "@/hooks/useCoins";
+import { getMaxBCoins } from "@/hooks/useCoins";
+import { useAddXP } from "@/hooks/useXP";
 import { Progress } from "@/components/ui/progress";
 import { differenceInDays, endOfWeek } from "date-fns";
+import { toast } from "sonner";
+import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/components/AuthProvider";
+import { useQueryClient } from "@tanstack/react-query";
 
 const subscriptionPlans = [
   {
@@ -37,11 +42,27 @@ const subscriptionPlans = [
   },
 ];
 
+// XP is rewarded for the first 5 ad watches per day only
+const MAX_XP_ADS = 5;
+
+// localStorage key scoped to today's date — auto-resets each calendar day
+const getTodayAdKey = () => `ad_views_${new Date().toISOString().slice(0, 10)}`;
+const getTodayAdCount = () => parseInt(localStorage.getItem(getTodayAdKey()) || "0", 10);
+const incrementTodayAdCount = () => {
+  const key = getTodayAdKey();
+  const next = getTodayAdCount() + 1;
+  localStorage.setItem(key, String(next));
+  return next;
+};
+
 const EarnCoinsPage = () => {
-  const [adViews, setAdViews] = useState(0);
-  const maxAds = 5;
+  // Initialise from localStorage so the count persists across page refreshes
+  const [adViews, setAdViews] = useState(() => getTodayAdCount());
+  const [isWatching, setIsWatching] = useState(false);
   const { data: profile } = useProfile();
-  const claimBCoins = useClaimBCoins();
+  const { user } = useAuth();
+  const addXP = useAddXP();
+  const queryClient = useQueryClient();
 
   const bCoins = (profile as any)?.b_coin_balance || 0;
   const bLevel = (profile as any)?.level || 1;
@@ -49,10 +70,51 @@ const EarnCoinsPage = () => {
   const bProgress = Math.round((bCoins / maxB) * 100);
   const daysUntilReset = differenceInDays(endOfWeek(new Date(), { weekStartsOn: 1 }), new Date());
 
-  const handleWatchAd = () => {
-    if (adViews >= maxAds) return;
-    setAdViews(adViews + 1);
-    claimBCoins.mutate({ amount: 10 });
+  const xpLimitReached = adViews >= MAX_XP_ADS;
+  const xpAdsLeft = Math.max(0, MAX_XP_ADS - adViews);
+
+  const handleWatchAd = async () => {
+    if (!user || isWatching) return;
+    setIsWatching(true);
+
+    const newCount = incrementTodayAdCount();
+    setAdViews(newCount);
+    const givesXP = newCount <= MAX_XP_ADS;
+
+    try {
+      // Always give 10 B Coins — watching is unlimited
+      const { data: profileData } = await supabase
+        .from("profiles")
+        .select("b_coin_balance, level")
+        .eq("user_id", user.id)
+        .single();
+
+      if (profileData) {
+        const currentBalance = profileData.b_coin_balance || 0;
+        const maxBal = getMaxBCoins(profileData.level || 1);
+        const newBalance = Math.min(currentBalance + 10, maxBal);
+        await supabase
+          .from("profiles")
+          .update({ b_coin_balance: newBalance })
+          .eq("user_id", user.id);
+        queryClient.invalidateQueries({ queryKey: ["profile"] });
+      }
+
+      // Give XP only for the first MAX_XP_ADS watches per day
+      if (givesXP) {
+        addXP.mutate({ amount: 10, activityType: "watch_ad", description: "Watched an ad" });
+        const remaining = MAX_XP_ADS - newCount;
+        toast.success(
+          `🎬 +10 B Coins  ⚡ +10 XP${remaining > 0 ? `  (${remaining} XP reward${remaining !== 1 ? "s" : ""} left today)` : "  (daily XP limit reached!)"}`
+        );
+      } else {
+        toast.success("🎬 +10 B Coins  (XP limit reached for today — keep watching for coins!)");
+      }
+    } catch {
+      toast.error("Failed to claim ad reward");
+    } finally {
+      setIsWatching(false);
+    }
   };
 
   return (
@@ -114,14 +176,30 @@ const EarnCoinsPage = () => {
               </CardTitle>
               <p className="text-sm text-muted-foreground mt-1">Daily engagement, watching ads, newsletter feedback, surveys</p>
             </div>
-            <Button
-              onClick={handleWatchAd}
-              disabled={adViews >= maxAds || claimBCoins.isPending}
-              className="gradient-primary border-0 hover:opacity-90"
-            >
-              <Play className="w-4 h-4 mr-2" />
-              Watch Ad ({maxAds - adViews} left)
-            </Button>
+            <div className="flex flex-col items-end gap-1.5">
+              <Button
+                onClick={handleWatchAd}
+                disabled={isWatching}
+                className="gradient-primary border-0 hover:opacity-90"
+              >
+                <Play className="w-4 h-4 mr-2" />
+                {isWatching ? "Loading..." : "Watch Ad"}
+              </Button>
+              {/* XP reward status */}
+              <div className="text-xs flex items-center gap-1">
+                {xpLimitReached ? (
+                  <span className="text-muted-foreground flex items-center gap-1">
+                    <Zap className="w-3 h-3" />
+                    XP limit reached for today
+                  </span>
+                ) : (
+                  <span className="text-green-500 flex items-center gap-1 font-medium">
+                    <Zap className="w-3 h-3" />
+                    {xpAdsLeft} XP reward{xpAdsLeft !== 1 ? "s" : ""} left today
+                  </span>
+                )}
+              </div>
+            </div>
           </CardHeader>
         </Card>
       </motion.div>
@@ -143,8 +221,7 @@ const EarnCoinsPage = () => {
             whileHover={{ y: -5 }}
           >
             <Card
-              className={`glass border-border/50 flex flex-col h-full relative ${plan.recommended ? "border-destructive shadow-lg" : ""
-                }`}
+              className={`glass border-border/50 flex flex-col h-full relative ${plan.recommended ? "border-destructive shadow-lg" : ""}`}
             >
               {plan.recommended && (
                 <div className="absolute -top-3 left-1/2 -translate-x-1/2">
