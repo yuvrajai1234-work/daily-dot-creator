@@ -35,6 +35,7 @@ export const useHabits = () => {
       const { data, error } = await supabase
         .from("habits")
         .select("*")
+        .eq("user_id", user!.id)
         .eq("is_archived", false)
         .order("created_at", { ascending: true });
       if (error) throw error;
@@ -54,6 +55,7 @@ export const useTodayCompletions = () => {
       const { data, error } = await supabase
         .from("habit_completions")
         .select("*")
+        .eq("user_id", user!.id)
         .eq("completion_date", today);
       if (error) throw error;
       return data as HabitCompletion[];
@@ -74,6 +76,7 @@ export const useWeekCompletions = () => {
       const { data, error } = await supabase
         .from("habit_completions")
         .select("*")
+        .eq("user_id", user!.id)
         .gte("completion_date", weekAgo.toISOString().split("T")[0])
         .lte("completion_date", today.toISOString().split("T")[0]);
       if (error) throw error;
@@ -93,6 +96,7 @@ export const useTodayReflection = () => {
       const { data, error } = await supabase
         .from("daily_reflections")
         .select("*")
+        .eq("user_id", user!.id)
         .eq("reflection_date", today)
         .maybeSingle();
       if (error) throw error;
@@ -111,6 +115,7 @@ export const useAllCompletions = () => {
       const { data, error } = await supabase
         .from("habit_completions")
         .select("*")
+        .eq("user_id", user!.id)
         .order("completion_date", { ascending: false });
       if (error) throw error;
       return data as HabitCompletion[];
@@ -306,6 +311,7 @@ export const useArchivedHabits = () => {
       const { data, error } = await supabase
         .from("habits")
         .select("*")
+        .eq("user_id", user!.id)
         .eq("is_archived", true)
         .order("created_at", { ascending: false });
       if (error) throw error;
@@ -346,6 +352,7 @@ export const useReflections = () => {
       const { data, error } = await supabase
         .from("daily_reflections")
         .select("*")
+        .eq("user_id", user!.id)
         .order("reflection_date", { ascending: false })
         .limit(7);
       if (error) throw error;
