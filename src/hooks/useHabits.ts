@@ -2,7 +2,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/components/AuthProvider";
 import { toast } from "sonner";
-import { getAppDate } from "@/lib/dateUtils";
+import { getAppDate, getAppDateOffset } from "@/lib/dateUtils";
 import { optimisticXPUpdate } from "@/hooks/useXP";
 
 export interface Habit {
@@ -66,9 +66,9 @@ export const useTodayCompletions = () => {
 
 export const useWeekCompletions = () => {
   const { user } = useAuth();
-  const today = new Date();
-  const weekAgo = new Date(today);
-  weekAgo.setDate(weekAgo.getDate() - 6);
+  // Fetch 14 days (today + 13 previous days) to support week-over-week comparisons
+  const todayStr = getAppDate();
+  const twoWeeksAgoStr = getAppDateOffset(-13);
 
   return useQuery({
     queryKey: ["week-completions", user?.id],
@@ -77,8 +77,8 @@ export const useWeekCompletions = () => {
         .from("habit_completions")
         .select("*")
         .eq("user_id", user!.id)
-        .gte("completion_date", weekAgo.toISOString().split("T")[0])
-        .lte("completion_date", today.toISOString().split("T")[0]);
+        .gte("completion_date", twoWeeksAgoStr)
+        .lte("completion_date", todayStr);
       if (error) throw error;
       return data as HabitCompletion[];
     },

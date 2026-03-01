@@ -6,7 +6,7 @@ import StatsCards from "@/components/dashboard/StatsCards";
 import HabitCard from "@/components/dashboard/HabitCard";
 import AIReflection from "@/components/dashboard/AIReflection";
 import AddHabitDialog from "@/components/AddHabitDialog";
-import { getGreeting } from "@/lib/dateUtils";
+import { getGreeting, getAppDate } from "@/lib/dateUtils";
 
 const Dashboard = () => {
   const { user } = useAuth();
@@ -28,6 +28,33 @@ const Dashboard = () => {
   const todayScore = useMemo(() => {
     return todayCompletions.reduce((sum, c) => sum + (c.effort_level || 0), 0);
   }, [todayCompletions]);
+
+  const improvement = useMemo(() => {
+    if (habits.length === 0) return 0;
+
+    let currentWeekScore = 0;
+    let previousWeekScore = 0;
+
+    const todayDate = new Date(getAppDate() + "T00:00:00");
+    const todayTime = todayDate.getTime();
+
+    weekCompletions.forEach((c) => {
+      const compDate = new Date(c.completion_date + "T00:00:00");
+      const diffDays = Math.round((todayTime - compDate.getTime()) / (1000 * 60 * 60 * 24));
+
+      if (diffDays >= 0 && diffDays <= 6) {
+        currentWeekScore += (c.effort_level || 0);
+      } else if (diffDays >= 7 && diffDays <= 13) {
+        previousWeekScore += (c.effort_level || 0);
+      }
+    });
+
+    const maxScore = habits.length * 7 * 4;
+    const currentRate = (currentWeekScore / maxScore) * 100;
+    const previousRate = (previousWeekScore / maxScore) * 100;
+
+    return Math.round(currentRate - previousRate);
+  }, [weekCompletions, habits.length]);
 
   const userName = user?.user_metadata?.full_name?.split(" ")[0] || user?.email?.split("@")[0] || "there";
 
@@ -51,7 +78,7 @@ const Dashboard = () => {
         todayScore={todayScore}
         currentStreak={userStats?.currentStreak || 0}
         cycleScore={completedCount}
-        improvement={completionRate > 0 ? completionRate - 50 : 0}
+        improvement={improvement}
       />
 
       {/* Main Content */}

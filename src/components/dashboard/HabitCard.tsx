@@ -11,6 +11,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Trash2 } from "lucide-react";
+import { getAppDate } from "@/lib/dateUtils";
 
 interface HabitCardProps {
   habit: Habit;
@@ -23,9 +24,11 @@ interface HabitCardProps {
 const HabitCard = ({ habit, weekCompletions, todayCompletion, onLogEffort, onDelete }: HabitCardProps) => {
   const weeklyData = useMemo(() => {
     const days = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
-    const today = new Date();
+    const todayStr = getAppDate();
+    const todayDate = new Date(todayStr + "T00:00:00");
+
     return Array.from({ length: 7 }, (_, i) => {
-      const date = new Date(today);
+      const date = new Date(todayDate);
       date.setDate(date.getDate() - (6 - i));
       const dateStr = date.toISOString().split("T")[0];
       const completion = weekCompletions.find(
@@ -40,10 +43,31 @@ const HabitCard = ({ habit, weekCompletions, todayCompletion, onLogEffort, onDel
 
   const currentEffort = todayCompletion?.effort_level || 0;
 
-  // Calculate "improvement" as change from previous week (simplified)
-  const thisWeekTotal = weeklyData.reduce((sum, d) => sum + d.effort, 0);
-  const maxPossible = 7 * 4;
-  const improvement = maxPossible > 0 ? Math.round(((thisWeekTotal / maxPossible) * 100) - 50) : 0;
+  const improvement = useMemo(() => {
+    let currentWeekScore = 0;
+    let previousWeekScore = 0;
+
+    const todayDate = new Date(getAppDate() + "T00:00:00");
+    const todayTime = todayDate.getTime();
+
+    weekCompletions.forEach((c) => {
+      if (c.habit_id !== habit.id) return;
+      const compDate = new Date(c.completion_date + "T00:00:00");
+      const diffDays = Math.round((todayTime - compDate.getTime()) / (1000 * 60 * 60 * 24));
+
+      if (diffDays >= 0 && diffDays <= 6) {
+        currentWeekScore += (c.effort_level || 0);
+      } else if (diffDays >= 7 && diffDays <= 13) {
+        previousWeekScore += (c.effort_level || 0);
+      }
+    });
+
+    const maxScore = 7 * 4;
+    const currentRate = (currentWeekScore / maxScore) * 100;
+    const previousRate = (previousWeekScore / maxScore) * 100;
+
+    return Math.round(currentRate - previousRate);
+  }, [weekCompletions, habit.id]);
 
   return (
     <motion.div
@@ -117,11 +141,10 @@ const HabitCard = ({ habit, weekCompletions, todayCompletion, onLogEffort, onDel
               <button
                 key={level}
                 onClick={() => onLogEffort(habit.id, level)}
-                className={`flex-1 h-9 rounded-full text-sm font-bold transition-smooth ${
-                  currentEffort === level
-                    ? "bg-white text-black shadow-lg"
-                    : "bg-black/20 text-white hover:bg-black/30"
-                }`}
+                className={`flex-1 h-9 rounded-full text-sm font-bold transition-smooth ${currentEffort === level
+                  ? "bg-white text-black shadow-lg"
+                  : "bg-black/20 text-white hover:bg-black/30"
+                  }`}
               >
                 {level}
               </button>
