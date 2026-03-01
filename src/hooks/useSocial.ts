@@ -415,16 +415,41 @@ export const useCommunityNotifications = (communityId: string) => {
             const mentions = (mentionsResult.data || []).map((m: any) => ({ ...m, type: 'mention' }));
             const replies = (repliesResult.data || []).map((m: any) => ({ ...m, type: 'reply' }));
 
-            // Merge and dedup
             const all = [...mentions, ...replies];
             const unique = Array.from(new Map(all.map(item => [item.id, item])).values());
 
+            // Get read notifications from local storage
+            const readNotifsJSON = localStorage.getItem("read_community_notifications");
+            const readNotifs = readNotifsJSON ? JSON.parse(readNotifsJSON) : [];
+
+            // Filter out read notifications
+            const unread = unique.filter((item: any) => !readNotifs.includes(item.id));
+
             // Sort by created_at desc
-            return unique.sort((a: any, b: any) =>
+            return unread.sort((a: any, b: any) =>
                 new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
             ) as NotificationMessage[];
         },
         enabled: !!user && !!communityId,
         refetchInterval: 30000 // Poll every 30s
+    });
+};
+
+export const useMarkNotificationRead = () => {
+    const queryClient = useQueryClient();
+
+    return useMutation({
+        mutationFn: async (notificationId: string) => {
+            const readNotifsJSON = localStorage.getItem("read_community_notifications");
+            const readNotifs = readNotifsJSON ? JSON.parse(readNotifsJSON) : [];
+            if (!readNotifs.includes(notificationId)) {
+                readNotifs.push(notificationId);
+                localStorage.setItem("read_community_notifications", JSON.stringify(readNotifs));
+            }
+            return notificationId;
+        },
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ["community-notifications"] });
+        }
     });
 };

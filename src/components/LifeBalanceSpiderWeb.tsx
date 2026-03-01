@@ -57,6 +57,10 @@ const LifeBalanceSpiderWeb = () => {
                 data: { lifeBalanceScores: scores }
             });
 
+            if (!error) {
+                await supabase.from("profiles" as any).update({ life_balance: scores }).eq("user_id", user.id);
+            }
+
             if (error) {
                 toast.error("Failed to update life balance scores");
             } else {

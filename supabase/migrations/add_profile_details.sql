@@ -1,8 +1,12 @@
--- Add additional profile fields including designation
-ALTER TABLE public.profiles 
-ADD COLUMN IF NOT EXISTS bio TEXT,
-ADD COLUMN IF NOT EXISTS banner_url TEXT,
-ADD COLUMN IF NOT EXISTS location TEXT,
-ADD COLUMN IF NOT EXISTS gender TEXT,
-ADD COLUMN IF NOT EXISTS username TEXT,
-ADD COLUMN IF NOT EXISTS designation TEXT;
+ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS age integer;
+ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS weight numeric;
+ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS height numeric;
+ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS bmi numeric;
+ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS body_type text;
+ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS status text;
+ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS archetype text;
+ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS personality_traits text[];
+ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS life_balance jsonb;
+ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS habits_completed integer DEFAULT 0;
+ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS current_streak integer DEFAULT 0;
+ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS improvement_rate text;

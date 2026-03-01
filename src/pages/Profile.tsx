@@ -106,6 +106,14 @@ const ProfilePage = () => {
         location,
         gender,
         designation,
+        age: age ? Number(age) : null,
+        weight: weight ? Number(weight) : null,
+        height: height ? Number(height) : null,
+        bmi: bmi ? Number(bmi) : null,
+        body_type: bodyType,
+        status,
+        archetype,
+        personality_traits: selectedTraits,
       };
       await supabase.from("profiles").update(publicUpdates).eq("user_id", user.id);
     }

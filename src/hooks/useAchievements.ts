@@ -79,31 +79,38 @@ export const useClaimAchievement = () => {
   });
 };
 
-export const useUserStats = () => {
+export const useUserStats = (targetUserId?: string) => {
   const { user } = useAuth();
+  const uId = targetUserId || user?.id;
 
   return useQuery({
-    queryKey: ["user-stats", user?.id],
+    queryKey: ["user-stats", uId],
     queryFn: async () => {
+      if (!uId) return { totalCompletions: 0, totalHabits: 0, totalReflections: 0, bestStreak: 0 };
+
       // Get total completions
       const { count: totalCompletions } = await supabase
         .from("habit_completions")
-        .select("*", { count: "exact", head: true });
+        .select("*", { count: "exact", head: true })
+        .eq("user_id", uId);
 
       // Get total habits
       const { count: totalHabits } = await supabase
         .from("habits")
-        .select("*", { count: "exact", head: true });
+        .select("*", { count: "exact", head: true })
+        .eq("user_id", uId);
 
       // Get total reflections
       const { count: totalReflections } = await supabase
         .from("daily_reflections")
-        .select("*", { count: "exact", head: true });
+        .select("*", { count: "exact", head: true })
+        .eq("user_id", uId);
 
       // Calculate best streak across all habits
       const { data: habits } = await supabase
         .from("habits")
-        .select("id");
+        .select("id")
+        .eq("user_id", uId);
 
       let bestStreak = 0;
       if (habits) {
@@ -141,6 +148,6 @@ export const useUserStats = () => {
         bestStreak,
       };
     },
-    enabled: !!user,
+    enabled: !!uId,
   });
 };

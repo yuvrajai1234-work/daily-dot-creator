@@ -26,7 +26,7 @@ import {
     Plus
 } from "lucide-react";
 import { useAuth } from "@/components/AuthProvider";
-import { useFriendships, useCommunityNotifications } from "@/hooks/useSocial";
+import { useFriendships, useCommunityNotifications, useMarkNotificationRead } from "@/hooks/useSocial";
 import { CommunitySettingsDialog } from "./CommunitySettingsDialog";
 import { toast } from "sonner";
 
@@ -47,6 +47,7 @@ export const CommunityDetailView = ({ community, onBack }: CommunityDetailViewPr
     const [activeChannelId, setActiveChannelId] = useState<string | null>(null);
     const { data: pinnedMessages = [] } = usePinnedMessages(activeChannelId || "");
     const { data: notifications = [] } = useCommunityNotifications(community.id);
+    const markNotificationRead = useMarkNotificationRead();
     const [highlightMessageId, setHighlightMessageId] = useState<string | null>(null);
     const [showMembers, setShowMembers] = useState(true);
 
@@ -279,6 +280,7 @@ export const CommunityDetailView = ({ community, onBack }: CommunityDetailViewPr
                                                     key={notif.id}
                                                     className="p-3 border-b last:border-0 hover:bg-muted/20 transition-colors cursor-pointer"
                                                     onClick={() => {
+                                                        markNotificationRead.mutate(notif.id);
                                                         if (notif.channel_id) {
                                                             setActiveChannelId(notif.channel_id);
                                                             setHighlightMessageId(notif.id);
