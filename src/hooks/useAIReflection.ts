@@ -24,7 +24,8 @@ export const useAIReflection = () => {
     const { data: habits = [] } = useHabits();
 
     const getDailyStats = (): DailyStats => {
-        const habitsCompletedToday = todayCompletions.length;
+        const activeHabitIds = new Set(habits.filter(h => !h.is_archived).map(h => h.id));
+        const habitsCompletedToday = todayCompletions.filter(c => activeHabitIds.has(c.habit_id)).length;
         const totalHabits = habits.filter(h => !h.is_archived).length;
         const currentStreak = stats?.bestStreak || 0;
         const totalCompletions = stats?.totalCompletions || 0;

@@ -29,8 +29,11 @@ const Dashboard = () => {
   const completionRate = habits.length > 0 ? Math.round((completedCount / habits.length) * 100) : 0;
 
   const todayScore = useMemo(() => {
-    return todayCompletions.reduce((sum, c) => sum + (c.effort_level || 0), 0);
-  }, [todayCompletions]);
+    const activeIds = new Set(habits.map(h => h.id)); // habits from useHabits() are already active-only
+    return todayCompletions
+      .filter(c => activeIds.has(c.habit_id))
+      .reduce((sum, c) => sum + (c.effort_level || 0), 0);
+  }, [todayCompletions, habits]);
 
   // ─── Cycle week metadata (all anchored to account creation date) ───────────
   // Returns the date strings for the current and previous cycle weeks,
