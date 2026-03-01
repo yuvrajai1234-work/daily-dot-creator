@@ -40,9 +40,6 @@ export const FullUserProfileDialog = ({ userId, open, onOpenChange }: FullUserPr
         queryFn: async () => {
             const p = profile as any;
             return {
-                habitsCompleted: p?.habits_completed,
-                currentStreak: p?.current_streak,
-                improvementRate: p?.improvement_rate,
                 lifeBalance: p?.life_balance
                     ? (Array.isArray(p.life_balance)
                         ? p.life_balance
@@ -178,22 +175,23 @@ export const FullUserProfileDialog = ({ userId, open, onOpenChange }: FullUserPr
                         </TabsContent>
 
                         {/* Habits & Streak Window */}
-                        <TabsContent value="habits" className="grid grid-cols-1 sm:grid-cols-2 gap-4 animate-in fade-in-50 slide-in-from-bottom-2">
-                            <Card className="bg-orange-500/10 border-orange-500/20">
-                                <CardContent className="p-6 flex flex-col items-center justify-center text-center">
-                                    <Flame className="w-12 h-12 text-orange-500 mb-2" />
-                                    <h3 className="text-2xl font-black text-orange-500">{stats?.currentStreak ?? '--'} Days</h3>
-                                    <p className="text-sm text-orange-500/80 mb-1">Current Streak</p>
-                                    <p className="text-[10px] sm:text-xs text-orange-500/50 font-medium">All-time Best: {realStats?.bestStreak || 0} Days</p>
-                                </CardContent>
-                            </Card>
-                            <Card className="bg-green-500/10 border-green-500/20">
-                                <CardContent className="p-6 flex flex-col items-center justify-center text-center">
-                                    <Dumbbell className="w-12 h-12 text-green-500 mb-2" />
-                                    <h3 className="text-2xl font-black text-green-500">{stats?.habitsCompleted ?? '--'}</h3>
-                                    <p className="text-sm text-green-500/80">All-time Habits Done</p>
-                                </CardContent>
-                            </Card>
+                        <TabsContent value="habits" className="animate-in fade-in-50 slide-in-from-bottom-2">
+                            <div className="grid grid-cols-2 gap-3">
+                                {[
+                                    { label: "Total Habits", value: realStats?.totalHabits ?? '--', color: "text-primary" },
+                                    { label: "Completions", value: realStats?.totalCompletions ?? '--', color: "text-success" },
+                                    { label: "Current Streak", value: realStats?.currentStreak != null ? `${realStats.currentStreak} days` : '--', color: "text-warning" },
+                                    { label: "Best Streak", value: realStats?.bestStreak != null ? `${realStats.bestStreak} days` : '--', color: "text-orange-400" },
+                                    { label: "Reflections", value: realStats?.totalReflections ?? '--', color: "text-primary" },
+                                ].map((stat) => (
+                                    <Card key={stat.label} className="bg-secondary/30 border-none">
+                                        <CardContent className="p-4 flex flex-col items-center justify-center text-center">
+                                            <p className={`text-2xl font-bold ${stat.color}`}>{stat.value}</p>
+                                            <p className="text-xs text-muted-foreground mt-1">{stat.label}</p>
+                                        </CardContent>
+                                    </Card>
+                                ))}
+                            </div>
                         </TabsContent>
 
                         {/* Life Balance Window */}
@@ -226,8 +224,8 @@ export const FullUserProfileDialog = ({ userId, open, onOpenChange }: FullUserPr
                             <div className="grid grid-cols-3 gap-3 sm:gap-4">
                                 <Card className="bg-secondary/30 border-none col-span-3">
                                     <CardContent className="p-4 flex flex-col items-center justify-center text-center h-24">
-                                        <div className="text-3xl font-bold text-primary mb-1">{stats?.improvementRate ?? '--'}</div>
-                                        <div className="text-xs text-muted-foreground">Monthly Improvement</div>
+                                        <div className="text-3xl font-bold text-primary mb-1">{realStats?.totalReflections ?? '--'}</div>
+                                        <div className="text-xs text-muted-foreground">Total Reflections</div>
                                     </CardContent>
                                 </Card>
                                 <Card className="bg-secondary/30 border-none flex flex-col justify-center">

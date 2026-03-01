@@ -86,7 +86,7 @@ export const useUserStats = (targetUserId?: string) => {
   return useQuery({
     queryKey: ["user-stats", uId],
     queryFn: async () => {
-      if (!uId) return { totalCompletions: 0, totalHabits: 0, totalReflections: 0, bestStreak: 0 };
+      if (!uId) return { totalCompletions: 0, totalHabits: 0, totalReflections: 0, bestStreak: 0, currentStreak: 0 };
 
       // Get total completions
       const { count: totalCompletions } = await supabase
@@ -106,38 +106,59 @@ export const useUserStats = (targetUserId?: string) => {
         .select("*", { count: "exact", head: true })
         .eq("user_id", uId);
 
-      // Calculate best streak across all habits
-      const { data: habits } = await supabase
-        .from("habits")
-        .select("id")
+      // ── Streak calculation using all unique dates across all habits ────────
+      const { data: completionRows } = await supabase
+        .from("habit_completions")
+        .select("completion_date")
         .eq("user_id", uId);
 
+      // Deduplicate and sort ascending (ISO date strings sort correctly as strings)
+      const uniqueDatesAsc: string[] = [
+        ...new Set((completionRows || []).map((r: any) => r.completion_date as string)),
+      ].sort();
+
+      let currentStreak = 0;
       let bestStreak = 0;
-      if (habits) {
-        for (const habit of habits) {
-          const { data: completions } = await supabase
-            .from("habit_completions")
-            .select("completion_date")
-            .eq("habit_id", habit.id)
-            .order("completion_date", { ascending: false });
 
-          if (completions && completions.length > 0) {
-            let streak = 0;
-            const today = new Date();
-            today.setHours(0, 0, 0, 0);
-
-            for (let i = 0; i < completions.length; i++) {
-              const expected = new Date(today);
-              expected.setDate(expected.getDate() - i);
-              const completionDate = new Date(completions[i].completion_date + "T00:00:00");
-              if (completionDate.getTime() === expected.getTime()) {
-                streak++;
-              } else {
-                break;
-              }
-            }
-            bestStreak = Math.max(bestStreak, streak);
+      if (uniqueDatesAsc.length > 0) {
+        // ── All-time best streak (longest consecutive-day sequence ever) ──
+        let run = 1;
+        bestStreak = 1;
+        for (let i = 1; i < uniqueDatesAsc.length; i++) {
+          const prev = new Date(uniqueDatesAsc[i - 1] + "T00:00:00");
+          const curr = new Date(uniqueDatesAsc[i] + "T00:00:00");
+          const diffDays = Math.round((curr.getTime() - prev.getTime()) / 86_400_000);
+          if (diffDays === 1) {
+            run++;
+            if (run > bestStreak) bestStreak = run;
+          } else {
+            run = 1;
           }
+        }
+
+        // ── Current streak (consecutive days ending today or yesterday) ──
+        const dateSet = new Set(uniqueDatesAsc);
+
+        // Use LOCAL date parts — toISOString() would shift to UTC and give
+        // the wrong calendar date for users in UTC+ timezones (e.g. IST +5:30).
+        const localDateStr = (d: Date) => {
+          const y = d.getFullYear();
+          const m = String(d.getMonth() + 1).padStart(2, "0");
+          const day = String(d.getDate()).padStart(2, "0");
+          return `${y}-${m}-${day}`;
+        };
+
+        const today = new Date();
+        let cursor = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+
+        // If nothing logged today, check from yesterday (streak still alive)
+        if (!dateSet.has(localDateStr(cursor))) {
+          cursor.setDate(cursor.getDate() - 1);
+        }
+
+        while (dateSet.has(localDateStr(cursor))) {
+          currentStreak++;
+          cursor.setDate(cursor.getDate() - 1);
         }
       }
 
@@ -146,6 +167,7 @@ export const useUserStats = (targetUserId?: string) => {
         totalHabits: totalHabits || 0,
         totalReflections: totalReflections || 0,
         bestStreak,
+        currentStreak,
       };
     },
     enabled: !!uId,

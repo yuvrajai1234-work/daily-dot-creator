@@ -97,6 +97,13 @@ const ProfilePage = () => {
 
     const { error } = await supabase.auth.updateUser({ data: updates });
 
+    const typeStr = [
+      introvertExtrovert < 50 ? 'I' : 'E',
+      analyticalCreative < 50 ? 'S' : 'N',
+      loyalFickle < 50 ? 'F' : 'T',
+      passiveActive < 50 ? 'P' : 'J'
+    ].join('');
+
     // Sync with public profiles table
     if (!error && user) {
       const publicUpdates: any = {
@@ -114,6 +121,7 @@ const ProfilePage = () => {
         status,
         archetype,
         personality_traits: selectedTraits,
+        personality_type: typeStr,
       };
       await supabase.from("profiles").update(publicUpdates).eq("user_id", user.id);
     }
@@ -183,7 +191,22 @@ const ProfilePage = () => {
       passiveActive,
     };
 
+    const typeStr = [
+      introvertExtrovert < 50 ? 'I' : 'E',
+      analyticalCreative < 50 ? 'S' : 'N',
+      loyalFickle < 50 ? 'F' : 'T',
+      passiveActive < 50 ? 'P' : 'J'
+    ].join('');
+
     const { error } = await supabase.auth.updateUser({ data: updates });
+
+    // Sync with public profiles table
+    if (!error && user) {
+      await supabase.from("profiles").update({
+        personality_type: typeStr,
+      }).eq("user_id", user.id);
+    }
+
     if (error) {
       toast.error("Failed to update personality");
     } else {

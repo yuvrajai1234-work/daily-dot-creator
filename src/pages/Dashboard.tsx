@@ -49,7 +49,7 @@ const Dashboard = () => {
       {/* Stats */}
       <StatsCards
         todayScore={todayScore}
-        currentStreak={userStats?.bestStreak || 0}
+        currentStreak={userStats?.currentStreak || 0}
         cycleScore={completedCount}
         improvement={completionRate > 0 ? completionRate - 50 : 0}
       />

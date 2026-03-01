@@ -24,7 +24,7 @@ const InboxPage = () => {
 
   const hasCompletedHabitToday = todayCompletions.length > 0;
   const hasWrittenReflectionToday = !!todayReflection; // Check if reflection exists for today
-  const currentStreak = stats?.bestStreak || 0;
+  const currentStreak = stats?.currentStreak || 0;
 
   // Create a set of claimed reward IDs for quick lookup
   const claimedIds = new Set(claimedRewards.map((cr) => cr.reward_id));
