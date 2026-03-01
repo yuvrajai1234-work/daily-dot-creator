@@ -85,10 +85,12 @@ export const getCompletionDate = (): string => {
 };
 
 /**
- * Get current date and time in IST
+ * Get current IST date string offset by N days.
+ * offsetDays = 0 → today, -7 → 7 days ago, -14 → 14 days ago
  */
-export const getISTDateTime = (): Date => {
+export const getAppDateOffset = (offsetDays: number): string => {
     const now = new Date();
     const istOffset = 5.5 * 60 * 60 * 1000;
-    return new Date(now.getTime() + istOffset);
+    const istTime = new Date(now.getTime() + istOffset + offsetDays * 24 * 60 * 60 * 1000);
+    return istTime.toISOString().split("T")[0];
 };

@@ -130,6 +130,37 @@ export const useCreateHabit = () => {
 
   return useMutation({
     mutationFn: async (habit: { name: string; icon: string; color: string; description?: string }) => {
+      // Check if habit already exists
+      const { data: existingHabits, error: searchError } = await supabase
+        .from("habits")
+        .select("id")
+        .eq("user_id", user!.id)
+        .ilike("name", habit.name);
+
+      if (searchError) throw searchError;
+
+      if (existingHabits && existingHabits.length > 0) {
+        throw new Error(`You already have a habit named "${habit.name}"!`);
+      }
+
+      // Creating habit costs 20 B coins
+      const { data: profile } = await supabase
+        .from("profiles")
+        .select("b_coin_balance")
+        .eq("user_id", user!.id)
+        .single();
+
+      const bBalance = (profile as any)?.b_coin_balance || 0;
+      if (bBalance < 20) {
+        throw new Error("Not enough B Coins! You need 20 B Coins to create a habit.");
+      }
+
+      // Deduct B coins
+      await supabase
+        .from("profiles")
+        .update({ b_coin_balance: bBalance - 20 })
+        .eq("user_id", user!.id);
+
       const { data, error } = await supabase
         .from("habits")
         .insert({ ...habit, user_id: user!.id })
@@ -140,7 +171,8 @@ export const useCreateHabit = () => {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["habits"] });
-      toast.success("Habit created!");
+      queryClient.invalidateQueries({ queryKey: ["profile"] });
+      toast.success("Habit created! (-20 B Coins)");
     },
     onError: (error: any) => {
       toast.error(error.message || "Failed to create habit");

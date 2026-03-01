@@ -209,9 +209,8 @@ const AddHabitDialog = () => {
                       key={i}
                       type="button"
                       onClick={() => setIcon(i)}
-                      className={`text-xl p-1.5 rounded-lg transition-smooth ${
-                        icon === i ? "bg-primary/20 ring-2 ring-primary" : "hover:bg-secondary"
-                      }`}
+                      className={`text-xl p-1.5 rounded-lg transition-smooth ${icon === i ? "bg-primary/20 ring-2 ring-primary" : "hover:bg-secondary"
+                        }`}
                     >
                       {i}
                     </button>
@@ -227,9 +226,8 @@ const AddHabitDialog = () => {
                       key={c}
                       type="button"
                       onClick={() => setColor(c)}
-                      className={`h-8 rounded-lg transition-smooth ${
-                        color === c ? "ring-2 ring-foreground ring-offset-2 ring-offset-background" : ""
-                      }`}
+                      className={`h-8 rounded-lg transition-smooth ${color === c ? "ring-2 ring-foreground ring-offset-2 ring-offset-background" : ""
+                        }`}
                       style={{ backgroundColor: c }}
                     />
                   ))}
@@ -241,7 +239,7 @@ const AddHabitDialog = () => {
                 disabled={createHabit.isPending}
                 className="w-full gradient-primary hover:opacity-90"
               >
-                {createHabit.isPending ? "Creating..." : "Create Habit"}
+                {createHabit.isPending ? "Creating..." : "Create Habit (Costs 20 B Coins)"}
               </Button>
             </form>
           </ScrollArea>
