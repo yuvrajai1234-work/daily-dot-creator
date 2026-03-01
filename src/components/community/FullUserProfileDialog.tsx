@@ -7,7 +7,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
-import { Flame, Brain, Dumbbell, Zap, Coins, Clock, MapPin, User, Activity, Calendar, Users, Weight as WeightIcon, Ruler, Heart, Crown } from "lucide-react";
+import { Flame, Brain, Dumbbell, Zap, Clock, MapPin, User, Activity, Calendar, Users, Weight as WeightIcon, Ruler, Heart, Crown } from "lucide-react";
 import { Radar, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, ResponsiveContainer } from "recharts";
 import { getLevelInfo, getLevelTier } from "@/hooks/useXP";
 import { useUserStats } from "@/hooks/useAchievements";
@@ -52,6 +52,7 @@ export const FullUserProfileDialog = ({ userId, open, onOpenChange }: FullUserPr
                 bodyType: p?.body_type,
                 status: p?.status,
                 archetype: p?.archetype,
+                personalityType: p?.personality_type || '',
                 personalityTraits: p?.personality_traits || [],
             };
         },
@@ -100,8 +101,8 @@ export const FullUserProfileDialog = ({ userId, open, onOpenChange }: FullUserPr
                                 Lvl {levelInfo.level} - {tier.name}
                             </Badge>
                             <div className="mt-2 text-xs text-muted-foreground flex gap-3 justify-end whitespace-nowrap">
-                                <span className="flex items-center gap-1 text-yellow-500 font-bold"><Coins className="w-4 h-4" /> {profile.coin_balance || 0}</span>
-                                <span className="flex items-center gap-1 font-bold"><Zap className="w-4 h-4 text-blue-500" /> {profile.total_xp || 0}</span>
+                                <span className="flex items-center gap-1 text-purple-400 font-bold"><Brain className="w-4 h-4" /> {p.personality_type || p.archetype || '--'}</span>
+                                <span className="flex items-center gap-1 font-bold"><Zap className="w-4 h-4 text-green-500" /> {profile.total_xp || 0}</span>
                             </div>
                         </div>
                     </div>
@@ -165,6 +166,10 @@ export const FullUserProfileDialog = ({ userId, open, onOpenChange }: FullUserPr
                                     <div className="flex justify-between items-center">
                                         <span className="text-foreground font-semibold flex items-center gap-3"><MapPin className="w-5 h-5 opacity-70" /> Location</span>
                                         <span className="text-muted-foreground">{p?.location || '--'}</span>
+                                    </div>
+                                    <div className="flex justify-between items-center">
+                                        <span className="text-foreground font-semibold flex items-center gap-3"><Brain className="w-5 h-5 opacity-70" /> Personality</span>
+                                        <span className="font-bold text-purple-400">{stats?.personalityType || '--'}</span>
                                     </div>
                                     <div className="flex justify-between items-center">
                                         <span className="text-foreground font-semibold flex items-center gap-3"><Crown className="w-5 h-5 opacity-70" /> Archetype</span>
