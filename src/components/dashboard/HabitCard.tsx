@@ -11,7 +11,8 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Trash2 } from "lucide-react";
-import { getAppDate } from "@/lib/dateUtils";
+import { getAppDate, formatLocalISODate } from "@/lib/dateUtils";
+import { ImprovementDialog } from "./ImprovementDialog";
 
 interface HabitCardProps {
   habit: Habit;
@@ -22,6 +23,7 @@ interface HabitCardProps {
 }
 
 const HabitCard = ({ habit, weekCompletions, todayCompletion, onLogEffort, onDelete }: HabitCardProps) => {
+
   const weeklyData = useMemo(() => {
     const days = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
     const todayStr = getAppDate();
@@ -30,7 +32,7 @@ const HabitCard = ({ habit, weekCompletions, todayCompletion, onLogEffort, onDel
     return Array.from({ length: 7 }, (_, i) => {
       const date = new Date(todayDate);
       date.setDate(date.getDate() - (6 - i));
-      const dateStr = date.toISOString().split("T")[0];
+      const dateStr = formatLocalISODate(date);
       const completion = weekCompletions.find(
         (c) => c.habit_id === habit.id && c.completion_date === dateStr
       );
@@ -79,33 +81,46 @@ const HabitCard = ({ habit, weekCompletions, todayCompletion, onLogEffort, onDel
         className="overflow-hidden border-0 h-full"
         style={{ backgroundColor: habit.color }}
       >
-        <CardContent className="p-4 flex flex-col h-full">
+        <CardContent className="p-4 flex flex-col h-full relative">
+          <ImprovementDialog
+            overallImprovement={improvement}
+            singleHabitId={habit.id}
+            trigger={
+              <button
+                className="absolute inset-0 w-full h-full z-0 cursor-pointer focus:outline-none hover:bg-black/5 transition-colors rounded-xl"
+                aria-label={`View ${habit.name} improvement`}
+              />
+            }
+          />
+
           {/* Header */}
-          <div className="flex items-center justify-between mb-3">
+          <div className="flex items-center justify-between mb-3 relative z-10 pointer-events-none">
             <div className="flex items-center gap-2">
-              <span className="text-xl">{habit.icon}</span>
-              <p className="font-semibold text-sm text-white truncate">{habit.name}</p>
+              <span className="text-xl pointer-events-auto">{habit.icon}</span>
+              <p className="font-semibold text-sm text-white truncate pointer-events-auto">{habit.name}</p>
             </div>
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <button className="p-1 rounded hover:bg-black/20 transition-smooth">
-                  <MoreHorizontal className="w-4 h-4 text-white/80" />
-                </button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="glass border-border/50">
-                <DropdownMenuItem
-                  className="text-destructive focus:text-destructive cursor-pointer"
-                  onClick={() => onDelete(habit.id)}
-                >
-                  <Trash2 className="w-4 h-4 mr-2" />
-                  Delete Habit
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
+            <div className="pointer-events-auto">
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <button className="p-1 rounded hover:bg-black/20 transition-smooth">
+                    <MoreHorizontal className="w-4 h-4 text-white/80" />
+                  </button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="glass border-border/50">
+                  <DropdownMenuItem
+                    className="text-destructive focus:text-destructive cursor-pointer"
+                    onClick={() => onDelete(habit.id)}
+                  >
+                    <Trash2 className="w-4 h-4 mr-2" />
+                    Delete Habit
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </div>
           </div>
 
           {/* Mini Chart */}
-          <div className="flex-1 min-h-[80px] mb-2">
+          <div className="flex-1 min-h-[80px] mb-2 relative z-10 pointer-events-none">
             <ResponsiveContainer width="100%" height={80}>
               <LineChart data={weeklyData}>
                 <XAxis
@@ -127,23 +142,23 @@ const HabitCard = ({ habit, weekCompletions, todayCompletion, onLogEffort, onDel
           </div>
 
           {/* Footer */}
-          <div className="flex items-center justify-between mb-3">
+          <div className="flex items-center justify-between mb-3 relative z-10 pointer-events-none">
             <span className="text-xs text-white/70 font-medium">Log your effort:</span>
-            <div className="flex items-center gap-1 text-xs text-white/70">
+            <div className="flex items-center gap-1 text-xs text-white/70 pointer-events-auto cursor-default font-medium bg-black/10 px-2 py-1 rounded-full">
               <TrendingUp className="w-3 h-3" />
               <span>{improvement >= 0 ? "+" : ""}{improvement}%</span>
             </div>
           </div>
 
           {/* Effort Buttons */}
-          <div className="flex gap-2">
+          <div className="flex gap-2 relative z-10 pointer-events-auto">
             {[1, 2, 3, 4].map((level) => (
               <button
                 key={level}
                 onClick={() => onLogEffort(habit.id, level)}
                 className={`flex-1 h-9 rounded-full text-sm font-bold transition-smooth ${currentEffort === level
                   ? "bg-white text-black shadow-lg"
-                  : "bg-black/20 text-white hover:bg-black/30"
+                  : "bg-black/20 text-white hover:bg-black/30 bg-opacity-30 backdrop-blur-sm hover:backdrop-blur-md"
                   }`}
               >
                 {level}

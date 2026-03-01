@@ -12,9 +12,12 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/components/AuthProvider";
 import { useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
+import { useProfile } from "@/hooks/useProfile";
+import { getCycleStartDate, formatLocalISODate } from "@/lib/dateUtils";
 
 const AnalyticsPage = () => {
   const { user } = useAuth();
+  const { data: profile } = useProfile();
   const queryClient = useQueryClient();
   const { data: habits = [], isLoading: habitsLoading } = useHabits();
   const { data: completions = [] } = useAllCompletions();
@@ -22,31 +25,31 @@ const AnalyticsPage = () => {
   const { data: archivedHabits = [] } = useArchivedHabits();
   const unarchiveHabit = useUnarchiveHabit();
 
-  const totalHabitPoints = useMemo(() => {
-    return completions.reduce((sum, c) => sum + c.effort_level, 0);
-  }, [completions]);
-
   const habitPointsBreakdown = useMemo(() => {
     return habits.map((habit) => ({
       ...habit,
       points: completions
         .filter((c) => c.habit_id === habit.id)
         .reduce((sum, c) => sum + c.effort_level, 0),
-    }));
+    })).sort((a, b) => b.points - a.points); // Sort by highest points
   }, [habits, completions]);
 
   const chartData = useMemo(() => {
     const data = [];
-    for (let i = 6; i >= 0; i--) {
-      const date = subDays(new Date(), i);
-      const dateString = format(date, "yyyy-MM-dd");
-      const formattedDate = format(date, "MMM dd");
+    const cycleStart = getCycleStartDate(profile?.created_at);
+
+    for (let i = 0; i < 28; i++) {
+      const dateObj = new Date(cycleStart.getTime());
+      dateObj.setDate(dateObj.getDate() + i);
+      const dateString = formatLocalISODate(dateObj);
+      const formattedDate = dateObj.toLocaleDateString("en-US", { month: "short", day: "numeric" });
+
       const dailyCompletions = completions.filter((c) => c.completion_date === dateString);
       const score = dailyCompletions.reduce((acc, curr) => acc + curr.effort_level, 0);
       data.push({ date: formattedDate, score });
     }
     return data;
-  }, [completions]);
+  }, [completions, profile?.created_at]);
 
   const handleArchiveToggle = async (habitId: string) => {
     const { error } = await supabase
@@ -80,8 +83,8 @@ const AnalyticsPage = () => {
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         {[
           { label: "Total Habits", value: habits.length, icon: Target, gradient: "gradient-primary" },
-          { label: "Total Habit Points", value: totalHabitPoints, icon: Zap, gradient: "gradient-success" },
-          { label: "Total Completions", value: completions.length, icon: TrendingUp, gradient: "gradient-hero" },
+          { label: "Total Habit Points", value: habitPointsBreakdown.reduce((sum, h) => sum + h.points, 0), icon: Zap, gradient: "gradient-success" },
+          { label: "Total Completions", value: habitPointsBreakdown.reduce((sum, h) => sum + completions.filter(c => c.habit_id === h.id).length, 0), icon: TrendingUp, gradient: "gradient-hero" },
         ].map((stat) => (
           <motion.div key={stat.label} whileHover={{ y: -2 }}>
             <Card className="glass border-border/50">
@@ -132,7 +135,7 @@ const AnalyticsPage = () => {
         <Card className="glass border-border/50">
           <CardHeader>
             <CardTitle>Daily Habit Score</CardTitle>
-            <CardDescription>Your combined effort score over the last 7 days.</CardDescription>
+            <CardDescription>Your combined effort score over the last 28 days.</CardDescription>
           </CardHeader>
           <CardContent>
             <ResponsiveContainer width="100%" height={350}>

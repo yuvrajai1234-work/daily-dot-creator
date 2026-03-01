@@ -66,9 +66,9 @@ export const useTodayCompletions = () => {
 
 export const useWeekCompletions = () => {
   const { user } = useAuth();
-  // Fetch 14 days (today + 13 previous days) to support week-over-week comparisons
+  // Fetch 28 days (today + 27 previous days) to support 28-day graphs
   const todayStr = getAppDate();
-  const twoWeeksAgoStr = getAppDateOffset(-13);
+  const past28DaysStr = getAppDateOffset(-27);
 
   return useQuery({
     queryKey: ["week-completions", user?.id],
@@ -77,7 +77,7 @@ export const useWeekCompletions = () => {
         .from("habit_completions")
         .select("*")
         .eq("user_id", user!.id)
-        .gte("completion_date", twoWeeksAgoStr)
+        .gte("completion_date", past28DaysStr)
         .lte("completion_date", todayStr);
       if (error) throw error;
       return data as HabitCompletion[];

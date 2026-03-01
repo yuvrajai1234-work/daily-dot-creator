@@ -1,6 +1,7 @@
 import { Card, CardContent } from "@/components/ui/card";
 import { Calendar, Flame, Trophy, TrendingUp } from "lucide-react";
 import { motion } from "framer-motion";
+import { ImprovementDialog } from "./ImprovementDialog";
 
 interface StatsCardsProps {
   todayScore: number;
@@ -19,14 +20,11 @@ const StatsCards = ({ todayScore, currentStreak, cycleScore, improvement }: Stat
 
   return (
     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-      {stats.map((stat, i) => (
-        <motion.div
-          key={stat.label}
-          initial={{ opacity: 0, y: 10 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: i * 0.05 }}
-        >
-          <Card className="border-border/50 bg-card hover:border-primary/30 transition-smooth">
+      {stats.map((stat, i) => {
+        const isImprovement = stat.label === "Improvement";
+
+        const cardContent = (
+          <Card className={`border-border/50 bg-card hover:border-primary/30 transition-smooth h-full ${isImprovement ? 'cursor-pointer' : ''}`}>
             <CardContent className="p-5">
               <div className="flex items-center justify-between">
                 <p className="text-sm text-muted-foreground">{stat.label}</p>
@@ -35,8 +33,24 @@ const StatsCards = ({ todayScore, currentStreak, cycleScore, improvement }: Stat
               <p className="text-2xl font-bold mt-2">{stat.value}</p>
             </CardContent>
           </Card>
-        </motion.div>
-      ))}
+        );
+
+        return (
+          <motion.div
+            key={stat.label}
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: i * 0.05 }}
+            className={isImprovement ? "flex" : ""}
+          >
+            {isImprovement ? (
+              <ImprovementDialog trigger={<div className="w-full flex-1">{cardContent}</div>} overallImprovement={improvement} />
+            ) : (
+              cardContent
+            )}
+          </motion.div>
+        );
+      })}
     </div>
   );
 };

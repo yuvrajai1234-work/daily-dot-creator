@@ -94,3 +94,41 @@ export const getAppDateOffset = (offsetDays: number): string => {
     const istTime = new Date(now.getTime() + istOffset + offsetDays * 24 * 60 * 60 * 1000);
     return istTime.toISOString().split("T")[0];
 };
+
+/**
+ * Calculates the start date of the user's current 28-day cycle.
+ */
+export const getCycleStartDate = (createdAt: string | undefined): Date => {
+    const todayStr = getAppDate();
+    const today = new Date(todayStr + "T00:00:00");
+
+    if (!createdAt) {
+        const d = new Date(today);
+        d.setDate(d.getDate() - 27);
+        return d;
+    }
+
+    const istOffset = 5.5 * 60 * 60 * 1000;
+    const createdAtIst = new Date(new Date(createdAt).getTime() + istOffset);
+    const createdStr = createdAtIst.toISOString().split("T")[0];
+    const created = new Date(createdStr + "T00:00:00");
+
+    const diffMs = today.getTime() - created.getTime();
+    const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+    const cycleIndex = Math.floor(Math.max(0, diffDays) / 28);
+
+    const cycleStart = new Date(created.getTime());
+    cycleStart.setDate(cycleStart.getDate() + (cycleIndex * 28));
+    return cycleStart;
+};
+
+/**
+ * Ensures we get a consistent YYYY-MM-DD string that represents the exact calendar
+ * date locally without applying UTC transformations that could shift it backwards.
+ */
+export const formatLocalISODate = (d: Date): string => {
+    const y = d.getFullYear();
+    const m = String(d.getMonth() + 1).padStart(2, "0");
+    const day = String(d.getDate()).padStart(2, "0");
+    return `${y}-${m}-${day}`;
+};
