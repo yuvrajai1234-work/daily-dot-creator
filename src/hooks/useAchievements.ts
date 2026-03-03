@@ -12,6 +12,9 @@ export interface Achievement {
   requirement_type: string;
   requirement_value: number;
   coin_reward: number;
+  rarity?: string;
+  xp_reward?: number;
+  year_target?: number; // which year (1-5) this is targeted for
 }
 
 export interface UserAchievement {
@@ -20,6 +23,19 @@ export interface UserAchievement {
   achievement_id: string;
   earned_at: string;
 }
+
+export type UserStats = {
+  totalCompletions: number;
+  totalHabits: number;
+  totalReflections: number;
+  bestStreak: number;
+  currentStreak: number;
+  level: number;
+  totalXP: number;
+  daysActive: number;
+  communityPosts: number;
+  longestHabitStreak: number;
+};
 
 export const useAchievements = () => {
   return useQuery({
@@ -85,8 +101,20 @@ export const useUserStats = (targetUserId?: string) => {
 
   return useQuery({
     queryKey: ["user-stats", uId],
-    queryFn: async () => {
-      if (!uId) return { totalCompletions: 0, totalHabits: 0, totalReflections: 0, bestStreak: 0, currentStreak: 0 };
+    queryFn: async (): Promise<UserStats> => {
+      if (!uId)
+        return {
+          totalCompletions: 0,
+          totalHabits: 0,
+          totalReflections: 0,
+          bestStreak: 0,
+          currentStreak: 0,
+          level: 1,
+          totalXP: 0,
+          daysActive: 0,
+          communityPosts: 0,
+          longestHabitStreak: 0,
+        };
 
       // Get total completions
       const { count: totalCompletions } = await supabase
@@ -106,6 +134,20 @@ export const useUserStats = (targetUserId?: string) => {
         .select("*", { count: "exact", head: true })
         .eq("user_id", uId);
 
+      // Get profile (level, totalXP)
+      const { data: profileData } = await supabase
+        .from("profiles")
+        .select("level, total_xp")
+        .eq("user_id", uId)
+        .single();
+
+      // Get community posts count
+      const { count: communityPosts } = await supabase
+        .from("xp_transactions")
+        .select("*", { count: "exact", head: true })
+        .eq("user_id", uId)
+        .eq("activity_type", "community");
+
       // ── Streak calculation using all unique dates across all habits ────────
       const { data: completionRows } = await supabase
         .from("habit_completions")
@@ -119,6 +161,7 @@ export const useUserStats = (targetUserId?: string) => {
 
       let currentStreak = 0;
       let bestStreak = 0;
+      const daysActive = uniqueDatesAsc.length;
 
       if (uniqueDatesAsc.length > 0) {
         // ── All-time best streak (longest consecutive-day sequence ever) ──
@@ -139,8 +182,6 @@ export const useUserStats = (targetUserId?: string) => {
         // ── Current streak (consecutive days ending today or yesterday) ──
         const dateSet = new Set(uniqueDatesAsc);
 
-        // Use LOCAL date parts — toISOString() would shift to UTC and give
-        // the wrong calendar date for users in UTC+ timezones (e.g. IST +5:30).
         const localDateStr = (d: Date) => {
           const y = d.getFullYear();
           const m = String(d.getMonth() + 1).padStart(2, "0");
@@ -151,7 +192,6 @@ export const useUserStats = (targetUserId?: string) => {
         const today = new Date();
         let cursor = new Date(today.getFullYear(), today.getMonth(), today.getDate());
 
-        // If nothing logged today, check from yesterday (streak still alive)
         if (!dateSet.has(localDateStr(cursor))) {
           cursor.setDate(cursor.getDate() - 1);
         }
@@ -168,6 +208,11 @@ export const useUserStats = (targetUserId?: string) => {
         totalReflections: totalReflections || 0,
         bestStreak,
         currentStreak,
+        level: profileData?.level || 1,
+        totalXP: profileData?.total_xp || 0,
+        daysActive,
+        communityPosts: communityPosts || 0,
+        longestHabitStreak: bestStreak,
       };
     },
     enabled: !!uId,

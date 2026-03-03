@@ -7,6 +7,7 @@ import { useReminderToasts } from "@/hooks/useReminderToasts";
 import { LevelUpOverlay } from "@/components/LevelUpOverlay";
 import { useLevelInfo, useProfileRealtimeSync } from "@/hooks/useXP";
 import { AnimatePresence } from "framer-motion";
+import AIAssistant from "@/components/AIAssistant";
 
 const MainLayout = () => {
   const [isCollapsed, setIsCollapsed] = useState(false);
@@ -62,6 +63,7 @@ const MainLayout = () => {
           <Outlet />
         </div>
       </main>
+      <AIAssistant />
     </div>
   );
 };
