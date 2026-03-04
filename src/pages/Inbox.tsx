@@ -100,10 +100,10 @@ const InboxPage = () => {
 
   // Streak milestones — all cycle-keyed so they reset each 28-day cycle
   const streakMilestones = [
-    { days: 3, reward: 15, label: "3-Day Streak", icon: "🔥", rewardId: `streak-3-cycle-${cycleNumber}` },
-    { days: 7, reward: 30, label: "7-Day Streak", icon: "⚡", rewardId: `streak-7-cycle-${cycleNumber}` },
-    { days: 15, reward: 60, label: "15-Day Streak", icon: "💫", rewardId: `streak-15-cycle-${cycleNumber}` },
-    { days: 28, reward: 100, label: "28-Day Streak", icon: "🏆", rewardId: `streak-28-cycle-${cycleNumber}` },
+    { days: 3, reward: 3, label: "3-Day Streak", icon: "🔥", rewardId: `streak-3-cycle-${cycleNumber}` },
+    { days: 7, reward: 7, label: "7-Day Streak", icon: "⚡", rewardId: `streak-7-cycle-${cycleNumber}` },
+    { days: 15, reward: 15, label: "15-Day Streak", icon: "💫", rewardId: `streak-15-cycle-${cycleNumber}` },
+    { days: 28, reward: 28, label: "28-Day Streak", icon: "🏆", rewardId: `streak-28-cycle-${cycleNumber}` },
   ];
 
   const [activeTab, setActiveTab] = useState("quests");
@@ -134,7 +134,7 @@ const InboxPage = () => {
   };
 
   const handleStreakClaim = (rewardId: string, label: string, reward: number) => {
-    claimBCoins.mutate({ amount: reward, rewardId });
+    claimStreakReward.mutate({ amount: reward, rewardId });
   };
 
   return (
@@ -271,7 +271,7 @@ const InboxPage = () => {
                           </p>
                           <div className="flex items-center gap-1.5 mt-1">
                             <Gift className="w-3 h-3 text-warning" />
-                            <span className="text-xs text-warning font-medium">+{milestone.reward} B Coins</span>
+                            <span className="text-xs text-warning font-medium">+{milestone.reward} A Coins</span>
                             <span className="text-xs text-muted-foreground">· resets per cycle</span>
                           </div>
                         </div>
@@ -281,7 +281,7 @@ const InboxPage = () => {
                           className="gradient-primary border-0 hover:opacity-90"
                           size="sm"
                           onClick={() => handleStreakClaim(milestone.rewardId, milestone.label, milestone.reward)}
-                          disabled={claimBCoins.isPending}
+                          disabled={claimStreakReward.isPending}
                         >
                           <CheckCircle className="w-4 h-4 mr-1" /> Claim
                         </Button>

@@ -330,6 +330,7 @@ const AchievementsPage = () => {
   const [activeTab, setActiveTab] = useState("all");
   const [rarityFilter, setRarityFilter] = useState<string>("all");
   const [yearFilter, setYearFilter] = useState<string>("all");
+  const [statusFilter, setStatusFilter] = useState<string>("all");
 
   const aCoins = (profile as any)?.a_coin_balance || 0;
 
@@ -355,8 +356,12 @@ const AchievementsPage = () => {
     let list = activeTab === "all" ? achievements : achievements.filter((a) => a.category === activeTab);
     if (rarityFilter !== "all") list = list.filter((a) => (a.rarity || "common") === rarityFilter);
     if (yearFilter !== "all") list = list.filter((a) => String((a as any).year_target || 1) === yearFilter);
+    if (statusFilter !== "all") {
+      if (statusFilter === "completed") list = list.filter((a) => earnedIds.has(a.id));
+      else if (statusFilter === "not_completed") list = list.filter((a) => !earnedIds.has(a.id));
+    }
     return list;
-  }, [achievements, activeTab, rarityFilter, yearFilter]);
+  }, [achievements, activeTab, rarityFilter, yearFilter, statusFilter, earnedIds]);
 
   // Sort: claimable first, then by progress desc, then locked
   const sortedFiltered = useMemo(() => {
@@ -541,7 +546,7 @@ const AchievementsPage = () => {
         </div>
       )}
 
-      {/* ── Rarity + Year filters row ── */}
+      {/* ── Rarity, Status + Year filters row ── */}
       <div className="flex items-center gap-4 flex-wrap">
         {/* Rarity pills */}
         <div className="flex items-center gap-2 flex-wrap">
@@ -563,6 +568,27 @@ const AchievementsPage = () => {
               </button>
             );
           })}
+        </div>
+
+        {/* Status pills */}
+        <div className="flex items-center gap-2 flex-wrap">
+          <span className="text-xs text-muted-foreground mr-1">Status:</span>
+          {[
+            { id: "all", label: "All Status" },
+            { id: "completed", label: "Completed" },
+            { id: "not_completed", label: "Not Completed" }
+          ].map((s) => (
+            <button
+              key={s.id}
+              onClick={() => setStatusFilter(s.id)}
+              className={`px-3 py-1 rounded-full text-xs font-medium border transition-all ${statusFilter === s.id
+                  ? "bg-primary text-primary-foreground border-transparent"
+                  : "border-border/50 text-muted-foreground hover:border-border"
+                }`}
+            >
+              {s.label}
+            </button>
+          ))}
         </div>
 
         {/* Year dropdown */}

@@ -161,8 +161,8 @@ const TopBar = () => {
                     <div
                       key={t.name}
                       className={`flex items-center justify-between p-3 rounded-lg transition-colors ${tier.name === t.name
-                          ? 'bg-primary/10 border border-primary/30 shadow-sm'
-                          : 'hover:bg-secondary/20 border border-transparent'
+                        ? 'bg-primary/10 border border-primary/30 shadow-sm'
+                        : 'hover:bg-secondary/20 border border-transparent'
                         }`}
                     >
                       <div className="flex items-center gap-3">
