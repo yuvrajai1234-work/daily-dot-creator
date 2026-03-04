@@ -151,14 +151,14 @@ export const useCreateHabit = () => {
         .single();
 
       const bBalance = (profile as any)?.b_coin_balance || 0;
-      if (bBalance < 20) {
-        throw new Error("Not enough B Coins! You need 20 B Coins to create a habit.");
+      if (bBalance < 50) {
+        throw new Error("Not enough B Coins! You need 50 B Coins to create a habit.");
       }
 
       // Deduct B coins
       await supabase
         .from("profiles")
-        .update({ b_coin_balance: bBalance - 20 })
+        .update({ b_coin_balance: bBalance - 50 })
         .eq("user_id", user!.id);
 
       const { data, error } = await supabase
@@ -172,7 +172,7 @@ export const useCreateHabit = () => {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["habits"] });
       queryClient.invalidateQueries({ queryKey: ["profile"] });
-      toast.success("Habit created! (-20 B Coins)");
+      toast.success("Habit created! (-50 B Coins)");
     },
     onError: (error: any) => {
       toast.error(error.message || "Failed to create habit");
@@ -444,7 +444,7 @@ export const useSaveReflection = () => {
       const today = getAppDate(); // Current date in IST (resets at midnight)
 
       if (!isEdit) {
-        // Saving journal costs 5 B coins
+        // Saving journal costs 10 B coins
         const { data: profile } = await supabase
           .from("profiles")
           .select("b_coin_balance")
@@ -452,14 +452,14 @@ export const useSaveReflection = () => {
           .single();
 
         const bBalance = (profile as any)?.b_coin_balance || 0;
-        if (bBalance < 5) {
-          throw new Error("Not enough B Coins! You need 5 B Coins to save a journal.");
+        if (bBalance < 10) {
+          throw new Error("Not enough B Coins! You need 10 B Coins to save a journal.");
         }
 
         // Deduct B coins
         await supabase
           .from("profiles")
-          .update({ b_coin_balance: bBalance - 5 })
+          .update({ b_coin_balance: bBalance - 10 })
           .eq("user_id", user!.id);
       }
 
@@ -500,7 +500,7 @@ export const useSaveReflection = () => {
       if (result.isEdit) {
         toast.success("Reflection updated!");
       } else {
-        toast.success("Reflection saved! (-5 B Coins, +15 XP)");
+        toast.success("Reflection saved! (-10 B Coins, +15 XP)");
       }
     },
     onError: (error: any) => {

@@ -3,14 +3,14 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
-import { Trash2, Archive, ArchiveRestore, MoreHorizontal, TrendingUp, Target, Zap, AlertTriangle } from "lucide-react";
+import { Trash2, Archive, ArchiveRestore, MoreHorizontal, TrendingUp, Target, Zap, AlertTriangle, Coins } from "lucide-react";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { motion } from "framer-motion";
-import { useHabits, useAllCompletions, useDeleteHabit, useArchivedHabits, useUnarchiveHabit } from "@/hooks/useHabits";
+import { useHabits, useAllCompletions, useDeleteHabit, useArchivedHabits, useUnarchiveHabit, useArchiveHabit } from "@/hooks/useHabits";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/components/AuthProvider";
 import { useQueryClient } from "@tanstack/react-query";
@@ -27,6 +27,7 @@ const AnalyticsPage = () => {
   const deleteHabit = useDeleteHabit();
   const { data: archivedHabits = [] } = useArchivedHabits();
   const unarchiveHabit = useUnarchiveHabit();
+  const archiveHabit = useArchiveHabit();
 
   // Track which archived habit is pending permanent deletion (for AlertDialog)
   const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null);
@@ -59,16 +60,7 @@ const AnalyticsPage = () => {
   }, [completions, profile?.created_at]);
 
   const handleArchiveToggle = async (habitId: string) => {
-    const { error } = await supabase
-      .from("habits")
-      .update({ is_archived: true })
-      .eq("id", habitId);
-    if (error) {
-      toast.error("Failed to archive habit");
-    } else {
-      toast.success("Habit archived");
-      queryClient.invalidateQueries({ queryKey: ["habits"] });
-    }
+    archiveHabit.mutate(habitId);
   };
 
   if (habitsLoading) {
@@ -222,9 +214,10 @@ const AnalyticsPage = () => {
                             </Button>
                           </DropdownMenuTrigger>
                           <DropdownMenuContent>
-                            <DropdownMenuItem onSelect={() => handleArchiveToggle(habit.id)}>
+                            <DropdownMenuItem onSelect={() => handleArchiveToggle(habit.id)} disabled={archiveHabit.isPending}>
                               <Archive className="mr-2 h-4 w-4" />
-                              <span>Move to Archive</span>
+                              <span className="flex-1">Move to Archive</span>
+                              <span className="flex items-center text-xs text-yellow-500 font-bold ml-4"><Coins className="w-3 h-3 mr-1" />50</span>
                             </DropdownMenuItem>
                           </DropdownMenuContent>
                         </DropdownMenu>

@@ -163,11 +163,13 @@ const EarnCoinsPage = () => {
               </p>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
                 {[
-                  { label: "Log a habit (new entry)", amount: "−10 B Coins" },
-                  { label: "Create a new habit", amount: "−20 B Coins" },
-                  { label: "Save a journal entry", amount: "−5 B Coins" },
-                  { label: "Join a community", amount: "−10 B Coins" },
-                  { label: "Create a community", amount: "−20 B Coins" },
+                  { label: "Log a habit", amount: "−15 B Coins" },
+                  { label: "Create a new habit", amount: "−50 B Coins" },
+                  { label: "Save a journal entry", amount: "−10 B Coins" },
+                  { label: "Create a community", amount: "−200 B Coins" },
+                  { label: "Join a community", amount: "−100 B Coins" },
+                  { label: "Archive habit", amount: "−50 B Coins" },
+                  { label: "Add reminder", amount: "−5 B Coins" },
                 ].map(({ label, amount }) => (
                   <Badge key={label} variant="outline" className="justify-start gap-2 py-1.5 text-muted-foreground bg-rose-500/5 border-rose-500/20 hover:bg-rose-500/10 transition-colors">
                     <span className="w-1.5 h-1.5 rounded-full bg-rose-500 flex-shrink-0" />

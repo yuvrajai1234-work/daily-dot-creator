@@ -26,8 +26,8 @@ export interface Channel {
   is_locked?: boolean;
 }
 
-export const JOIN_COST = 10;
-export const CREATE_COST = 20;
+export const JOIN_COST = 100;
+export const CREATE_COST = 200;
 
 export const useCommunities = () => {
   const { user } = useAuth();

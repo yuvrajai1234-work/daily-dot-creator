@@ -239,7 +239,7 @@ const AddHabitDialog = () => {
                 disabled={createHabit.isPending}
                 className="w-full gradient-primary hover:opacity-90"
               >
-                {createHabit.isPending ? "Creating..." : "Create Habit (Costs 20 B Coins)"}
+                {createHabit.isPending ? "Creating..." : "Create Habit (Costs 50 B Coins)"}
               </Button>
             </form>
           </ScrollArea>
