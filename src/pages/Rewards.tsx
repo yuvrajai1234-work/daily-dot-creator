@@ -75,10 +75,10 @@ const REWARDS: Reward[] = [
 
 // ─── Rarity styling ────────────────────────────────────────────────────────────
 const RARITY: Record<Rarity, { label: string; gradient: string; border: string; glow: string; color: string; badge: string }> = {
-  common: { label: "Common", gradient: "from-slate-600 to-slate-700", border: "border-slate-500/40", glow: "", color: "text-slate-300", badge: "bg-slate-500/20 text-slate-300 border-slate-500/30" },
-  rare: { label: "Rare", gradient: "from-blue-600 to-blue-800", border: "border-blue-500/50", glow: "shadow-[0_0_16px_rgba(59,130,246,0.35)]", color: "text-blue-400", badge: "bg-blue-500/20 text-blue-300 border-blue-500/30" },
-  epic: { label: "Epic", gradient: "from-purple-600 to-purple-900", border: "border-purple-500/60", glow: "shadow-[0_0_22px_rgba(168,85,247,0.4)]", color: "text-purple-400", badge: "bg-purple-500/20 text-purple-300 border-purple-500/30" },
-  legendary: { label: "Legendary", gradient: "from-amber-500 to-amber-800", border: "border-amber-500/70", glow: "shadow-[0_0_30px_rgba(251,191,36,0.5)]", color: "text-amber-400", badge: "bg-amber-500/20 text-amber-300 border-amber-500/30" },
+  common: { label: "Common", gradient: "from-slate-600 to-slate-700", border: "border-slate-500/40", glow: "", color: "text-slate-600 dark:text-slate-300", badge: "bg-slate-500/20 text-slate-700 dark:text-slate-300 border-slate-500/30" },
+  rare: { label: "Rare", gradient: "from-blue-600 to-blue-800", border: "border-blue-500/50", glow: "shadow-[0_0_16px_rgba(59,130,246,0.35)]", color: "text-blue-600 dark:text-blue-400", badge: "bg-blue-500/20 text-blue-700 dark:text-blue-300 border-blue-500/30" },
+  epic: { label: "Epic", gradient: "from-purple-600 to-purple-900", border: "border-purple-500/60", glow: "shadow-[0_0_22px_rgba(168,85,247,0.4)]", color: "text-purple-600 dark:text-purple-400", badge: "bg-purple-500/20 text-purple-700 dark:text-purple-300 border-purple-500/30" },
+  legendary: { label: "Legendary", gradient: "from-amber-500 to-amber-800", border: "border-amber-500/70", glow: "shadow-[0_0_30px_rgba(251,191,36,0.5)]", color: "text-amber-600 dark:text-amber-400", badge: "bg-amber-500/20 text-amber-700 dark:text-amber-300 border-amber-500/30" },
 };
 
 const CATEGORIES = ["All", "Customization", "Badges", "Power-ups", "Avatar", "Sounds", "Content", "Premium"];
@@ -262,8 +262,8 @@ const RewardCard = ({
               <Button
                 size="sm"
                 className={`h-7 text-xs gap-1 ${canAfford
-                    ? `bg-gradient-to-r ${rc.gradient} text-white border-0 hover:opacity-90`
-                    : "border-border/50 text-muted-foreground"
+                  ? `bg-gradient-to-r ${rc.gradient} text-white border-0 hover:opacity-90`
+                  : "border-border/50 text-muted-foreground"
                   }`}
                 variant={canAfford ? "default" : "outline"}
                 onClick={onRedeem}
@@ -417,8 +417,8 @@ const RewardsPage = () => {
                 key={cat}
                 onClick={() => setCategory(cat)}
                 className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium border transition-all ${category === cat
-                    ? "bg-primary text-primary-foreground border-transparent"
-                    : "border-border/50 text-muted-foreground hover:border-border hover:text-foreground"
+                  ? "bg-primary text-primary-foreground border-transparent"
+                  : "border-border/50 text-muted-foreground hover:border-border hover:text-foreground"
                   }`}
               >
                 {CATEGORY_ICONS[cat]}
@@ -437,10 +437,10 @@ const RewardsPage = () => {
                   key={r}
                   onClick={() => setRarityFilter(r)}
                   className={`px-3 py-1 rounded-full text-xs font-medium border transition-all ${rarityFilter === r
-                      ? rc
-                        ? `bg-gradient-to-r ${rc.gradient} border-transparent text-white`
-                        : "bg-primary text-primary-foreground border-transparent"
-                      : "border-border/50 text-muted-foreground hover:border-border"
+                    ? rc
+                      ? `bg-gradient-to-r ${rc.gradient} border-transparent text-white`
+                      : "bg-primary text-primary-foreground border-transparent"
+                    : "border-border/50 text-muted-foreground hover:border-border"
                     }`}
                 >
                   {r !== "all" && rc ? <span className={rc.color}>{rc.label}</span> : "All Rarities"}

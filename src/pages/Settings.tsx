@@ -84,10 +84,10 @@ const ThemeCard = ({
       onClick={() => owned && onSelect()}
       disabled={!owned}
       className={`relative rounded-xl border p-3 flex flex-col gap-2 text-left transition-all w-full ${active
-          ? "border-primary/80 bg-primary/10 shadow-[0_0_16px_rgba(139,92,246,0.25)]"
-          : owned
-            ? "border-border/50 hover:border-primary/40 hover:bg-secondary/40 cursor-pointer"
-            : "border-border/25 opacity-45 cursor-not-allowed"
+        ? "border-primary/80 bg-primary/10 shadow-[0_0_16px_rgba(139,92,246,0.25)]"
+        : owned
+          ? "border-border/50 hover:border-primary/40 hover:bg-secondary/40 cursor-pointer"
+          : "border-border/25 opacity-45 cursor-not-allowed"
         }`}
     >
       {/* Preview swatch */}
@@ -130,10 +130,10 @@ const FrameCard = ({
       onClick={() => owned && onSelect()}
       disabled={!owned}
       className={`relative rounded-xl border p-3 flex flex-col items-center gap-2 transition-all w-full ${active
-          ? "border-primary/80 bg-primary/10"
-          : owned
-            ? "border-border/50 hover:border-primary/40 hover:bg-secondary/40 cursor-pointer"
-            : "border-border/25 opacity-45 cursor-not-allowed"
+        ? "border-primary/80 bg-primary/10"
+        : owned
+          ? "border-border/50 hover:border-primary/40 hover:bg-secondary/40 cursor-pointer"
+          : "border-border/25 opacity-45 cursor-not-allowed"
         }`}
     >
       {/* Avatar preview */}
@@ -235,11 +235,11 @@ const SettingsPage = () => {
       <SectionCard icon={<Palette className="w-4 h-4" />} title="Appearance & Themes" description="Customize the look and feel of the entire app" delay={0.04}>
 
         {/* Light/Dark toggle */}
-        <Row label="Color Mode" description="The app is designed for dark mode but light mode is coming soon">
+        <Row label="Color Mode" description="Switch between light and dark mode — your preference is saved automatically">
           <div className="flex items-center gap-2">
-            <Sun className="w-4 h-4 text-muted-foreground" />
-            <Switch checked={settings.darkMode ?? true} onCheckedChange={(v) => updateSetting("darkMode" as any, v)} />
-            <Moon className="w-4 h-4 text-primary" />
+            <Sun className={`w-4 h-4 transition-colors ${!settings.darkMode ? "text-amber-500" : "text-muted-foreground"}`} />
+            <Switch checked={settings.darkMode} onCheckedChange={(v) => updateSetting("darkMode", v)} />
+            <Moon className={`w-4 h-4 transition-colors ${settings.darkMode ? "text-primary" : "text-muted-foreground"}`} />
           </div>
         </Row>
 
@@ -314,10 +314,10 @@ const SettingsPage = () => {
                     toast.success(`${sp.icon} ${sp.name} sound pack active!`);
                   }}
                   className={`flex items-center gap-2 px-3 py-2 rounded-xl border text-xs font-medium transition-all ${active
-                      ? "border-primary/70 bg-primary/15 text-primary"
-                      : owned
-                        ? "border-border/50 hover:border-primary/40 text-foreground cursor-pointer"
-                        : "border-border/25 text-muted-foreground opacity-50 cursor-not-allowed"
+                    ? "border-primary/70 bg-primary/15 text-primary"
+                    : owned
+                      ? "border-border/50 hover:border-primary/40 text-foreground cursor-pointer"
+                      : "border-border/25 text-muted-foreground opacity-50 cursor-not-allowed"
                     }`}
                 >
                   <span className="text-base">{sp.icon}</span>

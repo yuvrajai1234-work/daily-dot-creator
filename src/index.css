@@ -2,11 +2,95 @@
 @tailwind components;
 @tailwind utilities;
 
-/* DailyDots Design System - Dark Purple/Indigo Habit Tracking Theme */
+/* DailyDots Design System */
 
 @layer base {
+
+  /* ── Light Mode (default) ────────────────────────────────────────────── */
   :root {
-    /* Dark mode by default */
+    --background: 0 0% 96%;
+    --foreground: 240 10% 8%;
+
+    --card: 0 0% 100%;
+    --card-foreground: 240 10% 8%;
+
+    --popover: 0 0% 100%;
+    --popover-foreground: 240 10% 8%;
+
+    /* Primary - Deep Purple */
+    --primary: 262 83% 58%;
+    --primary-foreground: 0 0% 98%;
+    --primary-glow: 262 83% 70%;
+
+    /* Success */
+    --success: 142 60% 30%;
+    --success-foreground: 0 0% 98%;
+    --success-glow: 142 60% 42%;
+
+    /* Warning */
+    --warning: 38 92% 42%;
+    --warning-foreground: 0 0% 9%;
+
+    /* Secondary */
+    --secondary: 240 5% 90%;
+    --secondary-foreground: 240 10% 20%;
+
+    --muted: 240 5% 90%;
+    --muted-foreground: 240 5% 45%;
+
+    --accent: 240 5% 90%;
+    --accent-foreground: 240 10% 20%;
+
+    --destructive: 0 84.2% 50%;
+    --destructive-foreground: 0 0% 98%;
+
+    --border: 240 5% 82%;
+    --input: 240 5% 82%;
+    --ring: 262 83% 58%;
+
+    --radius: 0.75rem;
+
+    /* Gradients */
+    --gradient-primary: linear-gradient(135deg, hsl(262 83% 58%), hsl(262 83% 70%));
+    --gradient-success: linear-gradient(135deg, hsl(142 60% 30%), hsl(142 60% 42%));
+    --gradient-hero: linear-gradient(135deg, hsl(262 83% 58%), hsl(310 70% 60%));
+    --gradient-card: linear-gradient(145deg, hsl(0 0% 99%), hsl(240 5% 95%));
+    --gradient-danger: linear-gradient(135deg, hsl(0 84% 50%), hsl(0 84% 62%));
+
+    /* Glassmorphism */
+    --glass-bg: hsla(0, 0%, 100%, 0.75);
+    --glass-border: hsla(262, 83%, 58%, 0.18);
+    --glass-blur: blur(20px);
+
+    /* Shadows */
+    --shadow-primary: 0 10px 30px -5px hsla(262, 83%, 58%, 0.25);
+    --shadow-success: 0 10px 30px -5px hsla(142, 60%, 30%, 0.25);
+    --shadow-card: 0 4px 24px hsla(0, 0%, 0%, 0.08);
+    --shadow-glow: 0 0 40px hsla(262, 83%, 58%, 0.3);
+
+    /* Transitions */
+    --transition-smooth: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    --transition-bounce: all 0.5s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+
+    /* Habit Level Colors */
+    --level-1: 220 14% 55%;
+    --level-2: 38 80% 40%;
+    --level-3: 262 83% 52%;
+    --level-4: 142 60% 30%;
+
+    /* Sidebar */
+    --sidebar-background: 0 0% 100%;
+    --sidebar-foreground: 240 10% 12%;
+    --sidebar-primary: 262 83% 58%;
+    --sidebar-primary-foreground: 0 0% 98%;
+    --sidebar-accent: 240 5% 93%;
+    --sidebar-accent-foreground: 240 10% 12%;
+    --sidebar-border: 240 5% 88%;
+    --sidebar-ring: 262 83% 58%;
+  }
+
+  /* ── Dark Mode ───────────────────────────────────────────────────────── */
+  .dark {
     --background: 240 10% 3.9%;
     --foreground: 0 0% 98%;
 
@@ -16,21 +100,17 @@
     --popover: 240 10% 3.9%;
     --popover-foreground: 0 0% 98%;
 
-    /* Primary - Deep Purple */
     --primary: 262 83% 58%;
     --primary-foreground: 0 0% 98%;
     --primary-glow: 262 83% 70%;
 
-    /* Success - Green for achievements */
     --success: 142 76% 36%;
     --success-foreground: 0 0% 98%;
     --success-glow: 142 76% 50%;
 
-    /* Warning - Amber for streaks */
     --warning: 38 92% 50%;
     --warning-foreground: 0 0% 9%;
 
-    /* Secondary */
     --secondary: 240 3.7% 15.9%;
     --secondary-foreground: 0 0% 98%;
 
@@ -47,37 +127,18 @@
     --input: 240 3.7% 15.9%;
     --ring: 262 83% 58%;
 
-    --radius: 0.75rem;
-
-    /* Gradients */
-    --gradient-primary: linear-gradient(135deg, hsl(262 83% 58%), hsl(262 83% 70%));
-    --gradient-success: linear-gradient(135deg, hsl(142 76% 36%), hsl(142 76% 50%));
-    --gradient-hero: linear-gradient(135deg, hsl(262 83% 58%), hsl(310 70% 60%));
     --gradient-card: linear-gradient(145deg, hsl(240 10% 6%), hsl(240 8% 12%));
-    --gradient-danger: linear-gradient(135deg, hsl(0 84% 60%), hsl(0 84% 70%));
 
-    /* Glassmorphism */
     --glass-bg: hsla(240, 10%, 10%, 0.8);
     --glass-border: hsla(262, 83%, 58%, 0.2);
-    --glass-blur: blur(20px);
 
-    /* Shadows */
-    --shadow-primary: 0 10px 30px -5px hsla(262, 83%, 58%, 0.3);
-    --shadow-success: 0 10px 30px -5px hsla(142, 76%, 36%, 0.3);
     --shadow-card: 0 8px 32px hsla(0, 0%, 0%, 0.4);
-    --shadow-glow: 0 0 40px hsla(262, 83%, 58%, 0.4);
 
-    /* Transitions */
-    --transition-smooth: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-    --transition-bounce: all 0.5s cubic-bezier(0.68, -0.55, 0.265, 1.55);
-
-    /* Habit Level Colors */
     --level-1: 220 14% 71%;
     --level-2: 38 92% 50%;
     --level-3: 262 83% 58%;
     --level-4: 142 76% 36%;
 
-    /* Sidebar */
     --sidebar-background: 240 10% 6%;
     --sidebar-foreground: 0 0% 98%;
     --sidebar-primary: 262 83% 58%;
@@ -96,8 +157,12 @@
 
   body {
     @apply bg-background text-foreground;
-    background: linear-gradient(135deg, hsl(240, 10%, 3%), hsl(240, 8%, 6%));
+    background: linear-gradient(135deg, hsl(0, 0%, 95%), hsl(240, 5%, 92%));
     min-height: 100vh;
+  }
+
+  html.dark body {
+    background: linear-gradient(135deg, hsl(240, 10%, 3%), hsl(240, 8%, 6%));
   }
 
   ::-webkit-scrollbar {

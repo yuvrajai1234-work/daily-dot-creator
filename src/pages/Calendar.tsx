@@ -119,10 +119,10 @@ const CalendarPage = () => {
                 className="rounded-md border border-border"
                 modifiers={modifiers}
                 modifiersClassNames={{
-                  level1: "bg-teal-500/20 text-teal-400 font-bold border border-teal-500/30 hover:bg-teal-500/30",
-                  level2: "bg-sky-500/20 text-sky-400 font-bold border border-sky-500/30 hover:bg-sky-500/30",
-                  level3: "bg-indigo-500/20 text-indigo-400 font-bold border border-indigo-500/30 hover:bg-indigo-500/30",
-                  level4: "bg-rose-500/20 text-rose-400 font-bold border border-rose-500/30 hover:bg-rose-500/30",
+                  level1: "bg-teal-500/20 text-teal-700 dark:text-teal-300 font-bold border border-teal-500/30 hover:bg-teal-500/30",
+                  level2: "bg-sky-500/20 text-sky-700 dark:text-sky-300 font-bold border border-sky-500/30 hover:bg-sky-500/30",
+                  level3: "bg-indigo-500/20 text-indigo-700 dark:text-indigo-300 font-bold border border-indigo-500/30 hover:bg-indigo-500/30",
+                  level4: "bg-rose-500/20 text-rose-700 dark:text-rose-300 font-bold border border-rose-500/30 hover:bg-rose-500/30",
                   special: "ring-2 ring-destructive ring-offset-1 ring-offset-background font-bold text-destructive",
                 }}
               />
@@ -142,8 +142,8 @@ const CalendarPage = () => {
                         <li
                           key={r.id}
                           className={`text-xs p-3 rounded-lg border font-medium flex justify-between items-center shadow-sm transition-colors ${isToday
-                              ? "bg-destructive text-destructive-foreground border-destructive"
-                              : "bg-destructive/10 text-destructive-foreground border-destructive/20 hover:bg-destructive/20"
+                            ? "bg-destructive text-destructive-foreground border-destructive"
+                            : "bg-destructive/10 text-destructive-foreground border-destructive/20 hover:bg-destructive/20"
                             }`}
                         >
                           <div className="flex flex-col gap-0.5">
@@ -177,10 +177,10 @@ const CalendarPage = () => {
                 <ul className="space-y-2">
                   {dayCompletions.map((log, index) => {
                     // Determine color for badge based on level
-                    let badgeColor = "border-teal-500/50 text-teal-400";
-                    if (log.effort_level === 2) badgeColor = "border-sky-500/50 text-sky-400";
-                    if (log.effort_level === 3) badgeColor = "border-indigo-500/50 text-indigo-400";
-                    if (log.effort_level === 4) badgeColor = "border-rose-500/50 text-rose-400";
+                    let badgeColor = "border-teal-500/50 text-teal-700 dark:text-teal-400";
+                    if (log.effort_level === 2) badgeColor = "border-sky-500/50 text-sky-700 dark:text-sky-400";
+                    if (log.effort_level === 3) badgeColor = "border-indigo-500/50 text-indigo-700 dark:text-indigo-400";
+                    if (log.effort_level === 4) badgeColor = "border-rose-500/50 text-rose-700 dark:text-rose-400";
 
                     return (
                       <motion.li
@@ -218,20 +218,20 @@ const CalendarPage = () => {
                 </h4>
                 <div className="grid grid-cols-2 gap-3 text-sm">
                   <div className="flex items-center gap-2 p-2 rounded bg-teal-500/10 border border-teal-500/20">
-                    <div className="w-3 h-3 rounded-full bg-teal-400 shadow-[0_0_8px_rgba(45,212,191,0.5)]" />
-                    <span className="text-teal-100">Easy (1)</span>
+                    <div className="w-3 h-3 rounded-full bg-teal-500 dark:bg-teal-400 shadow-[0_0_8px_rgba(45,212,191,0.5)]" />
+                    <span className="text-teal-700 dark:text-teal-200">Easy (1)</span>
                   </div>
                   <div className="flex items-center gap-2 p-2 rounded bg-sky-500/10 border border-sky-500/20">
-                    <div className="w-3 h-3 rounded-full bg-sky-400 shadow-[0_0_8px_rgba(56,189,248,0.5)]" />
-                    <span className="text-sky-100">Moderate (2)</span>
+                    <div className="w-3 h-3 rounded-full bg-sky-500 dark:bg-sky-400 shadow-[0_0_8px_rgba(56,189,248,0.5)]" />
+                    <span className="text-sky-700 dark:text-sky-200">Moderate (2)</span>
                   </div>
                   <div className="flex items-center gap-2 p-2 rounded bg-indigo-500/10 border border-indigo-500/20">
-                    <div className="w-3 h-3 rounded-full bg-indigo-400 shadow-[0_0_8px_rgba(129,140,248,0.5)]" />
-                    <span className="text-indigo-100">Solid (3)</span>
+                    <div className="w-3 h-3 rounded-full bg-indigo-500 dark:bg-indigo-400 shadow-[0_0_8px_rgba(129,140,248,0.5)]" />
+                    <span className="text-indigo-700 dark:text-indigo-200">Solid (3)</span>
                   </div>
                   <div className="flex items-center gap-2 p-2 rounded bg-rose-500/10 border border-rose-500/20">
-                    <div className="w-3 h-3 rounded-full bg-rose-400 shadow-[0_0_8px_rgba(251,113,133,0.5)]" />
-                    <span className="text-rose-100">Intense (4)</span>
+                    <div className="w-3 h-3 rounded-full bg-rose-500 dark:bg-rose-400 shadow-[0_0_8px_rgba(251,113,133,0.5)]" />
+                    <span className="text-rose-700 dark:text-rose-200">Intense (4)</span>
                   </div>
                 </div>
               </div>

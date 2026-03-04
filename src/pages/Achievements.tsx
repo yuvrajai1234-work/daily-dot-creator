@@ -57,8 +57,8 @@ const YearDropdown = ({ value, onChange }: { value: string; onChange: (v: string
                 key={opt.value}
                 onClick={() => { onChange(opt.value); setOpen(false); }}
                 className={`w-full flex items-center gap-2.5 px-4 py-2.5 text-xs text-left transition-colors ${value === opt.value
-                    ? "bg-primary/20 text-primary font-semibold"
-                    : "text-foreground hover:bg-secondary/60"
+                  ? "bg-primary/20 text-primary font-semibold"
+                  : "text-foreground hover:bg-secondary/60"
                   }`}
               >
                 <span className="text-base">{opt.emoji}</span>
@@ -79,7 +79,7 @@ const YearDropdown = ({ value, onChange }: { value: string; onChange: (v: string
 const RARITY_CONFIG: Record<string, { label: string; color: string; glow: string; gradient: string; border: string; icon: React.FC<any> }> = {
   common: {
     label: "Common",
-    color: "text-slate-300",
+    color: "text-slate-600 dark:text-slate-300",
     glow: "",
     gradient: "from-slate-600 to-slate-700",
     border: "border-slate-500/40",
@@ -87,7 +87,7 @@ const RARITY_CONFIG: Record<string, { label: string; color: string; glow: string
   },
   rare: {
     label: "Rare",
-    color: "text-blue-400",
+    color: "text-blue-600 dark:text-blue-400",
     glow: "shadow-[0_0_15px_rgba(59,130,246,0.3)]",
     gradient: "from-blue-600 to-blue-800",
     border: "border-blue-500/50",
@@ -95,7 +95,7 @@ const RARITY_CONFIG: Record<string, { label: string; color: string; glow: string
   },
   epic: {
     label: "Epic",
-    color: "text-purple-400",
+    color: "text-purple-600 dark:text-purple-400",
     glow: "shadow-[0_0_20px_rgba(168,85,247,0.4)]",
     gradient: "from-purple-600 to-purple-900",
     border: "border-purple-500/60",
@@ -103,7 +103,7 @@ const RARITY_CONFIG: Record<string, { label: string; color: string; glow: string
   },
   legendary: {
     label: "Legendary",
-    color: "text-amber-400",
+    color: "text-amber-600 dark:text-amber-400",
     glow: "shadow-[0_0_30px_rgba(251,191,36,0.5)]",
     gradient: "from-amber-500 to-amber-800",
     border: "border-amber-500/70",
@@ -129,11 +129,11 @@ const CATEGORY_CONFIG: Record<string, { label: string; icon: React.FC<any>; colo
 
 // ─── Year labels ──────────────────────────────────────────────────────────────
 const YEAR_BADGE: Record<number, { label: string; color: string }> = {
-  1: { label: "Year 1", color: "bg-green-500/20 text-green-300 border-green-500/30" },
-  2: { label: "Year 2", color: "bg-blue-500/20 text-blue-300 border-blue-500/30" },
-  3: { label: "Year 3", color: "bg-purple-500/20 text-purple-300 border-purple-500/30" },
-  4: { label: "Year 4", color: "bg-amber-500/20 text-amber-300 border-amber-500/30" },
-  5: { label: "Year 5", color: "bg-rose-500/20 text-rose-300 border-rose-500/30" },
+  1: { label: "Year 1", color: "bg-green-500/20 text-green-700 dark:text-green-300 border-green-500/30" },
+  2: { label: "Year 2", color: "bg-blue-500/20 text-blue-700 dark:text-blue-300 border-blue-500/30" },
+  3: { label: "Year 3", color: "bg-purple-500/20 text-purple-700 dark:text-purple-300 border-purple-500/30" },
+  4: { label: "Year 4", color: "bg-amber-500/20 text-amber-700 dark:text-amber-300 border-amber-500/30" },
+  5: { label: "Year 5", color: "bg-rose-500/20 text-rose-700 dark:text-rose-300 border-rose-500/30" },
 };
 
 // ─── Progress calculation helper ──────────────────────────────────────────────
@@ -267,11 +267,11 @@ const AchievementCard = ({
 
           {/* Rewards row */}
           <div className="flex items-center gap-2 flex-wrap">
-            <Badge variant="outline" className="text-xs bg-amber-500/10 border-amber-500/30 text-amber-300">
+            <Badge variant="outline" className="text-xs bg-amber-500/10 border-amber-500/30 text-amber-700 dark:text-amber-300">
               +{achievement.coin_reward} A Coins
             </Badge>
             {achievement.xp_reward && (
-              <Badge variant="outline" className="text-xs bg-violet-500/10 border-violet-500/30 text-violet-300">
+              <Badge variant="outline" className="text-xs bg-violet-500/10 border-violet-500/30 text-violet-700 dark:text-violet-300">
                 +{achievement.xp_reward} XP
               </Badge>
             )}
