@@ -126,15 +126,6 @@ export const useCommunityMessages = (communityIdOrChannelId: string) => {
                 },
                 () => queryClient.invalidateQueries({ queryKey: ["channel-messages", channelId] })
             )
-            .on(
-                "postgres_changes",
-                { event: "*", schema: "public", table: "message_reactions" },
-                (payload) => {
-                    // Invalidate if the reaction belongs to one of our messages?
-                    // Hard to filter without message_id in filter, so just invalidate
-                    queryClient.invalidateQueries({ queryKey: ["channel-messages", channelId] });
-                }
-            )
             .subscribe();
 
         return () => {
