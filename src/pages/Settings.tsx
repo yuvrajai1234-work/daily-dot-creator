@@ -22,6 +22,8 @@ import {
   type ThemeId, type AvatarFrameId, type SoundPackId,
 } from "@/contexts/ThemeContext";
 import { useProfile } from "@/hooks/useProfile";
+import AvatarWithFrame from "@/components/AvatarWithFrame";
+import { supabase } from "@/integrations/supabase/client";
 
 // ─── Purchased rewards helper ──────────────────────────────────────────────────
 const getPurchased = (): Set<number> => {
@@ -137,10 +139,13 @@ const FrameCard = ({
         }`}
     >
       {/* Avatar preview */}
-      <div className={`w-12 h-12 rounded-full bg-primary/20 flex items-center justify-center text-lg font-bold text-primary ${owned ? frame.css : ""}`}>
-        {userName.slice(0, 1).toUpperCase()}
-      </div>
-      <div className="text-center">
+      <AvatarWithFrame
+        avatarUrl=""
+        fallback={userName.slice(0, 1).toUpperCase()}
+        frameId={frameId}
+        size="md"
+      />
+      <div className="text-center mt-2">
         <p className="text-xs font-semibold">{frame.icon} {frame.name}</p>
         {!frame.rewardId && <p className="text-[10px] text-success font-medium">Free</p>}
         {frame.rewardId && !owned && <p className="text-[10px] text-muted-foreground flex items-center gap-0.5 justify-center"><Lock className="w-2.5 h-2.5" /> Locked</p>}
@@ -285,8 +290,11 @@ const SettingsPage = () => {
                 active={settings.avatarFrame === id}
                 owned={isFrameOwned(id)}
                 userName={userName}
-                onSelect={() => {
+                onSelect={async () => {
                   updateSetting("avatarFrame", id);
+                  if (user) {
+                    await supabase.from("profiles").update({ avatar_frame: id } as any).eq("user_id", user.id);
+                  }
                   toast.success(`${AVATAR_FRAMES[id].icon} ${AVATAR_FRAMES[id].name} applied!`);
                 }}
               />

@@ -213,6 +213,156 @@ export const useCommunities = () => {
   };
 };
 
+// ── Join Requests ──────────────────────────────────────────────────────────────
+
+export interface JoinRequest {
+  id: string;
+  community_id: string;
+  user_id: string;
+  status: 'pending' | 'accepted' | 'declined';
+  created_at: string;
+  profile?: {
+    username: string;
+    avatar_url: string;
+  };
+}
+
+// Request to join a community (goes to admin instead of instant join)
+export const useRequestToJoin = () => {
+  const queryClient = useQueryClient();
+  const { user } = useAuth();
+
+  return useMutation({
+    mutationFn: async (communityId: string) => {
+      // Check if already requested
+      const { data: existing } = await supabase
+        .from("community_join_requests" as any)
+        .select("id, status")
+        .eq("community_id", communityId)
+        .eq("user_id", user!.id)
+        .maybeSingle();
+
+      if (existing) {
+        if ((existing as any).status === 'pending') throw new Error("You already have a pending request for this community.");
+        if ((existing as any).status === 'accepted') throw new Error("You are already a member of this community.");
+        // If declined, allow re-request by updating
+        const { error } = await supabase
+          .from("community_join_requests" as any)
+          .update({ status: 'pending', updated_at: new Date().toISOString() })
+          .eq("id", (existing as any).id);
+        if (error) throw error;
+        return;
+      }
+
+      const { error } = await supabase
+        .from("community_join_requests" as any)
+        .insert({ community_id: communityId, user_id: user!.id });
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["my-join-requests"] });
+      toast.success("Join request sent! The community leader will be notified.");
+    },
+    onError: (err: any) => {
+      toast.error(err.message || "Failed to send join request");
+    },
+  });
+};
+
+// Fetch pending join requests for communities the user admins
+export const usePendingJoinRequests = (communityId: string) => {
+  const { user } = useAuth();
+
+  return useQuery({
+    queryKey: ["join-requests", communityId],
+    queryFn: async () => {
+      const { data: requests, error } = await supabase
+        .from("community_join_requests" as any)
+        .select("*")
+        .eq("community_id", communityId)
+        .eq("status", "pending")
+        .order("created_at", { ascending: true });
+
+      if (error) throw error;
+      if (!requests || (requests as any[]).length === 0) return [];
+
+      // Fetch profiles
+      const userIds = (requests as any[]).map((r: any) => r.user_id);
+      const { data: profiles } = await supabase
+        .from("profiles")
+        .select("user_id, full_name, avatar_url")
+        .in("user_id", userIds);
+
+      const profileMap = new Map((profiles || []).map((p: any) => [p.user_id, p]));
+
+      return (requests as any[]).map((r: any) => ({
+        ...r,
+        profile: {
+          username: profileMap.get(r.user_id)?.full_name || "Unknown",
+          avatar_url: profileMap.get(r.user_id)?.avatar_url,
+        },
+      })) as JoinRequest[];
+    },
+    enabled: !!communityId && !!user,
+  });
+};
+
+// Admin accept/decline a join request
+export const useRespondToJoinRequest = () => {
+  const queryClient = useQueryClient();
+  const { user } = useAuth();
+
+  return useMutation({
+    mutationFn: async ({ requestId, communityId, requestUserId, action }: {
+      requestId: string;
+      communityId: string;
+      requestUserId: string;
+      action: 'accepted' | 'declined';
+    }) => {
+      // Update request status
+      const { error: updateErr } = await supabase
+        .from("community_join_requests" as any)
+        .update({ status: action, updated_at: new Date().toISOString() })
+        .eq("id", requestId);
+      if (updateErr) throw updateErr;
+
+      // If accepted, add to community_members
+      if (action === 'accepted') {
+        const { error: memberErr } = await supabase
+          .from("community_members")
+          .insert({ community_id: communityId, user_id: requestUserId, role: "member" });
+        if (memberErr && !memberErr.message.includes("duplicate")) throw memberErr;
+      }
+    },
+    onSuccess: (_, vars) => {
+      queryClient.invalidateQueries({ queryKey: ["join-requests", vars.communityId] });
+      queryClient.invalidateQueries({ queryKey: ["communities"] });
+      queryClient.invalidateQueries({ queryKey: ["community-members", vars.communityId] });
+      toast.success(vars.action === "accepted" ? "✅ Request accepted — member added!" : "❌ Request declined.");
+    },
+    onError: (err: any) => toast.error(err.message),
+  });
+};
+
+// Fetch the current user's own join requests
+export const useMyJoinRequests = () => {
+  const { user } = useAuth();
+
+  return useQuery({
+    queryKey: ["my-join-requests", user?.id],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("community_join_requests" as any)
+        .select("community_id, status")
+        .eq("user_id", user!.id);
+      if (error) throw error;
+      return (data as any[]) as { community_id: string; status: string }[];
+    },
+    enabled: !!user,
+  });
+};
+
+
 export const useCommunityMembers = (communityId: string) => {
   const { user } = useAuth();
 
@@ -271,7 +421,7 @@ export const useChannels = (communityId: string) => {
         console.error("Error fetching channels (migration might be missing):", error);
         return [];
       }
-      return data as Channel[];
+      return data as unknown as Channel[];
     },
     enabled: !!communityId && !!user,
   });

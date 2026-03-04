@@ -267,14 +267,14 @@ export const useLogEffort = () => {
           .single();
 
         const bBalance = (profile as any)?.b_coin_balance || 0;
-        if (bBalance < 10) {
-          throw new Error("Not enough B Coins! You need 10 B Coins to log a habit.");
+        if (bBalance < 15) {
+          throw new Error("Not enough B Coins! You need 15 B Coins to log a habit.");
         }
 
         // Deduct B coins
         await supabase
           .from("profiles")
-          .update({ b_coin_balance: bBalance - 10 })
+          .update({ b_coin_balance: bBalance - 15 })
           .eq("user_id", user!.id);
 
         const { error } = await supabase
@@ -321,7 +321,7 @@ export const useLogEffort = () => {
       if (result.isUpdate) {
         toast.success("Effort level updated!");
       } else {
-        toast.success("Effort logged! (-10 B Coins, +10 XP)");
+        toast.success("Effort logged! (-15 B Coins, +10 XP)");
       }
     },
     onError: (error: any, variables, context) => {
@@ -377,9 +377,27 @@ export const useUnarchiveHabit = () => {
 
 export const useArchiveHabit = () => {
   const queryClient = useQueryClient();
+  const { user } = useAuth();
 
   return useMutation({
     mutationFn: async (habitId: string) => {
+      // Archiving costs 50 B coins (streak protection premium feature)
+      const { data: profile } = await supabase
+        .from("profiles")
+        .select("b_coin_balance")
+        .eq("user_id", user!.id)
+        .single();
+
+      const bBalance = (profile as any)?.b_coin_balance || 0;
+      if (bBalance < 50) {
+        throw new Error("Not enough B Coins! You need 50 B Coins to archive a habit (streak protection).");
+      }
+
+      await supabase
+        .from("profiles")
+        .update({ b_coin_balance: bBalance - 50 })
+        .eq("user_id", user!.id);
+
       const { error } = await supabase
         .from("habits")
         .update({ is_archived: true })
@@ -389,7 +407,8 @@ export const useArchiveHabit = () => {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["habits"] });
       queryClient.invalidateQueries({ queryKey: ["archived-habits"] });
-      toast.success("Habit archived!");
+      queryClient.invalidateQueries({ queryKey: ["profile"] });
+      toast.success("Habit archived! (-50 B Coins) — Your streak is now protected.");
     },
     onError: (error: any) => {
       toast.error(error.message || "Failed to archive habit");

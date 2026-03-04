@@ -8,10 +8,16 @@ import AIReflection from "@/components/dashboard/AIReflection";
 import AddHabitDialog from "@/components/AddHabitDialog";
 import { getGreeting, getAppDate, getCycleStartDate, formatLocalISODate } from "@/lib/dateUtils";
 import { useProfile } from "@/hooks/useProfile";
+import { useCommunities } from "@/hooks/useCommunities";
+import { supabase } from "@/integrations/supabase/client";
+import { useQuery } from "@tanstack/react-query";
+import { Bell, Users } from "lucide-react";
+import { useNavigate } from "react-router-dom";
 
 
 const Dashboard = () => {
   const { user } = useAuth();
+  const navigate = useNavigate();
   const { data: habits = [], isLoading: habitsLoading } = useHabits();
   const { data: todayCompletions = [] } = useTodayCompletions();
   const { data: weekCompletions = [] } = useWeekCompletions();
@@ -19,6 +25,27 @@ const Dashboard = () => {
   const { data: profile } = useProfile();
   const logEffort = useLogEffort();
   const archiveHabit = useArchiveHabit();
+
+  // Check for pending join requests across communities the user administers
+  const { myMemberships } = useCommunities();
+  const adminCommunityIds = myMemberships
+    .filter((m: any) => m.role === 'admin' || m.role === 'moderator')
+    .map((m: any) => m.community_id);
+
+  const { data: totalPendingRequests = 0 } = useQuery({
+    queryKey: ["all-pending-join-requests", adminCommunityIds.join(",")],
+    queryFn: async () => {
+      if (adminCommunityIds.length === 0) return 0;
+      const { count } = await supabase
+        .from("community_join_requests" as any)
+        .select("id", { count: "exact", head: true })
+        .in("community_id", adminCommunityIds)
+        .eq("status", "pending");
+      return count || 0;
+    },
+    enabled: adminCommunityIds.length > 0,
+    refetchInterval: 30_000, // Poll every 30s
+  });
 
   const completedIds = useMemo(
     () => new Set(todayCompletions.map((c) => c.habit_id)),
@@ -124,6 +151,25 @@ const Dashboard = () => {
 
   return (
     <div className="space-y-6">
+      {/* Join Request Alert for admins */}
+      {totalPendingRequests > 0 && (
+        <div
+          onClick={() => navigate('/community')}
+          className="cursor-pointer flex items-center gap-3 px-4 py-3 rounded-xl border border-yellow-500/30 bg-yellow-500/5 hover:bg-yellow-500/10 transition-colors"
+        >
+          <div className="w-8 h-8 rounded-full bg-yellow-500/15 flex items-center justify-center flex-shrink-0">
+            <Bell className="w-4 h-4 text-yellow-500" />
+          </div>
+          <div className="flex-1">
+            <p className="font-semibold text-sm">
+              You have <span className="text-yellow-500">{totalPendingRequests}</span> pending community join request{totalPendingRequests !== 1 ? 's' : ''}
+            </p>
+            <p className="text-xs text-muted-foreground">Click to go to the Community Hub and respond</p>
+          </div>
+          <Users className="w-4 h-4 text-muted-foreground" />
+        </div>
+      )}
+
       {/* Greeting */}
       <h1 className="text-3xl font-bold">
         {getGreeting()}, {userName.toUpperCase()}!

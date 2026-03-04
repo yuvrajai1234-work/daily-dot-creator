@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Community, useCommunityMembers, useCommunities, useChannels } from "@/hooks/useCommunities";
+import { Community, useCommunityMembers, useCommunities, useChannels, usePendingJoinRequests, useRespondToJoinRequest } from "@/hooks/useCommunities";
 import { usePinnedMessages } from "@/hooks/usePinnedMessages";
 import { MemberProfileCard } from "./MemberProfileCard";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
@@ -50,6 +50,13 @@ export const CommunityDetailView = ({ community, onBack }: CommunityDetailViewPr
     const markNotificationRead = useMarkNotificationRead();
     const [highlightMessageId, setHighlightMessageId] = useState<string | null>(null);
     const [showMembers, setShowMembers] = useState(true);
+
+    // Join requests (only fetched for admins)
+    const myMemberData = members.find((m: any) => m.userId === user?.id);
+    const isAdminOrMod = myMemberData?.role === 'admin' || myMemberData?.role === 'moderator';
+    const { data: joinRequests = [] } = usePendingJoinRequests(isAdminOrMod ? community.id : "");
+    const respondToJoinRequest = useRespondToJoinRequest();
+    const totalNotifCount = notifications.length + joinRequests.length;
 
     // Collapsed state
     const [collapsedCategories, setCollapsedCategories] = useState<Record<string, boolean>>({});
@@ -257,7 +264,7 @@ export const CommunityDetailView = ({ community, onBack }: CommunityDetailViewPr
                             <PopoverTrigger asChild>
                                 <div className="relative cursor-pointer group">
                                     <Bell className="w-5 h-5 group-hover:text-foreground transition-colors" />
-                                    {notifications.length > 0 && (
+                                    {totalNotifCount > 0 && (
                                         <span className="absolute -top-1 -right-1 flex h-2.5 w-2.5 items-center justify-center rounded-full bg-red-500 text-[8px] text-white animate-pulse" />
                                     )}
                                 </div>
@@ -265,10 +272,55 @@ export const CommunityDetailView = ({ community, onBack }: CommunityDetailViewPr
                             <PopoverContent className="w-80 p-0" align="end">
                                 <div className="p-3 font-semibold border-b bg-muted/40 text-sm flex justify-between items-center">
                                     <span>Notifications</span>
-                                    {notifications.length > 0 && <span className="text-xs bg-red-500/10 text-red-500 px-1.5 py-0.5 rounded-full">{notifications.length}</span>}
+                                    {totalNotifCount > 0 && <span className="text-xs bg-red-500/10 text-red-500 px-1.5 py-0.5 rounded-full">{totalNotifCount}</span>}
                                 </div>
                                 <ScrollArea className="h-64">
-                                    {notifications.length === 0 ? (
+                                    {/* Join Requests (admin only) */}
+                                    {isAdminOrMod && joinRequests.length > 0 && (
+                                        <div>
+                                            <div className="px-3 py-2 text-xs font-bold text-yellow-500 bg-yellow-500/5 border-b border-yellow-500/10 flex items-center gap-1.5">
+                                                <UserPlus className="w-3.5 h-3.5" /> Join Requests ({joinRequests.length})
+                                            </div>
+                                            {joinRequests.map((req: any) => (
+                                                <div key={req.id} className="p-3 border-b last:border-0 hover:bg-muted/20 transition-colors">
+                                                    <div className="flex items-center gap-2 mb-2">
+                                                        <Avatar className="w-6 h-6">
+                                                            <AvatarImage src={req.profile?.avatar_url} />
+                                                            <AvatarFallback className="text-[10px]">{req.profile?.username?.charAt(0)}</AvatarFallback>
+                                                        </Avatar>
+                                                        <span className="text-sm font-semibold flex-1 truncate">{req.profile?.username}</span>
+                                                    </div>
+                                                    <p className="text-xs text-muted-foreground mb-2">Wants to join this community</p>
+                                                    <div className="flex gap-2">
+                                                        <button
+                                                            onClick={() => respondToJoinRequest.mutate({
+                                                                requestId: req.id,
+                                                                communityId: community.id,
+                                                                requestUserId: req.user_id,
+                                                                action: 'accepted'
+                                                            })}
+                                                            className="flex-1 text-xs py-1.5 px-2 rounded-md bg-green-500/15 text-green-400 hover:bg-green-500/25 border border-green-500/30 font-medium transition-colors flex items-center justify-center gap-1"
+                                                        >
+                                                            <Check className="w-3 h-3" /> Accept
+                                                        </button>
+                                                        <button
+                                                            onClick={() => respondToJoinRequest.mutate({
+                                                                requestId: req.id,
+                                                                communityId: community.id,
+                                                                requestUserId: req.user_id,
+                                                                action: 'declined'
+                                                            })}
+                                                            className="flex-1 text-xs py-1.5 px-2 rounded-md bg-red-500/15 text-red-400 hover:bg-red-500/25 border border-red-500/30 font-medium transition-colors flex items-center justify-center gap-1"
+                                                        >
+                                                            <X className="w-3 h-3" /> Decline
+                                                        </button>
+                                                    </div>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    )}
+                                    {/* Regular notifications */}
+                                    {notifications.length === 0 && joinRequests.length === 0 ? (
                                         <div className="p-8 text-center text-sm text-muted-foreground flex flex-col items-center gap-2">
                                             <Bell className="w-8 h-8 opacity-20" />
                                             <span>No new notifications</span>

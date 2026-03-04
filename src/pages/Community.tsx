@@ -5,24 +5,87 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Search, Users, Plus, LogOut, Trophy, Activity, MessageSquare, Loader2 } from "lucide-react";
+import { Search, Users, Plus, LogOut, Trophy, Activity, MessageSquare, Loader2, Lock, Sparkles } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
-import { useCommunities, JOIN_COST, CREATE_COST, Community } from "@/hooks/useCommunities";
+import { useCommunities, JOIN_COST, CREATE_COST, Community, useRequestToJoin, useMyJoinRequests } from "@/hooks/useCommunities";
+import { Clock } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { CommunityDetailView } from "@/components/community/CommunityDetailView";
 import { CommunityLeaderboard } from "@/components/community/CommunityLeaderboard";
 import { FriendList } from "@/components/community/FriendList";
+import { useLevelInfo } from "@/hooks/useXP";
 
 const EMOJIS = ["🎯", "🌅", "💻", "🥗", "🧘", "📚", "🏋️", "🎨", "🎵", "🌿", "🔥", "⭐", "🚀", "💡", "🎮", "🌍"];
 const CATEGORIES = ["General", "Health", "Productivity", "Mindfulness", "Coding", "Fitness", "Learning", "Social", "Creative", "Gaming"];
 
 const CommunityPage = () => {
-  const { communities, isLoading, isMember, joinCommunity, createCommunity } = useCommunities();
+  const { communities, isLoading, isMember, createCommunity } = useCommunities();
+  const { data: levelInfo } = useLevelInfo();
+  const { data: myRequests = [] } = useMyJoinRequests();
+  const requestToJoin = useRequestToJoin();
+  const userLevel = levelInfo?.level || 0;
+  const isLevel10Plus = userLevel >= 10;
+
+  // Quick lookups for my request statuses per community
+  const myRequestMap = new Map(myRequests.map(r => [r.community_id, r.status]));
+
   const [search, setSearch] = useState("");
   const [createOpen, setCreateOpen] = useState(false);
   const [selectedCommunity, setSelectedCommunity] = useState<Community | null>(null);
   const [form, setForm] = useState({ name: "", tagline: "", emoji: "🎯", habit_category: "General" });
   const [activeTab, setActiveTab] = useState<"communities" | "leaderboard" | "friends">("communities");
+
+  // Level 10 lock screen
+  if (!isLevel10Plus) {
+    return (
+      <div className="h-full w-full flex items-center justify-center p-6">
+        <motion.div
+          initial={{ opacity: 0, y: 30 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="max-w-md w-full text-center"
+        >
+          <div className="relative mb-6">
+            <div className="w-32 h-32 mx-auto rounded-full bg-gradient-to-br from-primary/20 to-primary/5 border-4 border-primary/20 flex items-center justify-center">
+              <Lock className="w-14 h-14 text-primary/50" />
+            </div>
+            <div className="absolute -bottom-2 left-1/2 -translate-x-1/2 bg-primary text-primary-foreground text-xs font-bold px-3 py-1 rounded-full">
+              Level 10 Feature
+            </div>
+          </div>
+          <h2 className="text-2xl font-bold mb-2">Community Hub Locked</h2>
+          <p className="text-muted-foreground mb-6">
+            Reach <span className="text-primary font-bold">Level 10</span> to unlock Communities — join groups, chat in real-time, and climb the team leaderboard.
+          </p>
+
+          {/* Progress */}
+          <Card className="glass border-border/50">
+            <CardContent className="p-5">
+              <div className="flex justify-between text-sm font-medium mb-2">
+                <span>Your Level</span>
+                <span className="text-primary">{userLevel} / 10</span>
+              </div>
+              <div className="h-3 bg-secondary rounded-full overflow-hidden">
+                <motion.div
+                  initial={{ width: 0 }}
+                  animate={{ width: `${Math.min(100, (userLevel / 10) * 100)}%` }}
+                  transition={{ duration: 1, ease: "easeOut", delay: 0.3 }}
+                  className="h-full bg-gradient-to-r from-primary to-primary/60 rounded-full"
+                />
+              </div>
+              <p className="text-xs text-muted-foreground mt-2">
+                {10 - userLevel} more level{10 - userLevel === 1 ? "" : "s"} to unlock — keep logging your habits! 🔥
+              </p>
+            </CardContent>
+          </Card>
+
+          <p className="text-xs text-muted-foreground mt-4 flex items-center justify-center gap-1.5">
+            <Sparkles className="w-3.5 h-3.5 text-primary" />
+            Log habits daily to earn XP and level up faster
+          </p>
+        </motion.div>
+      </div>
+    );
+  }
 
   const filtered = communities.filter(
     (c) =>
@@ -245,15 +308,23 @@ const CommunityPage = () => {
                                 >
                                   <MessageSquare className="w-4 h-4" /> Open Chat
                                 </Button>
+                              ) : myRequestMap.get(community.id) === 'pending' ? (
+                                <Button
+                                  className="w-full gap-2 border-yellow-500/30 text-yellow-500 bg-yellow-500/5"
+                                  variant="outline"
+                                  disabled
+                                >
+                                  <Clock className="w-4 h-4" /> Request Pending...
+                                </Button>
                               ) : (
                                 <Button
                                   className="w-full border-primary/20 hover:bg-primary/5 hover:border-primary/50 text-primary gap-2"
                                   variant="outline"
-                                  onClick={() => joinCommunity.mutate(community.id)}
-                                  disabled={joinCommunity.isPending}
+                                  onClick={() => requestToJoin.mutate(community.id)}
+                                  disabled={requestToJoin.isPending}
                                 >
-                                  {joinCommunity.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Plus className="w-4 h-4" />}
-                                  Join ({JOIN_COST} 🪙)
+                                  {requestToJoin.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Plus className="w-4 h-4" />}
+                                  Request to Join
                                 </Button>
                               )}
                             </CardFooter>

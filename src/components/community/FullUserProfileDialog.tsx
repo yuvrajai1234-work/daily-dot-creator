@@ -5,12 +5,13 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import AvatarWithFrame, { AvatarFrameId } from "@/components/AvatarWithFrame";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { Flame, Brain, Dumbbell, Zap, Clock, MapPin, User, Activity, Calendar, Users, Weight as WeightIcon, Ruler, Heart, Crown } from "lucide-react";
 import { Radar, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, ResponsiveContainer } from "recharts";
 import { getLevelInfo, getLevelTier } from "@/hooks/useXP";
-import { useUserStats } from "@/hooks/useAchievements";
+import { useUserStats, useAchievements } from "@/hooks/useAchievements";
 
 interface FullUserProfileDialogProps {
     userId: string;
@@ -34,6 +35,23 @@ export const FullUserProfileDialog = ({ userId, open, onOpenChange }: FullUserPr
     });
 
     const { data: realStats } = useUserStats(userId);
+
+    // Fetch this user's earned achievements
+    const { data: allAchievements = [] } = useAchievements();
+    const { data: memberAchievements = [] } = useQuery({
+        queryKey: ["dialog-user-achievements", userId],
+        queryFn: async () => {
+            const { data, error } = await supabase
+                .from("user_achievements")
+                .select("achievement_id")
+                .eq("user_id", userId);
+            if (error) return [];
+            return (data || []) as { achievement_id: string }[];
+        },
+        enabled: open && !!userId,
+    });
+    const earnedBadgeIds = new Set(memberAchievements.map((ua) => ua.achievement_id));
+    const earnedBadges = allAchievements.filter((a) => earnedBadgeIds.has(a.id));
 
     const { data: stats } = useQuery({
         queryKey: ["full-user-stats-dialog", userId],
@@ -79,10 +97,12 @@ export const FullUserProfileDialog = ({ userId, open, onOpenChange }: FullUserPr
                     style={{ background: p?.banner_url ? `url(${p.banner_url}) center/cover` : tier.color, opacity: 0.9 }}
                 >
                     <div className="absolute -bottom-12 left-6">
-                        <Avatar className="w-24 h-24 border-4 border-popover shadow-xl">
-                            <AvatarImage src={profile.avatar_url} />
-                            <AvatarFallback className="text-3xl">{profile.full_name?.charAt(0) || "U"}</AvatarFallback>
-                        </Avatar>
+                        <AvatarWithFrame
+                            avatarUrl={profile.avatar_url}
+                            fallback={profile.full_name?.charAt(0) || "U"}
+                            frameId={((profile as any).avatar_frame as AvatarFrameId) || "none"}
+                            size="xl"
+                        />
                     </div>
                 </div>
 
@@ -117,6 +137,34 @@ export const FullUserProfileDialog = ({ userId, open, onOpenChange }: FullUserPr
 
                         {/* Basic Profile Window */}
                         <TabsContent value="basic" className="animate-in fade-in-50 slide-in-from-bottom-2 space-y-8">
+                            {/* Earned Badges */}
+                            {earnedBadges.length > 0 && (
+                                <div>
+                                    <h3 className="text-base font-bold mb-3 flex items-center gap-1.5">🏅 Earned Badges <span className="text-xs text-muted-foreground font-normal">({earnedBadges.length})</span></h3>
+                                    <div className="flex flex-wrap gap-2">
+                                        {earnedBadges.map((badge) => {
+                                            const rarityColors: Record<string, string> = {
+                                                common: "border-slate-500/40 bg-slate-500/5",
+                                                rare: "border-blue-500/50 bg-blue-500/5",
+                                                epic: "border-purple-500/60 bg-purple-500/10",
+                                                legendary: "border-amber-500/70 bg-amber-500/10 shadow-amber-500/20 shadow-sm",
+                                            };
+                                            const colorClass = rarityColors[badge.rarity || "common"] || rarityColors.common;
+                                            return (
+                                                <div
+                                                    key={badge.id}
+                                                    className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border text-xs font-medium ${colorClass}`}
+                                                    title={badge.description}
+                                                >
+                                                    <span className="text-base leading-none">{badge.icon}</span>
+                                                    <span className="truncate max-w-[80px]">{badge.name}</span>
+                                                </div>
+                                            );
+                                        })}
+                                    </div>
+                                </div>
+                            )}
+
                             <div>
                                 <h3 className="text-xl font-bold mb-4">Personality Traits</h3>
                                 <div className="flex flex-wrap gap-2">

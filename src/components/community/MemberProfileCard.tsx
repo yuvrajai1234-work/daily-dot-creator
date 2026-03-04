@@ -1,6 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import AvatarWithFrame, { AvatarFrameId } from "@/components/AvatarWithFrame";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
@@ -19,6 +20,7 @@ import { format } from "date-fns";
 import { useAuth } from "@/components/AuthProvider";
 import { useFriendships } from "@/hooks/useSocial";
 import { getLevelInfo, getLevelTier } from "@/hooks/useXP";
+import { useAchievements, useUserAchievements } from "@/hooks/useAchievements";
 import { toast } from "sonner";
 import { useState } from "react";
 import {
@@ -40,6 +42,21 @@ export const MemberProfileCard = ({ userId, communityId, role, onClose }: Member
     const { user: currentUser } = useAuth();
     const { friends, sendRequest, acceptRequest, rejectRequest, isLoading: isFriendsLoading } = useFriendships();
     const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
+    const { data: allAchievements = [] } = useAchievements();
+    const { data: memberUserAchievements = [] } = useQuery({
+        queryKey: ["user-achievements", userId],
+        queryFn: async () => {
+            const { data, error } = await supabase
+                .from("user_achievements")
+                .select("achievement_id")
+                .eq("user_id", userId);
+            if (error) return [];
+            return (data || []) as { achievement_id: string }[];
+        },
+        enabled: !!userId,
+    });
+    const earnedBadgeIds = new Set(memberUserAchievements.map((ua) => ua.achievement_id));
+    const earnedBadges = allAchievements.filter((a) => earnedBadgeIds.has(a.id));
 
     // Fetch full profile details
 
@@ -138,15 +155,17 @@ export const MemberProfileCard = ({ userId, communityId, role, onClose }: Member
 
                 {/* Profile Info */}
                 <div className="px-4 pb-4 relative">
-                    {/* Avatar */}
+                    {/* Avatar with frame */}
                     <div className="absolute -top-12 left-4">
                         <div className="relative">
-                            <Avatar className="w-20 h-20 border-4 border-popover shadow-sm">
-                                <AvatarImage src={profile.avatar_url} />
-                                <AvatarFallback className="text-2xl">{profile.full_name?.charAt(0) || "U"}</AvatarFallback>
-                            </Avatar>
+                            <AvatarWithFrame
+                                avatarUrl={profile.avatar_url}
+                                fallback={profile.full_name?.charAt(0) || "U"}
+                                frameId={(profile.avatar_frame as AvatarFrameId) || "none"}
+                                size="lg"
+                            />
                             {/* Online Status Indicator (Mock) */}
-                            <div className="absolute bottom-1 right-1 w-5 h-5 bg-green-500 border-4 border-popover rounded-full" title="Online"></div>
+                            <div className="absolute bottom-0 right-0 w-5 h-5 bg-green-500 border-4 border-popover rounded-full" title="Online"></div>
                         </div>
                     </div>
 
@@ -203,6 +222,37 @@ export const MemberProfileCard = ({ userId, communityId, role, onClose }: Member
                         {profile.gender && <Badge variant="secondary" className="text-[10px] h-5">{profile.gender}</Badge>}
                         {profile.location && <Badge variant="secondary" className="text-[10px] h-5">{profile.location}</Badge>}
                     </div>
+
+                    {/* Earned Badges */}
+                    {earnedBadges.length > 0 && (
+                        <div className="mb-4">
+                            <p className="text-xs text-muted-foreground font-semibold uppercase tracking-wider mb-2">🏅 Badges</p>
+                            <div className="flex flex-wrap gap-1.5">
+                                {earnedBadges.slice(0, 8).map((badge) => {
+                                    const rarityBorder: Record<string, string> = {
+                                        common: "border-slate-500/40",
+                                        rare: "border-blue-500/50",
+                                        epic: "border-purple-500/60",
+                                        legendary: "border-amber-500/70 shadow-amber-400/30 shadow-sm",
+                                    };
+                                    return (
+                                        <div
+                                            key={badge.id}
+                                            title={badge.name}
+                                            className={`text-sm px-2 py-0.5 rounded-md border bg-secondary/40 ${rarityBorder[badge.rarity || "common"] || ""}`}
+                                        >
+                                            {badge.icon}
+                                        </div>
+                                    );
+                                })}
+                                {earnedBadges.length > 8 && (
+                                    <div className="text-xs px-2 py-0.5 rounded-md border border-border bg-secondary/40 text-muted-foreground">
+                                        +{earnedBadges.length - 8}
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+                    )}
 
                     {/* Action Area */}
                     {!isMe && (

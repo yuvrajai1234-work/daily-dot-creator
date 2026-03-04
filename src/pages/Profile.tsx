@@ -11,12 +11,16 @@ import { useAuth } from "@/components/AuthProvider";
 import { useState, useMemo } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { motion } from "framer-motion";
-import { useUserStats } from "@/hooks/useAchievements";
-import { User, MapPin, Briefcase, Calendar, Users, Weight, Ruler, Heart, Crown, Camera } from "lucide-react";
+import { motion, AnimatePresence } from "framer-motion";
+import { useUserStats, useAchievements, useUserAchievements } from "@/hooks/useAchievements";
+import { User, MapPin, Briefcase, Calendar, Users, Weight, Ruler, Heart, Crown, Camera, Lock, Sparkles, CheckCircle } from "lucide-react";
 import LifeBalanceSpiderWeb from "@/components/LifeBalanceSpiderWeb";
 import HabitPointsCalendar from "@/components/HabitPointsCalendar";
 import AvatarSelector from "@/components/AvatarSelector";
+import AvatarWithFrame, { AVATAR_FRAMES, AvatarFrameId } from "@/components/AvatarWithFrame";
+import { useLevelInfo } from "@/hooks/useXP";
+import { useProfile } from "@/hooks/useProfile";
+import { useTheme } from "@/contexts/ThemeContext";
 
 
 const personalityTraits = [
@@ -30,7 +34,18 @@ const personalityTraits = [
 const ProfilePage = () => {
   const { user } = useAuth();
   const { data: stats } = useUserStats();
+  const { data: levelInfo } = useLevelInfo();
+  const { data: profileData } = useProfile();
+  const { settings } = useTheme();
+  const { data: allAchievements = [] } = useAchievements();
+  const { data: userAchievements = [] } = useUserAchievements();
   const metadata = user?.user_metadata || {};
+  const userLevel = levelInfo?.level || 0;
+  const isLevel5Plus = userLevel >= 5;
+
+  // Earned achievement IDs set
+  const earnedIds = useMemo(() => new Set(userAchievements.map((ua) => ua.achievement_id)), [userAchievements]);
+  const earnedAchievements = useMemo(() => allAchievements.filter((a) => earnedIds.has(a.id)), [allAchievements, earnedIds]);
 
   const [isEditing, setIsEditing] = useState(false);
   const [isEditingPersonality, setIsEditingPersonality] = useState(false);
@@ -276,23 +291,15 @@ const ProfilePage = () => {
                 )}
               </CardHeader>
               <CardContent className="flex flex-col items-center text-center space-y-4">
-                <div className="relative group cursor-pointer" onClick={() => setIsAvatarDialogOpen(true)}>
-                  <Avatar className="w-24 h-24 border-4 border-primary/30">
-                    {avatarUrl && !avatarUrl.startsWith("http") ? (
-                      <div className="w-full h-full flex items-center justify-center text-5xl bg-primary/10">
-                        {avatarUrl}
-                      </div>
-                    ) : (
-                      <>
-                        <AvatarImage src={avatarUrl} alt={name} />
-                        <AvatarFallback className="bg-primary/20 text-primary text-xl">{userInitials}</AvatarFallback>
-                      </>
-                    )}
-                  </Avatar>
-                  <div className="absolute inset-0 flex items-center justify-center bg-black/50 rounded-full opacity-0 group-hover:opacity-100 transition-opacity">
-                    <Camera className="w-8 h-8 text-white" />
-                  </div>
-                </div>
+                {/* Avatar with frame */}
+                <AvatarWithFrame
+                  avatarUrl={avatarUrl}
+                  fallback={userInitials}
+                  frameId={settings.avatarFrame}
+                  size="xl"
+                  showHoverOverlay
+                  onClick={() => setIsAvatarDialogOpen(true)}
+                />
 
                 {isEditing ? (
                   <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="Your name" className="text-center bg-secondary/30 border-border" />
@@ -313,6 +320,52 @@ const ProfilePage = () => {
                 )}
 
                 <p className="text-xs text-muted-foreground">{user?.email}</p>
+              </CardContent>
+            </Card>
+          </motion.div>
+
+          {/* Earned Badges Card */}
+          <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.08 }}>
+            <Card className="glass border-border/50">
+              <CardHeader className="pb-3">
+                <CardTitle className="text-lg flex items-center gap-2">
+                  🏅 Earned Badges
+                  {earnedAchievements.length > 0 && (
+                    <span className="ml-auto text-xs bg-primary/10 text-primary px-2 py-0.5 rounded-full font-medium">
+                      {earnedAchievements.length}
+                    </span>
+                  )}
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                {earnedAchievements.length === 0 ? (
+                  <div className="text-center py-4 text-muted-foreground">
+                    <p className="text-3xl mb-2">🔒</p>
+                    <p className="text-sm">No badges earned yet. Complete achievements to earn badges!</p>
+                  </div>
+                ) : (
+                  <div className="flex flex-wrap gap-2">
+                    {earnedAchievements.map((achievement) => {
+                      const rarityColors: Record<string, string> = {
+                        common: "border-slate-500/40 bg-slate-500/5",
+                        rare: "border-blue-500/50 bg-blue-500/5",
+                        epic: "border-purple-500/60 bg-purple-500/10",
+                        legendary: "border-amber-500/70 bg-amber-500/10 shadow-amber-500/20 shadow-sm",
+                      };
+                      const colorClass = rarityColors[achievement.rarity || "common"] || rarityColors.common;
+                      return (
+                        <div
+                          key={achievement.id}
+                          className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border text-xs font-medium ${colorClass}`}
+                          title={achievement.description}
+                        >
+                          <span className="text-base leading-none">{achievement.icon}</span>
+                          <span className="truncate max-w-[90px]">{achievement.name}</span>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
               </CardContent>
             </Card>
           </motion.div>
@@ -567,57 +620,108 @@ const ProfilePage = () => {
             </Card>
           </motion.div>
 
-          {/* Personality Sliders */}
+          {/* Personality Sliders - locked below level 5 */}
           <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }}>
-            <Card className="glass border-border/50">
-              <CardHeader className="flex flex-row items-center justify-between">
-                <CardTitle>Personality Spectrum</CardTitle>
-                {isEditingPersonality ? (
-                  <div className="flex gap-2">
-                    <Button size="sm" onClick={handleSavePersonality}>Save</Button>
-                    <Button size="sm" variant="outline" onClick={handleCancelPersonality}>Cancel</Button>
+            {!isLevel5Plus ? (
+              <Card className="glass border-border/50 relative overflow-hidden">
+                <div className="absolute inset-0 bg-background/60 backdrop-blur-sm z-10 flex flex-col items-center justify-center gap-3 p-6">
+                  <div className="w-16 h-16 rounded-full bg-primary/10 border-2 border-primary/30 flex items-center justify-center">
+                    <Lock className="w-8 h-8 text-primary/60" />
                   </div>
-                ) : (
-                  <Button size="sm" onClick={() => setIsEditingPersonality(true)}>Edit</Button>
-                )}
-              </CardHeader>
-              <CardContent className="space-y-6">
-                {[
-                  { label: ["Introvert", "Extrovert"], value: introvertExtrovert, setter: setIntrovertExtrovert },
-                  { label: ["Analytical", "Creative"], value: analyticalCreative, setter: setAnalyticalCreative },
-                  { label: ["Loyal", "Fickle"], value: loyalFickle, setter: setLoyalFickle },
-                  { label: ["Passive", "Active"], value: passiveActive, setter: setPassiveActive },
-                ].map(({ label, value, setter }) => (
-                  <div key={label[0]} className="space-y-2">
-                    <div className="flex justify-between text-sm">
-                      <span className="text-muted-foreground">{label[0]}</span>
-                      <span className="text-muted-foreground">{label[1]}</span>
+                  <div className="text-center">
+                    <p className="font-bold text-lg">Personality Spectrum</p>
+                    <p className="text-muted-foreground text-sm mt-1">Unlocks at <span className="text-primary font-bold">Level 5</span></p>
+                    <div className="mt-3 w-full max-w-[200px] mx-auto">
+                      <div className="flex justify-between text-xs text-muted-foreground mb-1">
+                        <span>Level {userLevel}</span><span>Level 5</span>
+                      </div>
+                      <div className="h-2 bg-secondary rounded-full overflow-hidden">
+                        <div
+                          className="h-full bg-gradient-to-r from-primary to-primary/60 rounded-full transition-all duration-700"
+                          style={{ width: `${Math.min(100, (userLevel / 5) * 100)}%` }}
+                        />
+                      </div>
                     </div>
-                    <Slider
-                      value={[value]}
-                      onValueChange={([v]) => isEditingPersonality && setter(v)}
-                      max={100}
-                      step={1}
-                      disabled={!isEditingPersonality}
-                      className="cursor-pointer"
-                    />
-                    <p className="text-center text-xs text-muted-foreground">{value}%</p>
-                  </div>
-                ))}
-
-                {/* MBTI Personality Type Display */}
-                <div className="mt-6 pt-6 border-t border-border/30">
-                  <div className="p-4 rounded-lg bg-primary/10 border border-primary/30">
-                    <h3 className="text-xl font-bold text-center text-primary mb-2">
-                      {personalityType}
-                    </h3>
-                    <p className="text-sm text-center text-muted-foreground leading-relaxed">
-                      {personalityTypes[personalityType]}
-                    </p>
                   </div>
                 </div>
-              </CardContent>
-            </Card>
+                <CardHeader className="opacity-20 select-none blur-sm">
+                  <CardTitle>Personality Spectrum</CardTitle>
+                </CardHeader>
+                <CardContent className="opacity-20 select-none blur-sm space-y-6 pb-8">
+                  <div className="h-6 bg-secondary rounded w-full" />
+                  <div className="h-6 bg-secondary rounded w-full" />
+                  <div className="h-6 bg-secondary rounded w-full" />
+                </CardContent>
+              </Card>
+            ) : (
+              <AnimatePresence>
+                <motion.div
+                  initial={userLevel === 5 ? { scale: 0.9, opacity: 0 } : false}
+                  animate={{ scale: 1, opacity: 1 }}
+                  transition={{ type: "spring", stiffness: 200, damping: 15 }}
+                >
+                  <Card className="glass border-border/50">
+                    <CardHeader className="flex flex-row items-center justify-between">
+                      <CardTitle className="flex items-center gap-2">
+                        Personality Spectrum
+                        {userLevel === 5 && (
+                          <motion.span
+                            initial={{ scale: 0 }} animate={{ scale: 1 }} transition={{ delay: 0.3, type: "spring" }}
+                            className="text-xs bg-gradient-to-r from-primary to-primary/60 text-white px-2 py-0.5 rounded-full flex items-center gap-1"
+                          >
+                            <Sparkles className="w-3 h-3" /> Just Unlocked!
+                          </motion.span>
+                        )}
+                      </CardTitle>
+                      {isEditingPersonality ? (
+                        <div className="flex gap-2">
+                          <Button size="sm" onClick={handleSavePersonality}>Save</Button>
+                          <Button size="sm" variant="outline" onClick={handleCancelPersonality}>Cancel</Button>
+                        </div>
+                      ) : (
+                        <Button size="sm" onClick={() => setIsEditingPersonality(true)}>Edit</Button>
+                      )}
+                    </CardHeader>
+                    <CardContent className="space-y-6">
+                      {[
+                        { label: ["Introvert", "Extrovert"], value: introvertExtrovert, setter: setIntrovertExtrovert },
+                        { label: ["Analytical", "Creative"], value: analyticalCreative, setter: setAnalyticalCreative },
+                        { label: ["Loyal", "Fickle"], value: loyalFickle, setter: setLoyalFickle },
+                        { label: ["Passive", "Active"], value: passiveActive, setter: setPassiveActive },
+                      ].map(({ label, value, setter }) => (
+                        <div key={label[0]} className="space-y-2">
+                          <div className="flex justify-between text-sm">
+                            <span className="text-muted-foreground">{label[0]}</span>
+                            <span className="text-muted-foreground">{label[1]}</span>
+                          </div>
+                          <Slider
+                            value={[value]}
+                            onValueChange={([v]) => isEditingPersonality && setter(v)}
+                            max={100}
+                            step={1}
+                            disabled={!isEditingPersonality}
+                            className="cursor-pointer"
+                          />
+                          <p className="text-center text-xs text-muted-foreground">{value}%</p>
+                        </div>
+                      ))}
+
+                      {/* MBTI Personality Type Display */}
+                      <div className="mt-6 pt-6 border-t border-border/30">
+                        <div className="p-4 rounded-lg bg-primary/10 border border-primary/30">
+                          <h3 className="text-xl font-bold text-center text-primary mb-2">
+                            {personalityType}
+                          </h3>
+                          <p className="text-sm text-center text-muted-foreground leading-relaxed">
+                            {personalityTypes[personalityType]}
+                          </p>
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                </motion.div>
+              </AnimatePresence>
+            )}
           </motion.div>
 
           {/* Habit Points Calendar */}
@@ -625,9 +729,35 @@ const ProfilePage = () => {
             <HabitPointsCalendar />
           </motion.div>
 
-          {/* Life Balance Spider Web */}
+          {/* Life Balance Spider Web - locked below level 5 */}
           <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.15 }}>
-            <LifeBalanceSpiderWeb />
+            {!isLevel5Plus ? (
+              <Card className="glass border-border/50 relative overflow-hidden">
+                <div className="absolute inset-0 bg-background/60 backdrop-blur-sm z-10 flex flex-col items-center justify-center gap-3 p-6">
+                  <div className="w-16 h-16 rounded-full bg-primary/10 border-2 border-primary/30 flex items-center justify-center">
+                    <Lock className="w-8 h-8 text-primary/60" />
+                  </div>
+                  <div className="text-center">
+                    <p className="font-bold text-lg">Life Balance Spider Web</p>
+                    <p className="text-muted-foreground text-sm mt-1">Unlocks at <span className="text-primary font-bold">Level 5</span></p>
+                  </div>
+                </div>
+                <CardHeader className="opacity-20 select-none blur-sm">
+                  <CardTitle>Life Balance</CardTitle>
+                </CardHeader>
+                <CardContent className="opacity-20 select-none blur-sm h-48" />
+              </Card>
+            ) : (
+              <AnimatePresence>
+                <motion.div
+                  initial={userLevel === 5 ? { scale: 0.9, opacity: 0 } : false}
+                  animate={{ scale: 1, opacity: 1 }}
+                  transition={{ type: "spring", stiffness: 200, damping: 15, delay: 0.1 }}
+                >
+                  <LifeBalanceSpiderWeb />
+                </motion.div>
+              </AnimatePresence>
+            )}
           </motion.div>
         </div>
       </div>

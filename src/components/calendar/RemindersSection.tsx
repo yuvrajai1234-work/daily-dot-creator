@@ -5,7 +5,12 @@ import { AddReminderDialog } from "./AddReminderDialog";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Trash2, AlertCircle } from "lucide-react";
+import { Trash2, AlertCircle, Bell } from "lucide-react";
+import { useSpendBCoins } from "@/hooks/useCoins";
+import { useProfile } from "@/hooks/useProfile";
+import { toast } from "sonner";
+
+const REMINDER_COST = 5;
 
 interface RemindersSectionProps {
     date: Date | undefined;
@@ -14,6 +19,8 @@ interface RemindersSectionProps {
 export const RemindersSection = ({ date }: RemindersSectionProps) => {
     const [showAddDialog, setShowAddDialog] = useState(false);
     const { deleteReminder, getRemindersForDate, addReminder } = useReminders();
+    const { data: profile } = useProfile();
+    const spendBCoins = useSpendBCoins();
 
     if (!date) return null;
 
@@ -22,12 +29,24 @@ export const RemindersSection = ({ date }: RemindersSectionProps) => {
     const dateStr = format(date, "yyyy-MM-dd");
     const dayReminders = getRemindersForDate(dateStr);
 
-    const handleSave = (data: { title: string; time: string; isSpecial: boolean }) => {
-        addReminder({
-            ...data,
-            date: dateStr,
-        });
-        setShowAddDialog(false);
+    const handleSave = async (data: { title: string; time: string; isSpecial: boolean }) => {
+        const bBalance = (profile as any)?.b_coin_balance || 0;
+        if (bBalance < REMINDER_COST) {
+            toast.error(`Not enough B Coins! You need ${REMINDER_COST} B Coins to add a reminder.`);
+            return;
+        }
+
+        try {
+            await spendBCoins.mutateAsync({ amount: REMINDER_COST, reason: "Add reminder" });
+            addReminder({
+                ...data,
+                date: dateStr,
+            });
+            setShowAddDialog(false);
+            toast.success(`Reminder added! (-${REMINDER_COST} B Coins)`);
+        } catch (err: any) {
+            toast.error(err.message || "Failed to add reminder");
+        }
     };
 
     return (
@@ -41,10 +60,11 @@ export const RemindersSection = ({ date }: RemindersSectionProps) => {
                         </div>
                         <Button
                             onClick={() => setShowAddDialog(true)}
-                            className="bg-primary hover:bg-opacity-90 transition-colors"
-                            disabled={isPastDate}
+                            className="bg-primary hover:bg-opacity-90 transition-colors gap-2"
+                            disabled={isPastDate || spendBCoins.isPending}
                         >
-                            Add Reminder
+                            <Bell className="w-4 h-4" />
+                            Add Reminder ({REMINDER_COST} 🪙)
                         </Button>
                     </div>
 

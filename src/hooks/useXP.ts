@@ -248,9 +248,28 @@ export const useAddXP = () => {
 
             // Show notification
             if (result.level_up) {
-                toast.success(`🎉 Level Up! You reached Level ${result.new_level}!`, {
+                const newLevel: number = result.new_level;
+
+                // Level-specific feature unlock announcements
+                let unlockMsg = "";
+                if (newLevel === 5) {
+                    unlockMsg = "🔓 UNLOCKED: Personality Spectrum & Life Balance Spider Web on your Profile!";
+                } else if (newLevel === 10) {
+                    unlockMsg = "🔓 UNLOCKED: Community Hub — join & create communities!";
+                }
+
+                toast.success(`🎉 Level Up! You reached Level ${newLevel}!`, {
                     duration: 5000,
                 });
+
+                if (unlockMsg) {
+                    setTimeout(() => {
+                        toast.success(unlockMsg, {
+                            duration: 8000,
+                            description: "Head over to your Profile (or Community) to explore your new features!",
+                        });
+                    }, 1000);
+                }
             } else {
                 toast.success(`+${result.xp_gained} XP earned!`, {
                     duration: 2000,
