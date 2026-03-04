@@ -1,11 +1,13 @@
 import { useState, useEffect } from "react";
-import { Community, useCommunityMembers, useCommunities, useChannels, usePendingJoinRequests, useRespondToJoinRequest } from "@/hooks/useCommunities";
+import { Community, useCommunityMembers, useCommunities, useChannels, usePendingJoinRequests, useRespondToJoinRequest, useSendInvite } from "@/hooks/useCommunities";
 import { usePinnedMessages } from "@/hooks/usePinnedMessages";
 import { MemberProfileCard } from "./MemberProfileCard";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { CommunityChat } from "./CommunityChat";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -29,6 +31,7 @@ import { useAuth } from "@/components/AuthProvider";
 import { useFriendships, useCommunityNotifications, useMarkNotificationRead } from "@/hooks/useSocial";
 import { CommunitySettingsDialog } from "./CommunitySettingsDialog";
 import { toast } from "sonner";
+import { supabase } from "@/integrations/supabase/client";
 
 interface CommunityDetailViewProps {
     community: Community;
@@ -57,6 +60,42 @@ export const CommunityDetailView = ({ community, onBack }: CommunityDetailViewPr
     const { data: joinRequests = [] } = usePendingJoinRequests(isAdminOrMod ? community.id : "");
     const respondToJoinRequest = useRespondToJoinRequest();
     const totalNotifCount = notifications.length + joinRequests.length;
+
+    // Invitation logic
+    const [inviteOpen, setInviteOpen] = useState(false);
+    const [inviteSearchItem, setInviteSearchItem] = useState("");
+    const [inviteSearchResults, setInviteSearchResults] = useState<any[]>([]);
+    const sendInvite = useSendInvite();
+
+    useEffect(() => {
+        if (!inviteSearchItem.trim()) {
+            setInviteSearchResults([]);
+            return;
+        }
+        const delaySearch = setTimeout(async () => {
+            const { data } = await supabase
+                .from("profiles")
+                .select("user_id, full_name, avatar_url")
+                .ilike("full_name", `%${inviteSearchItem}%`)
+                .neq("user_id", user?.id)
+                .limit(10);
+
+            if (data) {
+                // Filter out existing members
+                const nonMembers = data.filter(d => !members.some((m: any) => m.userId === d.user_id));
+                setInviteSearchResults(nonMembers);
+            }
+        }, 300);
+        return () => clearTimeout(delaySearch);
+    }, [inviteSearchItem, members, user?.id]);
+
+    const handleSendInvite = (invitedUserId: string) => {
+        sendInvite.mutate({ communityId: community.id, invitedUserId }, {
+            onSuccess: () => {
+                setInviteSearchResults(prev => prev.filter(u => u.user_id !== invitedUserId));
+            }
+        });
+    };
 
     // Collapsed state
     const [collapsedCategories, setCollapsedCategories] = useState<Record<string, boolean>>({});
@@ -447,8 +486,64 @@ export const CommunityDetailView = ({ community, onBack }: CommunityDetailViewPr
             {/* RIGHT SIDEBAR: Member List (Desktop only) */}
             {showMembers && (
                 <div className="w-[240px] bg-card flex-col hidden lg:flex flex-shrink-0 border-l border-border">
-                    <div className="h-12 border-b border-border flex items-center px-4 font-bold text-muted-foreground text-xs tracking-wider">
-                        MEMBERS — {members.length}
+                    <div className="h-12 border-b border-border flex items-center justify-between px-4 font-bold text-muted-foreground text-xs tracking-wider">
+                        <span>MEMBERS — {members.length}</span>
+                        {isAdminOrMod && (
+                            <Dialog open={inviteOpen} onOpenChange={setInviteOpen}>
+                                <DialogTrigger asChild>
+                                    <Button variant="ghost" size="icon" className="w-6 h-6 rounded-full hover:bg-primary/20 hover:text-primary transition-colors cursor-pointer" title="Invite Members">
+                                        <UserPlus className="w-3.5 h-3.5" />
+                                    </Button>
+                                </DialogTrigger>
+                                <DialogContent className="max-w-md bg-card/95 backdrop-blur shadow-2xl border-border/50">
+                                    <DialogHeader>
+                                        <DialogTitle>Invite to {community.name}</DialogTitle>
+                                    </DialogHeader>
+                                    <div className="space-y-4 pt-2">
+                                        <div className="relative">
+                                            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                                            <Input
+                                                placeholder="Search users to invite..."
+                                                className="pl-9 bg-background/50 border-input border"
+                                                value={inviteSearchItem}
+                                                onChange={(e) => setInviteSearchItem(e.target.value)}
+                                            />
+                                        </div>
+
+                                        <ScrollArea className="h-[250px] pr-4">
+                                            {inviteSearchResults.length > 0 ? (
+                                                <div className="space-y-2">
+                                                    {inviteSearchResults.map((usr) => (
+                                                        <div key={usr.user_id} className="flex flex-row items-center justify-between p-2 rounded-lg bg-background/30 hover:bg-background/80 transition-colors">
+                                                            <div className="flex items-center gap-3">
+                                                                <Avatar className="w-8 h-8">
+                                                                    <AvatarImage src={usr.avatar_url} />
+                                                                    <AvatarFallback>{usr.full_name?.charAt(0).toUpperCase()}</AvatarFallback>
+                                                                </Avatar>
+                                                                <span className="text-sm font-medium">{usr.full_name}</span>
+                                                            </div>
+                                                            <Button
+                                                                size="sm"
+                                                                variant="outline"
+                                                                className="h-7 text-xs"
+                                                                onClick={() => handleSendInvite(usr.user_id)}
+                                                                disabled={sendInvite.isPending}
+                                                            >
+                                                                Invite
+                                                            </Button>
+                                                        </div>
+                                                    ))}
+                                                </div>
+                                            ) : inviteSearchItem.trim().length > 0 ? (
+                                                <div className="text-sm text-center text-muted-foreground pt-8">No matching users found (who aren't already members).</div>
+                                            ) : (
+                                                <div className="text-sm text-center text-muted-foreground pt-8">Type a name to search...</div>
+                                            )}
+                                        </ScrollArea>
+                                    </div>
+                                </DialogContent>
+                            </Dialog>
+                        )}
                     </div>
                     <ScrollArea className="flex-1 p-3">
                         <div className="space-y-5">

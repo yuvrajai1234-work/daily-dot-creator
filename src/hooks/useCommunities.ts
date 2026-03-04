@@ -468,3 +468,97 @@ export const useChannels = (communityId: string) => {
 
   return { ...query, createChannel, updateChannel, deleteChannel };
 }
+
+export const useSendInvite = () => {
+  const { user } = useAuth();
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({ communityId, invitedUserId }: { communityId: string, invitedUserId: string }) => {
+      if (!user) throw new Error("Not logged in");
+
+      const { error } = await supabase
+        .from("community_invites" as any)
+        .insert({
+          community_id: communityId,
+          invited_user_id: invitedUserId,
+          inviter_user_id: user.id,
+          status: "pending"
+        });
+
+      if (error) {
+        if (error.code === '23505') { // unique violation
+          throw new Error("This user has already been invited or is a member.");
+        }
+        throw error;
+      }
+    },
+    onSuccess: () => {
+      toast.success("Invite sent successfully!");
+      // Optionally invalidate community invites if tracked
+    },
+    onError: (e: any) => toast.error(e.message)
+  });
+};
+
+export const useMyInvites = () => {
+  const { user } = useAuth();
+
+  return useQuery({
+    queryKey: ["my-community-invites", user?.id],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("community_invites" as any)
+        .select(`
+          id,
+          community_id,
+          status,
+          created_at,
+          communities (name, emoji),
+          profiles:inviter_user_id (full_name)
+        `)
+        .eq("invited_user_id", user!.id)
+        .eq("status", "pending");
+
+      if (error) {
+        console.error("Error fetching invites", error);
+        return [];
+      }
+      return data as any[];
+    },
+    enabled: !!user,
+  });
+};
+
+export const useRespondToInvite = () => {
+  const { user } = useAuth();
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({ inviteId, status }: { inviteId: string; status: 'accepted' | 'declined' }) => {
+      if (!user) throw new Error("Not logged in");
+
+      const { error } = await supabase
+        .from("community_invites" as any)
+        .update({ status })
+        .eq("id", inviteId)
+        .eq("invited_user_id", user.id);
+
+      if (error) throw error;
+    },
+    onSuccess: (_, { status }) => {
+      queryClient.invalidateQueries({ queryKey: ["my-community-invites"] });
+      queryClient.invalidateQueries({ queryKey: ["my-memberships"] });
+      queryClient.invalidateQueries({ queryKey: ["communities"] });
+
+      if (status === 'accepted') {
+        toast.success("You joined the community!");
+      } else {
+        toast.info("Invite declined");
+      }
+    },
+    onError: (err: any) => {
+      toast.error(err.message);
+    },
+  });
+};

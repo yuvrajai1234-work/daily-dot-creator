@@ -7,7 +7,8 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Search, Users, Plus, LogOut, Trophy, Activity, MessageSquare, Loader2, Lock, Sparkles } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
-import { useCommunities, JOIN_COST, CREATE_COST, Community, useRequestToJoin, useMyJoinRequests } from "@/hooks/useCommunities";
+import { useCommunities, JOIN_COST, CREATE_COST, Community, useRequestToJoin, useMyJoinRequests, useMyInvites, useRespondToInvite } from "@/hooks/useCommunities";
+import { useHabits } from "@/hooks/useHabits";
 import { Clock } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { CommunityDetailView } from "@/components/community/CommunityDetailView";
@@ -22,7 +23,13 @@ const CommunityPage = () => {
   const { communities, isLoading, isMember, createCommunity } = useCommunities();
   const { data: levelInfo } = useLevelInfo();
   const { data: myRequests = [] } = useMyJoinRequests();
+  const { data: myInvites = [] } = useMyInvites();
+  const respondToInvite = useRespondToInvite();
   const requestToJoin = useRequestToJoin();
+  const { data: userHabits = [] } = useHabits();
+
+  // To power recommendations, look at today's active habits
+  const userHabitCategories = Array.from(new Set(userHabits.filter(h => !h.is_archived).map(h => "General")));
   const userLevel = levelInfo?.level || 0;
   const isLevel10Plus = userLevel >= 10;
 
@@ -265,74 +272,153 @@ const CommunityPage = () => {
                   <Button onClick={() => setCreateOpen(true)} variant="outline">Create New Community</Button>
                 </Card>
               ) : (
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <AnimatePresence>
-                    {filtered.map((community, i) => {
-                      const joined = isMember(community.id);
-                      return (
-                        <motion.div
-                          key={community.id}
-                          initial={{ opacity: 0, y: 20 }}
-                          animate={{ opacity: 1, y: 0 }}
-                          transition={{ delay: i * 0.05 }}
-                          layoutId={community.id}
-                        >
-                          <Card className={`glass border-border/50 overflow-hidden h-full flex flex-col hover:border-primary/30 transition-colors group ${joined ? "ring-1 ring-primary/20" : ""}`}>
-                            <div className="h-24 bg-gradient-to-br from-primary/10 via-background to-secondary/10 flex items-center justify-center relative">
-                              <span className="text-5xl drop-shadow-lg transform group-hover:scale-110 transition-transform duration-300">{community.emoji}</span>
-                              {joined && (
-                                <div className="absolute top-2 right-2">
-                                  <span className="bg-primary text-primary-foreground text-[10px] px-2 py-0.5 rounded-full font-bold shadow-sm">MEMBER</span>
-                                </div>
-                              )}
-                            </div>
-                            <CardHeader className="pb-2">
-                              <CardTitle className="truncate" title={community.name}>{community.name}</CardTitle>
-                              <p className="text-sm text-muted-foreground line-clamp-2 min-h-[40px]">{community.tagline}</p>
-                            </CardHeader>
-                            <CardContent className="pb-2 flex-grow">
-                              <div className="flex justify-between text-sm text-muted-foreground mt-2">
-                                <span className="flex items-center gap-1 bg-secondary/30 px-2 py-1 rounded-md text-xs">
-                                  <Users className="w-3 h-3" /> {community.member_count}
-                                </span>
-                                <span className="font-medium text-primary text-xs bg-primary/5 px-2 py-1 rounded-md border border-primary/10">
-                                  {community.habit_category}
-                                </span>
+                <div className="space-y-10">
+                  {/* --- SECTION 1: Pending Invites --- */}
+                  {myInvites.length > 0 && !search && (
+                    <div className="space-y-4">
+                      <h2 className="text-xl font-bold flex items-center gap-2"><Sparkles className="w-5 h-5 text-primary" /> Community Invites</h2>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        {myInvites.map(invite => (
+                          <Card key={invite.id} className="glass border-primary/50 bg-primary/5 animation-pulse shadow-primary-glow">
+                            <CardContent className="p-4 flex flex-col justify-between h-full">
+                              <div>
+                                <h3 className="text-lg font-bold flex items-center gap-2">
+                                  {invite.communities?.emoji} {invite.communities?.name}
+                                </h3>
+                                <p className="text-sm text-muted-foreground mt-1">Invited by: <span className="text-primary font-medium">{invite.profiles?.full_name}</span></p>
+                              </div>
+                              <div className="flex gap-2 mt-4">
+                                <Button
+                                  className="w-full bg-success text-success-foreground hover:bg-success/90"
+                                  size="sm"
+                                  onClick={() => respondToInvite.mutate({ inviteId: invite.id, status: 'accepted' })}
+                                  disabled={respondToInvite.isPending}
+                                >
+                                  Accept
+                                </Button>
+                                <Button
+                                  className="w-full"
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={() => respondToInvite.mutate({ inviteId: invite.id, status: 'declined' })}
+                                  disabled={respondToInvite.isPending}
+                                >
+                                  Decline
+                                </Button>
                               </div>
                             </CardContent>
-                            <CardFooter className="pt-2">
-                              {joined ? (
-                                <Button
-                                  className="w-full gap-2 gradient-primary border-0 shadow-md hover:shadow-lg transition-all"
-                                  onClick={() => setSelectedCommunity(community)}
-                                >
-                                  <MessageSquare className="w-4 h-4" /> Open Chat
-                                </Button>
-                              ) : myRequestMap.get(community.id) === 'pending' ? (
-                                <Button
-                                  className="w-full gap-2 border-yellow-500/30 text-yellow-500 bg-yellow-500/5"
-                                  variant="outline"
-                                  disabled
-                                >
-                                  <Clock className="w-4 h-4" /> Request Pending...
-                                </Button>
-                              ) : (
-                                <Button
-                                  className="w-full border-primary/20 hover:bg-primary/5 hover:border-primary/50 text-primary gap-2"
-                                  variant="outline"
-                                  onClick={() => requestToJoin.mutate(community.id)}
-                                  disabled={requestToJoin.isPending}
-                                >
-                                  {requestToJoin.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Plus className="w-4 h-4" />}
-                                  Request to Join
-                                </Button>
-                              )}
-                            </CardFooter>
                           </Card>
-                        </motion.div>
-                      );
-                    })}
-                  </AnimatePresence>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Helpers for rendering cards */}
+                  {(() => {
+                    const myCommunities = filtered.filter(c => isMember(c.id));
+
+                    // Recommendations: Communities you aren't in, sorted to prefer matching your habits
+                    const notInCommunities = filtered.filter(c => !isMember(c.id));
+                    const recommended = [...notInCommunities].sort((a, b) => {
+                      const aMatch = userHabitCategories.includes(a.habit_category) ? 1 : 0;
+                      const bMatch = userHabitCategories.includes(b.habit_category) ? 1 : 0;
+                      return bMatch - aMatch;
+                    });
+
+                    const renderCommunityCard = (community: Community, joined: boolean) => (
+                      <motion.div
+                        key={community.id}
+                        initial={{ opacity: 0, y: 20 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        layoutId={community.id}
+                      >
+                        <Card className={`glass border-border/50 overflow-hidden h-full flex flex-col hover:border-primary/30 transition-colors group ${joined ? "ring-1 ring-primary/20" : ""}`}>
+                          <div className="h-24 bg-gradient-to-br from-primary/10 via-background to-secondary/10 flex items-center justify-center relative">
+                            <span className="text-5xl drop-shadow-lg transform group-hover:scale-110 transition-transform duration-300">{community.emoji}</span>
+                            {joined && (
+                              <div className="absolute top-2 right-2">
+                                <span className="bg-primary text-primary-foreground text-[10px] px-2 py-0.5 rounded-full font-bold shadow-sm">MEMBER</span>
+                              </div>
+                            )}
+                          </div>
+                          <CardHeader className="pb-2">
+                            <CardTitle className="truncate" title={community.name}>{community.name}</CardTitle>
+                            <p className="text-sm text-muted-foreground line-clamp-2 min-h-[40px]">{community.tagline}</p>
+                          </CardHeader>
+                          <CardContent className="pb-2 flex-grow">
+                            <div className="flex justify-between text-sm text-muted-foreground mt-2">
+                              <span className="flex items-center gap-1 bg-secondary/30 px-2 py-1 rounded-md text-xs">
+                                <Users className="w-3 h-3" /> {community.member_count}
+                              </span>
+                              <span className={`font-medium text-xs px-2 py-1 rounded-md border ${userHabitCategories.includes(community.habit_category) && !joined ? "text-success bg-success/5 border-success/20" : "text-primary bg-primary/5 border-primary/10"}`}>
+                                {community.habit_category}
+                              </span>
+                            </div>
+                          </CardContent>
+                          <CardFooter className="pt-2">
+                            {joined ? (
+                              <Button
+                                className="w-full gap-2 gradient-primary border-0 shadow-md hover:shadow-lg transition-all"
+                                onClick={() => setSelectedCommunity(community)}
+                              >
+                                <MessageSquare className="w-4 h-4" /> Open Chat
+                              </Button>
+                            ) : myRequestMap.get(community.id) === 'pending' ? (
+                              <Button
+                                className="w-full gap-2 border-yellow-500/30 text-yellow-500 bg-yellow-500/5"
+                                variant="outline"
+                                disabled
+                              >
+                                <Clock className="w-4 h-4" /> Request Pending...
+                              </Button>
+                            ) : (
+                              <Button
+                                className="w-full border-primary/20 hover:bg-primary/5 hover:border-primary/50 text-primary gap-2"
+                                variant="outline"
+                                onClick={() => requestToJoin.mutate(community.id)}
+                                disabled={requestToJoin.isPending}
+                              >
+                                {requestToJoin.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Plus className="w-4 h-4" />}
+                                Request to Join
+                              </Button>
+                            )}
+                          </CardFooter>
+                        </Card>
+                      </motion.div>
+                    );
+
+                    return (
+                      <>
+                        {/* --- SECTION 2: My Communities --- */}
+                        {(myCommunities.length > 0 || search) && (
+                          <div className="space-y-4">
+                            <h2 className="text-lg font-semibold border-b border-border/50 pb-2 flex items-center gap-2"><Users className="w-5 h-5" /> My Communities</h2>
+                            {myCommunities.length === 0 && <p className="text-muted-foreground text-sm">No joined communities matching search.</p>}
+                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                              <AnimatePresence>
+                                {myCommunities.map((c) => renderCommunityCard(c, true))}
+                              </AnimatePresence>
+                            </div>
+                          </div>
+                        )}
+
+                        {/* --- SECTION 3: Recommended Communities --- */}
+                        {(recommended.length > 0 || search) && (
+                          <div className="space-y-4">
+                            <h2 className="text-lg font-semibold border-b border-border/50 pb-2 flex items-center justify-between">
+                              <div className="flex items-center gap-2"><Search className="w-5 h-5" /> Discover & Recommended</div>
+                            </h2>
+                            {recommended.length === 0 && <p className="text-muted-foreground text-sm">No other communities matching search.</p>}
+                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                              <AnimatePresence>
+                                {recommended.map((c) => renderCommunityCard(c, false))}
+                              </AnimatePresence>
+                            </div>
+                          </div>
+                        )}
+                      </>
+                    );
+                  })()}
                 </div>
               )}
             </div>

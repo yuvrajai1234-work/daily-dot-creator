@@ -316,4 +316,93 @@
       background-position: 0% 50%;
     }
   }
+
+  /* ── Accessibility Modes ──────────────────────────────────────────────── */
+
+  /* Reduce Motion */
+  .motion-reduce *,
+  .motion-reduce ::before,
+  .motion-reduce ::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+
+  /* Compact Mode */
+  .compact-mode .p-6,
+  .compact-mode .p-8 {
+    padding: 1rem !important;
+  }
+
+  .compact-mode .p-4 {
+    padding: 0.75rem !important;
+  }
+
+  .compact-mode .py-6,
+  .compact-mode .py-8 {
+    padding-top: 1rem !important;
+    padding-bottom: 1rem !important;
+  }
+
+  .compact-mode .py-4 {
+    padding-top: 0.75rem !important;
+    padding-bottom: 0.75rem !important;
+  }
+
+  .compact-mode .gap-6,
+  .compact-mode .gap-8 {
+    gap: 1rem !important;
+  }
+
+  .compact-mode .gap-4 {
+    gap: 0.75rem !important;
+  }
+
+  .compact-mode h1 {
+    font-size: 1.5rem !important;
+    line-height: 2rem !important;
+  }
+
+  .compact-mode h2 {
+    font-size: 1.25rem !important;
+    line-height: 1.75rem !important;
+  }
+
+  .compact-mode .space-y-6> :not([hidden])~ :not([hidden]) {
+    margin-top: 1rem !important;
+  }
+
+  .compact-mode .space-y-8> :not([hidden])~ :not([hidden]) {
+    margin-top: 1.5rem !important;
+  }
+
+  .compact-mode .h-16 {
+    height: 3rem !important;
+  }
+
+  .compact-mode .h-24 {
+    height: 4rem !important;
+  }
+
+  /* High Contrast */
+  .high-contrast {
+    /* Much darker muted text in light mode */
+    --muted-foreground: 240 5% 15%;
+    --border: 240 5% 40%;
+    --glass-border: hsla(0, 0%, 0%, 0.4);
+  }
+
+  .dark.high-contrast {
+    /* Much brighter muted text in dark mode */
+    --muted-foreground: 240 5% 85%;
+    --border: 240 5% 60%;
+    --glass-border: hsla(0, 0%, 100%, 0.4);
+  }
+
+  /* Make cards look more distinct in high contrast */
+  .high-contrast .glass,
+  .high-contrast .border {
+    border-width: 2px !important;
+  }
 }
