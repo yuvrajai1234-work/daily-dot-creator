@@ -5,8 +5,8 @@ import { useProfile } from "@/hooks/useProfile";
 import { toast } from "sonner";
 import { getAppDate } from "@/lib/dateUtils";
 
-// B coin max balance per level: level 1 = 75, level 2 = 80, ... level 50 = 320
-export const getMaxBCoins = (level: number) => 70 + level * 5;
+// No per-level cap — B Coins are unlimited (reset weekly)
+export const getMaxBCoins = (_level: number) => Infinity;
 
 // Interface for claimed rewards
 export interface ClaimedReward {
@@ -129,9 +129,7 @@ export const useClaimBCoins = () => {
         resetDate = now.toISOString();
       }
 
-      // Use XP Level for B Coin Limit
-      const maxB = getMaxBCoins(profile.level || 1);
-      const newBalance = Math.min(currentBalance + amount, maxB);
+      const newBalance = currentBalance + amount;
 
       const { error } = await supabase
         .from("profiles")

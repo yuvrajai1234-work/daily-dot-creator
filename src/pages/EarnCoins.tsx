@@ -5,7 +5,6 @@ import { Badge } from "@/components/ui/badge";
 import { Check, Play, Crown, Info, Zap } from "lucide-react";
 import { motion } from "framer-motion";
 import { useProfile } from "@/hooks/useProfile";
-import { getMaxBCoins } from "@/hooks/useCoins";
 import { useAddXP } from "@/hooks/useXP";
 import { Progress } from "@/components/ui/progress";
 import { differenceInDays, endOfWeek } from "date-fns";
@@ -65,9 +64,6 @@ const EarnCoinsPage = () => {
   const queryClient = useQueryClient();
 
   const bCoins = (profile as any)?.b_coin_balance || 0;
-  const bLevel = (profile as any)?.level || 1;
-  const maxB = getMaxBCoins(bLevel);
-  const bProgress = Math.round((bCoins / maxB) * 100);
   const daysUntilReset = differenceInDays(endOfWeek(new Date(), { weekStartsOn: 1 }), new Date());
 
   const xpLimitReached = adViews >= MAX_XP_ADS;
@@ -91,8 +87,7 @@ const EarnCoinsPage = () => {
 
       if (profileData) {
         const currentBalance = profileData.b_coin_balance || 0;
-        const maxBal = getMaxBCoins(profileData.level || 1);
-        const newBalance = Math.min(currentBalance + 10, maxBal);
+        const newBalance = currentBalance + 10;
         await supabase
           .from("profiles")
           .update({ b_coin_balance: newBalance })
@@ -132,32 +127,54 @@ const EarnCoinsPage = () => {
                   B Coins
                 </h2>
                 <p className="text-sm text-muted-foreground mt-1">
-                  Level {bLevel} • Resets weekly (in {daysUntilReset} days) • Max {maxB}
+                  Resets weekly (in {daysUntilReset} days)
                 </p>
               </div>
               <div className="text-right">
                 <p className="text-3xl font-bold">{bCoins}</p>
-                <p className="text-xs text-muted-foreground">/ {maxB}</p>
+                <p className="text-xs text-muted-foreground">this week</p>
               </div>
             </div>
-            <Progress value={bProgress} className="h-3" />
-            <div className="mt-4 grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
-              <Badge variant="outline" className="justify-start gap-2 py-1.5 text-muted-foreground bg-background/50 hover:bg-background transition-colors">
-                <Info className="w-3.5 h-3.5 text-primary" />
-                <span>Log habit: <span className="font-semibold text-foreground">10 B Coins</span></span>
-              </Badge>
-              <Badge variant="outline" className="justify-start gap-2 py-1.5 text-muted-foreground bg-background/50 hover:bg-background transition-colors">
-                <Info className="w-3.5 h-3.5 text-primary" />
-                <span>Save journal: <span className="font-semibold text-foreground">5 B Coins</span></span>
-              </Badge>
-              <Badge variant="outline" className="justify-start gap-2 py-1.5 text-muted-foreground bg-background/50 hover:bg-background transition-colors">
-                <Info className="w-3.5 h-3.5 text-primary" />
-                <span>Join community: <span className="font-semibold text-foreground">10 B Coins</span></span>
-              </Badge>
-              <Badge variant="outline" className="justify-start gap-2 py-1.5 text-muted-foreground bg-background/50 hover:bg-background transition-colors">
-                <Info className="w-3.5 h-3.5 text-primary" />
-                <span>Create community: <span className="font-semibold text-foreground">20 B Coins</span></span>
-              </Badge>
+            <Progress value={Math.min((bCoins % 100), 100)} className="h-3" />
+            <div className="mt-4 space-y-3">
+              {/* Earn B Coins */}
+              <p className="text-xs font-semibold text-emerald-500 uppercase tracking-wider flex items-center gap-1.5">
+                <span className="inline-block w-2 h-2 rounded-full bg-emerald-500" />
+                Ways to Earn
+              </p>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
+                {[
+                  { label: "Watch an ad", amount: "+10 B Coins" },
+                  { label: "Daily quest reward", amount: "+varies" },
+                  { label: "Streak milestone reward", amount: "+varies" },
+                  { label: "Claim quest (via Earn Coins page)", amount: "+varies" },
+                ].map(({ label, amount }) => (
+                  <Badge key={label} variant="outline" className="justify-start gap-2 py-1.5 text-muted-foreground bg-emerald-500/5 border-emerald-500/20 hover:bg-emerald-500/10 transition-colors">
+                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 flex-shrink-0" />
+                    <span>{label}: <span className="font-semibold text-emerald-500">{amount}</span></span>
+                  </Badge>
+                ))}
+              </div>
+
+              {/* Spend B Coins */}
+              <p className="text-xs font-semibold text-rose-500 uppercase tracking-wider flex items-center gap-1.5 mt-1">
+                <span className="inline-block w-2 h-2 rounded-full bg-rose-500" />
+                Ways Coins Are Spent
+              </p>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
+                {[
+                  { label: "Log a habit (new entry)", amount: "−10 B Coins" },
+                  { label: "Create a new habit", amount: "−20 B Coins" },
+                  { label: "Save a journal entry", amount: "−5 B Coins" },
+                  { label: "Join a community", amount: "−10 B Coins" },
+                  { label: "Create a community", amount: "−20 B Coins" },
+                ].map(({ label, amount }) => (
+                  <Badge key={label} variant="outline" className="justify-start gap-2 py-1.5 text-muted-foreground bg-rose-500/5 border-rose-500/20 hover:bg-rose-500/10 transition-colors">
+                    <span className="w-1.5 h-1.5 rounded-full bg-rose-500 flex-shrink-0" />
+                    <span>{label}: <span className="font-semibold text-rose-400">{amount}</span></span>
+                  </Badge>
+                ))}
+              </div>
             </div>
           </CardContent>
         </Card>

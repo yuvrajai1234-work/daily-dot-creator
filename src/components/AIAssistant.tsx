@@ -40,7 +40,26 @@ const renderMarkdown = (text: string) => {
         .replace(/\n/g, '<br/>');
 };
 
-// ─── Build compact system prompt ──────────────────────────────────────────────
+// ─── Build comprehensive system prompt ─────────────────────────────────────────
+const MBTI_DESCRIPTIONS: Record<string, string> = {
+    ISTJ: "The Inspector — Responsible, sincere, analytical, reserved, realistic, systematic. Hardworking and trustworthy with practical judgment. Values duty, loyalty, and tradition.",
+    ISFJ: "The Protector — Warm, considerate, gentle, responsible, pragmatic, thorough. Devoted caretakers who enjoy being helpful to others. Quietly caring and supportive.",
+    INFJ: "The Counselor — Idealistic, organized, insightful, dependable, compassionate, gentle. Seek meaning and connection. Deeply empathetic visionaries.",
+    INTJ: "The Mastermind — Innovative, independent, strategic, logical, reserved, insightful. Driven by original ideas. Natural systems thinkers and architects.",
+    ISTP: "The Craftsman — Action-oriented, logical, analytical, spontaneous, reserved. Enjoy adventure, skilled at understanding how things work. Cool problem-solvers.",
+    ISFP: "The Composer — Gentle, sensitive, nurturing, helpful, flexible, realistic. Appreciate beauty, deeply loyal to values, live in the present.",
+    INFP: "The Healer — Sensitive, creative, idealistic, perceptive, caring, loyal. Driven by personal values and deep empathy. Dream big and value authenticity.",
+    INTP: "The Architect — Intellectual, logical, precise, reserved, flexible, imaginative. Thinkers who enjoy speculation and creative problem-solving. Love theories.",
+    ESTP: "The Dynamo — Outgoing, realistic, action-oriented, curious, versatile, spontaneous. Pragmatic problem solvers who thrive on energy and opportunity.",
+    ESFP: "The Performer — Playful, enthusiastic, friendly, spontaneous, tactful. Have common sense, enjoy helping people, love being the center of fun.",
+    ENFP: "The Champion — Enthusiastic, creative, spontaneous, optimistic, supportive. Inspired by new ideas, see potential everywhere, deeply people-oriented.",
+    ENTP: "The Visionary — Inventive, enthusiastic, strategic, enterprising, inquisitive. Love new ideas and challenges, value inspiration, natural devil's advocates.",
+    ESTJ: "The Supervisor — Efficient, outgoing, analytical, systematic, dependable. Like to run the show and get things done in an orderly, decisive fashion.",
+    ESFJ: "The Provider — Friendly, outgoing, reliable, conscientious, organized. Helpful people-pleasers who enjoy being active, social and productive.",
+    ENFJ: "The Teacher — Caring, enthusiastic, idealistic, organized, diplomatic. Skilled communicators who value deep connections and inspiring others.",
+    ENTJ: "The Commander — Strategic, logical, efficient, outgoing, ambitious, independent. Natural-born leaders and effective organizers of people and long-term plans.",
+};
+
 const buildSystemPrompt = (ctx: {
     profile: any; habits: any[]; todayCompletions: any[];
     allCompletions: any[]; reflections: any[]; stats: any;
@@ -50,6 +69,9 @@ const buildSystemPrompt = (ctx: {
     const { profile, habits, todayCompletions, allCompletions, reflections,
         stats, levelInfo, achievements, userAchievements, userName } = ctx;
 
+    const p = profile as any;
+
+    // ── Habit stats ───────────────────────────────────────────────────────────
     const active = habits.filter(h => !h.is_archived);
     const doneIds = new Set(todayCompletions.map(c => c.habit_id));
     const doneCnt = active.filter(h => doneIds.has(h.id)).length;
@@ -62,10 +84,39 @@ const buildSystemPrompt = (ctx: {
     const unlockedIds = new Set(userAchievements.map(ua => ua.achievement_id));
     const locked = achievements.filter(a => !unlockedIds.has(a.id)).slice(0, 6);
 
-    const height = (profile as any)?.height_cm;
-    const weight = (profile as any)?.weight_kg;
-    const bmi = height && weight ? (weight / Math.pow(height / 100, 2)).toFixed(1) : null;
+    // ── Physical stats ────────────────────────────────────────────────────────
+    const heightCm = p?.height_cm || p?.height;
+    const weightKg = p?.weight_kg || p?.weight;
+    const bmi = heightCm && weightKg
+        ? (weightKg / Math.pow(heightCm / 100, 2)).toFixed(1)
+        : null;
+    const bmiCategory = bmi
+        ? Number(bmi) < 18.5 ? "Underweight"
+            : Number(bmi) < 25 ? "Normal weight"
+                : Number(bmi) < 30 ? "Overweight"
+                    : "Obese"
+        : null;
 
+    // ── Personality ───────────────────────────────────────────────────────────
+    const mbtiType = p?.personality_type || null;
+    const mbtiDesc = mbtiType ? MBTI_DESCRIPTIONS[mbtiType] : null;
+    const traits: string[] = p?.personality_traits || [];
+    const archetype = p?.archetype || null;
+
+    // Spectrum slider values (0-100)
+    const introExtro = p?.introvertExtrovert ?? null;
+    const analyticCreative = p?.analyticalCreative ?? null;
+    const loyalFickle = p?.loyalFickle ?? null;
+    const passiveActive = p?.passiveActive ?? null;
+
+    const spectrumLines = [
+        introExtro !== null ? `Introvert↔Extrovert: ${introExtro}/100 (${introExtro < 40 ? 'more Introverted' : introExtro > 60 ? 'more Extroverted' : 'Ambivert'})` : null,
+        analyticCreative !== null ? `Analytical↔Creative: ${analyticCreative}/100 (${analyticCreative < 40 ? 'more Analytical' : analyticCreative > 60 ? 'more Creative' : 'Balanced'})` : null,
+        loyalFickle !== null ? `Loyal↔Fickle: ${loyalFickle}/100 (${loyalFickle < 40 ? 'very Loyal' : loyalFickle > 60 ? 'more Fickle' : 'Balanced'})` : null,
+        passiveActive !== null ? `Passive↔Active: ${passiveActive}/100 (${passiveActive < 40 ? 'more Passive' : passiveActive > 60 ? 'more Active' : 'Balanced'})` : null,
+    ].filter(Boolean).join('\n');
+
+    // ── Habits ────────────────────────────────────────────────────────────────
     const habitLines = active.slice(0, 10).map(h =>
         `${h.icon}${h.name}:${doneIds.has(h.id) ? 'done' : 'pending'},total=${cntMap[h.id] || 0}`
     ).join('; ');
@@ -78,22 +129,73 @@ const buildSystemPrompt = (ctx: {
         `${a.name}(need ${a.requirement_value} ${a.requirement_type})`
     ).join(', ');
 
-    return `You are DailyDots AI Coach for ${userName}. Be warm, specific, use their real data. Keep answers concise with bullet points.
+    return `You are DailyDots AI Coach for ${userName}. Be warm, insightful, specific. Use their real data. Keep answers concise with bullet points where helpful.
 
-APP: Habit tracker with 28-day cycles, A/B/P coins (A=achievements, B=activity spend, P=premium), XP levels, 100+ achievements, rewards shop, community, journal, analytics, calendar.
+═══ APP KNOWLEDGE (answer any "where do I..." or "how do I..." questions) ═══
+DailyDots is a comprehensive self-improvement app with the following pages and features:
 
-USER DATA (${new Date().toLocaleDateString('en-IN')}):
+📊 DASHBOARD (/dashboard) — Daily habit overview, today's completions, current streak, XP progress, cycle stats (28-day cycles from account creation date), mood tracker, motivation score.
+
+👤 PROFILE (/profile) — Update name, bio, avatar, designation, location. Set physical stats: weight (kg), height (cm) → BMI auto-calculates. Choose body type, relationship status, archetype. Set personality spectrum sliders (Introvert↔Extrovert, Analytical↔Creative, Loyal↔Fickle, Passive↔Active) → auto-generates MBTI type. Pick personality traits from a curated list.
+  → To update BMI: go to Profile page → click Edit → enter your weight and height → BMI auto-calculates → Save.
+
+📅 CALENDAR (/calendar) — Visual habit completion history. Days highlighted by intensity (Easy/Moderate/Solid/Intense). Add reminders with time, date, and mark as special events. Special events show on calendar with red ring.
+
+🏆 ACHIEVEMENTS (/achievements) — 100+ achievements across 5 years, organized by category (beginner, intermediate, advanced, streak, habits, reflection, level, community, consistency, milestone, elite). Filter by rarity (Common/Rare/Epic/Legendary). Claim A Coins when achievements unlock.
+
+📈 ANALYTICS (/analytics) — Habit performance charts, cycle-based stats, improvement percentages week-over-week, completion rates, best/worst habits. Permanently delete archived habits from here.
+
+📓 JOURNAL (/journal) — Daily reflections/journaling. Write entries, track mood. Journals count toward reflection achievements.
+
+👥 COMMUNITY (/community) — Community posts, leaderboard, friends list. Post updates, interact with other users.
+
+📬 INBOX (/inbox) — Notifications, messages from the community.
+
+💰 EARN COINS (/earn-coins) — Ways to earn B Coins through activity.
+
+🎁 REWARDS (/rewards) — Spend A Coins on themes, badges, power-ups (Streak Shield, Double XP), avatar frames, sounds, premium content, coach sessions.
+
+📚 E-BOOKS (/ebooks) — Self-improvement e-book library.
+
+⚙️ SETTINGS (/settings) — Appearance (themes, dark/light mode), accessibility (reduced motion, compact mode, high contrast, font size), account management.
+
+COIN SYSTEM:
+• A Coins (Achievement coins) — earned by claiming achievements. Spent in Rewards shop.
+• B Coins (Activity coins) — earned by completing habits daily. Used for in-app spending.
+• P Coins (Premium coins) — premium currency.
+
+HABIT SYSTEM: Habits have effort levels 1-4 (Easy/Moderate/Solid/Intense). 28-day cycles track performance. Habits can be archived (soft-delete) or permanently deleted from Analytics page only.
+
+MBTI PERSONALITY TYPES (all 16):
+${Object.entries(MBTI_DESCRIPTIONS).map(([t, d]) => `${t}: ${d}`).join('\n')}
+
+═══ USER DATA (${new Date().toLocaleDateString('en-IN')}) ═══
+Name: ${userName} | Email: ${p?.email || 'unknown'}
 Level ${levelInfo?.level ?? '?'} | XP ${levelInfo?.totalXP ?? 0} (${levelInfo?.progress ?? 0}% to next)
 Streak: ${stats?.currentStreak ?? 0}d current, ${stats?.bestStreak ?? 0}d best | Active ${stats?.daysActive ?? 0}d
-Coins: A=${(profile as any)?.a_coin_balance ?? 0} B=${(profile as any)?.b_coin_balance ?? 0} P=${(profile as any)?.p_coin_balance ?? 0}
-Completions: ${stats?.totalCompletions ?? 0} total | Journals: ${stats?.totalReflections ?? 0}${bmi ? ` | BMI: ${bmi}` : ''}
+Coins: A=${p?.a_coin_balance ?? 0} B=${p?.b_coin_balance ?? 0} P=${p?.p_coin_balance ?? 0}
+Completions: ${stats?.totalCompletions ?? 0} total | Journals: ${stats?.totalReflections ?? 0}
 Achievements: ${unlockedIds.size}/${achievements.length} unlocked
-Today: ${doneCnt}/${active.length} done (${pct}%)${pending.length ? `, still pending: ${pending.join(', ')}` : ' - all done!'}
-Habits: ${habitLines || 'none yet'}
-Recent journal: ${reflSnippet || 'none'}
-Next achievements to unlock: ${nextAch || 'all done!'}
 
-Rules: Always cite real numbers. Reference habits by name. Flag if data missing.`;
+PHYSICAL PROFILE:
+Age: ${p?.age || 'not set'} | Gender: ${p?.gender || 'not set'} | Location: ${p?.location || 'not set'}
+Weight: ${weightKg ? `${weightKg}kg` : 'not set'} | Height: ${heightCm ? `${heightCm}cm` : 'not set'}
+BMI: ${bmi ? `${bmi} (${bmiCategory})` : 'not set — user needs to enter weight and height on Profile page'}
+Body Type: ${p?.body_type || p?.bodyType || 'not set'} | Status: ${p?.status || 'not set'}
+Archetype: ${archetype || 'not set'} | Designation: ${p?.designation || 'not set'}
+
+PERSONALITY:
+MBTI Type: ${mbtiType || 'not set'}${mbtiDesc ? ` — ${mbtiDesc}` : ''}
+Personality Spectrum:
+${spectrumLines || 'Not configured yet (user can set on Profile page → Personality Spectrum section)'}
+Selected Traits: ${traits.length > 0 ? traits.join(', ') : 'none selected yet'}
+
+HABITS TODAY: ${doneCnt}/${active.length} done (${pct}%)${pending.length ? `, pending: ${pending.join(', ')}` : ' — all done!'}
+All habits: ${habitLines || 'none yet'}
+Recent journal: ${reflSnippet || 'none'}
+Next achievements: ${nextAch || 'all done!'}
+
+Rules: Always cite real data. If a field is "not set", tell the user HOW to set it (which page/section). Reference habits by name. Know MBTI types deeply.`;
 };
 
 // ─── Main Component ────────────────────────────────────────────────────────────

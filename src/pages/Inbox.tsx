@@ -7,23 +7,58 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Gift, Flame, CheckCircle, Clock, Zap, Target } from "lucide-react";
 import { motion } from "framer-motion";
 import { useAuth } from "@/components/AuthProvider";
-import { useTodayCompletions, useTodayReflection } from "@/hooks/useHabits";
+import { useTodayCompletions } from "@/hooks/useHabits";
 import { useUserStats } from "@/hooks/useAchievements";
 import { useClaimedRewards, useClaimBCoins, useClaimStreakReward } from "@/hooks/useCoins";
+import { useQuery } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
+import { useProfile } from "@/hooks/useProfile";
+import { getCycleStartDate } from "@/lib/dateUtils";
 import { toast } from "sonner";
 
 const InboxPage = () => {
   const { user } = useAuth();
   const { data: todayCompletions = [] } = useTodayCompletions();
-  const { data: todayReflection } = useTodayReflection();
   const { data: stats } = useUserStats();
   const { data: claimedRewards = [] } = useClaimedRewards();
+  const { data: profile } = useProfile();
   const claimBCoins = useClaimBCoins();
   const claimStreakReward = useClaimStreakReward();
   const [expirationText, setExpirationText] = useState("");
 
+  // Cycle calculations
+  const accountCreatedAt = (profile as any)?.created_at;
+  const cycleStartDate = getCycleStartDate(accountCreatedAt);
+  const cycleNumber = useMemo(() => {
+    if (!accountCreatedAt) return 0;
+    const created = new Date(accountCreatedAt);
+    const now = new Date();
+    const diffDays = Math.floor((now.getTime() - created.getTime()) / (1000 * 60 * 60 * 24));
+    return Math.floor(Math.max(0, diffDays) / 28);
+  }, [accountCreatedAt]);
+  const daysRemainingInCycle = useMemo(() => {
+    const elapsed = Math.floor((new Date().getTime() - cycleStartDate.getTime()) / (1000 * 60 * 60 * 24));
+    return Math.max(0, 28 - elapsed - 1);
+  }, [cycleStartDate]);
+
+  // Check if user sent any community message today
+  const today = new Date().toISOString().slice(0, 10);
+  const { data: todayCommunityMessages = [] } = useQuery({
+    queryKey: ["today-community-activity", user?.id, today],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("community_messages" as any)
+        .select("id")
+        .eq("user_id", user!.id)
+        .gte("created_at", `${today}T00:00:00`)
+        .lte("created_at", `${today}T23:59:59`);
+      return data || [];
+    },
+    enabled: !!user,
+  });
+
   const hasCompletedHabitToday = todayCompletions.length > 0;
-  const hasWrittenReflectionToday = !!todayReflection; // Check if reflection exists for today
+  const hasCommunityActivityToday = todayCommunityMessages.length > 0;
   const currentStreak = stats?.currentStreak || 0;
 
   // Create a set of claimed reward IDs for quick lookup
@@ -38,7 +73,7 @@ const InboxPage = () => {
         description: "Log in to DailyDots",
         reward: 5,
         icon: "🔑",
-        completed: true, // Always true since they're viewing this
+        completed: true,
         claimed: claimedIds.has("quest-login"),
       },
       {
@@ -51,36 +86,29 @@ const InboxPage = () => {
         claimed: claimedIds.has("quest-habit"),
       },
       {
-        id: "quest-reflection",
-        title: "Daily Reflection",
-        description: "Write a journal entry or reflection",
-        reward: 5,
-        icon: "📝",
-        completed: hasWrittenReflectionToday, // Use today's reflection check
-        claimed: claimedIds.has("quest-reflection"),
-      },
-      {
         id: "quest-community",
         title: "Community Engagement",
-        description: "Visit the community page",
-        reward: 3,
+        description: "Send a message in any community channel",
+        reward: 8,
         icon: "👥",
-        completed: false,
+        completed: hasCommunityActivityToday,
         claimed: claimedIds.has("quest-community"),
       },
     ],
-    [hasCompletedHabitToday, hasWrittenReflectionToday, claimedIds]
+    [hasCompletedHabitToday, hasCommunityActivityToday, claimedIds]
   );
 
-  // Streak milestones
+  // Streak milestones — all cycle-keyed so they reset each 28-day cycle
   const streakMilestones = [
-    { days: 3, reward: 5, label: "3-Day Streak Bonus", icon: "🔥" },
-    { days: 7, reward: 10, label: "7-Day Streak Bonus", icon: "⚡" },
-    { days: 15, reward: 25, label: "15-Day Streak Bonus", icon: "💫" },
-    { days: 30, reward: 50, label: "30-Day Streak Bonus", icon: "🏆" },
+    { days: 3, reward: 15, label: "3-Day Streak", icon: "🔥", rewardId: `streak-3-cycle-${cycleNumber}` },
+    { days: 7, reward: 30, label: "7-Day Streak", icon: "⚡", rewardId: `streak-7-cycle-${cycleNumber}` },
+    { days: 15, reward: 60, label: "15-Day Streak", icon: "💫", rewardId: `streak-15-cycle-${cycleNumber}` },
+    { days: 28, reward: 100, label: "28-Day Streak", icon: "🏆", rewardId: `streak-28-cycle-${cycleNumber}` },
   ];
 
-  // Countdown timer
+  const [activeTab, setActiveTab] = useState("quests");
+
+  // Countdown timer (daily — for quests tab)
   useEffect(() => {
     const updateTimer = () => {
       const now = new Date();
@@ -105,8 +133,8 @@ const InboxPage = () => {
     claimBCoins.mutate({ amount: reward, rewardId: questId });
   };
 
-  const handleStreakClaim = (streakId: string, streakTitle: string, reward: number) => {
-    claimStreakReward.mutate({ amount: reward, rewardId: streakId });
+  const handleStreakClaim = (rewardId: string, label: string, reward: number) => {
+    claimBCoins.mutate({ amount: reward, rewardId });
   };
 
   return (
@@ -147,13 +175,20 @@ const InboxPage = () => {
             </div>
             <div>
               <p className="text-sm text-muted-foreground">Resets In</p>
-              <p className="text-xl font-bold font-mono">{expirationText}</p>
+              {activeTab === "streaks" ? (
+                <>
+                  <p className="text-xl font-bold">{daysRemainingInCycle}d</p>
+                  <p className="text-xs text-muted-foreground">cycle #{cycleNumber + 1}</p>
+                </>
+              ) : (
+                <p className="text-xl font-bold font-mono">{expirationText}</p>
+              )}
             </div>
           </CardContent>
         </Card>
       </div>
 
-      <Tabs defaultValue="quests">
+      <Tabs defaultValue="quests" onValueChange={setActiveTab}>
         <TabsList className="bg-secondary/50">
           <TabsTrigger value="quests" className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
             🎯 Daily Quests
@@ -211,16 +246,18 @@ const InboxPage = () => {
         <TabsContent value="streaks" className="mt-4 space-y-3">
           {streakMilestones.map((milestone, i) => {
             const achieved = currentStreak >= milestone.days;
+            const claimed = claimedIds.has(milestone.rewardId);
             const progress = Math.min((currentStreak / milestone.days) * 100, 100);
+            const remaining = Math.max(0, milestone.days - currentStreak);
 
             return (
               <motion.div
-                key={milestone.days}
+                key={milestone.rewardId}
                 initial={{ opacity: 0, x: -20 }}
                 animate={{ opacity: 1, x: 0 }}
                 transition={{ delay: i * 0.05 }}
               >
-                <Card className={`glass border-border/50 transition-smooth ${achieved ? "border-success/30" : ""}`}>
+                <Card className={`glass border-border/50 transition-smooth ${achieved && !claimed ? "border-primary/40" : achieved ? "border-success/30" : ""}`}>
                   <CardContent className="p-4">
                     <div className="flex items-center justify-between mb-3">
                       <div className="flex items-center gap-4">
@@ -228,24 +265,27 @@ const InboxPage = () => {
                         <div>
                           <h3 className="font-bold">{milestone.label}</h3>
                           <p className="text-sm text-muted-foreground">
-                            Maintain a {milestone.days}-day streak
+                            {achieved
+                              ? claimed ? "Claimed this cycle ✅" : "Goal reached! Claim your reward"
+                              : `${remaining} day${remaining !== 1 ? "s" : ""} to go`}
                           </p>
-                          <div className="flex items-center gap-1 mt-1">
-                            <Gift className="w-3 h-3 text-success" />
-                            <span className="text-xs text-success font-medium">+{milestone.reward} A coins</span>
+                          <div className="flex items-center gap-1.5 mt-1">
+                            <Gift className="w-3 h-3 text-warning" />
+                            <span className="text-xs text-warning font-medium">+{milestone.reward} B Coins</span>
+                            <span className="text-xs text-muted-foreground">· resets per cycle</span>
                           </div>
                         </div>
                       </div>
-                      {achieved && !claimedIds.has(`streak-${milestone.days}`) ? (
+                      {achieved && !claimed ? (
                         <Button
-                          className="gradient-success border-0 hover:opacity-90"
+                          className="gradient-primary border-0 hover:opacity-90"
                           size="sm"
-                          onClick={() => handleStreakClaim(`streak-${milestone.days}`, milestone.label, milestone.reward)}
-                          disabled={claimStreakReward.isPending}
+                          onClick={() => handleStreakClaim(milestone.rewardId, milestone.label, milestone.reward)}
+                          disabled={claimBCoins.isPending}
                         >
                           <CheckCircle className="w-4 h-4 mr-1" /> Claim
                         </Button>
-                      ) : achieved ? (
+                      ) : claimed ? (
                         <Badge variant="outline" className="bg-success/10 text-success border-success/30">
                           <CheckCircle className="w-3 h-3 mr-1" /> Claimed
                         </Badge>
