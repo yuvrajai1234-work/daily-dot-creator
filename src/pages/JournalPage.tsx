@@ -11,7 +11,8 @@ import { Plus, Trash2, Calendar as CalendarIcon, Sparkles, ChevronLeft, ChevronR
 import { toast } from "sonner";
 import { format } from "date-fns";
 import { motion } from "framer-motion";
-import { useReflections, useSaveReflection, useHabits, useAllCompletions } from "@/hooks/useHabits";
+import { useReflections, useSaveReflection, useHabits, useAllCompletions, useDeleteReflection } from "@/hooks/useHabits";
+import { getAppDate } from "@/lib/dateUtils";
 
 const motivationalQuotes = [
   "The secret of getting ahead is getting started.",
@@ -69,8 +70,27 @@ const parseJournalContent = (content: string) => {
 const JournalPage = () => {
   const { data: reflections = [], isLoading } = useReflections();
   const saveReflection = useSaveReflection();
+  const deleteReflection = useDeleteReflection();
   const { data: habits = [] } = useHabits();
   const { data: allCompletions = [] } = useAllCompletions();
+
+  const todayAppDate = getAppDate();
+  const [isEditing, setIsEditing] = useState(false);
+  const hasTodayEntry = reflections.some((r) => r.reflection_date === todayAppDate);
+  const showForm = !hasTodayEntry || isEditing;
+
+  const handleEdit = (entry: any) => {
+    const parsed = parseJournalContent(entry.content);
+    setEntryHeading(parsed.heading || "");
+    setMood(parsed.mood || null);
+    setDailyReflection(parsed.dailyReflection || "");
+    setMistakesReflection(parsed.mistakes || "");
+    setSuccessSteps(parsed.steps || "");
+    setTodos(parsed.todos.map((t: any, idx: number) => ({ id: Date.now() + idx, text: t.text, completed: t.completed })));
+    setBrowsingDate(new Date(entry.reflection_date));
+    setIsEditing(true);
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  };
 
   const [motivation] = useState(() => motivationalQuotes[Math.floor(Math.random() * motivationalQuotes.length)]);
   const [entryHeading, setEntryHeading] = useState("");
@@ -122,7 +142,7 @@ const JournalPage = () => {
       .filter(Boolean)
       .join("\n");
 
-    saveReflection.mutate(fullEntry, {
+    saveReflection.mutate({ content: fullEntry, isEdit: isEditing }, {
       onSuccess: () => {
         setEntryHeading("");
         setDailyReflection("");
@@ -130,6 +150,7 @@ const JournalPage = () => {
         setSuccessSteps("");
         setMood(null);
         setTodos([]);
+        setIsEditing(false);
       },
     });
   };
@@ -189,173 +210,195 @@ const JournalPage = () => {
         <p className="text-muted-foreground">Daily reflections and thoughts</p>
       </div>
 
-      {/* Motivation */}
-      <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}>
-        <Card className="gradient-hero text-foreground border-0 shadow-primary-glow">
-          <CardHeader className="pb-2">
-            <CardTitle className="flex items-center gap-2">
-              <Sparkles className="w-5 h-5" />
-              Daily Motivation
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="text-lg italic">"{motivation}"</p>
-          </CardContent>
-        </Card>
-      </motion.div>
+      {showForm ? (
+        <>
+          {/* Motivation */}
+          <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}>
+            <Card className="gradient-hero text-foreground border-0 shadow-primary-glow">
+              <CardHeader className="pb-2">
+                <CardTitle className="flex items-center gap-2">
+                  <Sparkles className="w-5 h-5" />
+                  Daily Motivation
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <p className="text-lg italic">"{motivation}"</p>
+              </CardContent>
+            </Card>
+          </motion.div>
 
-      {/* Entry Heading */}
-      <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.03 }}>
-        <Card className="glass border-border/50">
-          <CardHeader>
-            <CardTitle>Entry Heading</CardTitle>
-            <CardDescription>Give your journal entry a title</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <Input
-              value={entryHeading}
-              onChange={(e) => setEntryHeading(e.target.value)}
-              placeholder="e.g., A Great Day at Work, Weekend Reflections..."
-              className="bg-secondary/30 border-border text-lg font-medium"
-              required
-            />
-          </CardContent>
-        </Card>
-      </motion.div>
-
-      {/* Mood */}
-      <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.05 }}>
-        <Card className="glass border-border/50">
-          <CardHeader>
-            <CardTitle>How are you feeling today?</CardTitle>
-            <CardDescription>Select a mood that best describes your day.</CardDescription>
-          </CardHeader>
-          <CardContent className="flex justify-around">
-            {moods.map((m) => (
-              <Button
-                key={m}
-                variant={mood === m ? "default" : "outline"}
-                size="icon"
-                onClick={() => setMood(m)}
-                className={`text-2xl rounded-full w-12 h-12 transition-smooth ${mood === m ? "scale-125 gradient-primary border-0" : ""
-                  }`}
-              >
-                {m}
-              </Button>
-            ))}
-          </CardContent>
-        </Card>
-      </motion.div>
-
-      {/* Daily Reflection */}
-      <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }}>
-        <Card className="glass border-border/50">
-          <CardHeader>
-            <CardTitle>Write About Your Day</CardTitle>
-            <CardDescription>What was great? What could be better?</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <Textarea
-              value={dailyReflection}
-              onChange={(e) => setDailyReflection(e.target.value)}
-              placeholder="Start writing your daily reflection..."
-              className="min-h-[150px] bg-secondary/30 border-border resize-none"
-            />
-          </CardContent>
-        </Card>
-      </motion.div>
-
-      {/* Todos + Reflections Grid */}
-      <div className="grid md:grid-cols-2 gap-6">
-        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.15 }}>
-          <Card className="glass border-border/50">
-            <CardHeader>
-              <CardTitle>To-Do List</CardTitle>
-              <CardDescription>Key tasks for today</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="flex gap-2 mb-4">
+          {/* Entry Heading */}
+          <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.03 }}>
+            <Card className="glass border-border/50">
+              <CardHeader>
+                <CardTitle>Entry Heading</CardTitle>
+                <CardDescription>Give your journal entry a title</CardDescription>
+              </CardHeader>
+              <CardContent>
                 <Input
-                  value={newTodo}
-                  onChange={(e) => setNewTodo(e.target.value)}
-                  onKeyDown={(e) => e.key === "Enter" && handleAddTodo()}
-                  placeholder="Add a new task..."
-                  className="bg-secondary/30 border-border"
+                  value={entryHeading}
+                  onChange={(e) => setEntryHeading(e.target.value)}
+                  placeholder="e.g., A Great Day at Work, Weekend Reflections..."
+                  className="bg-secondary/30 border-border text-lg font-medium"
+                  required
                 />
-                <Button onClick={handleAddTodo} size="icon" className="gradient-primary border-0">
-                  <Plus className="h-4 w-4" />
-                </Button>
-              </div>
-              <div className="space-y-2">
-                {todos.map((todo) => (
-                  <div key={todo.id} className="flex items-center justify-between p-2 rounded-md hover:bg-secondary/30 transition-smooth">
-                    <div className="flex items-center gap-3">
-                      <Checkbox checked={todo.completed} onCheckedChange={() => handleToggleTodo(todo.id)} />
-                      <span className={`text-sm ${todo.completed ? "line-through text-muted-foreground" : ""}`}>
-                        {todo.text}
-                      </span>
-                    </div>
-                    <Button variant="ghost" size="icon" onClick={() => handleDeleteTodo(todo.id)}>
-                      <Trash2 className="h-4 w-4 text-muted-foreground" />
+              </CardContent>
+            </Card>
+          </motion.div>
+
+          {/* Mood */}
+          <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.05 }}>
+            <Card className="glass border-border/50">
+              <CardHeader>
+                <CardTitle>How are you feeling today?</CardTitle>
+                <CardDescription>Select a mood that best describes your day.</CardDescription>
+              </CardHeader>
+              <CardContent className="flex justify-around">
+                {moods.map((m) => (
+                  <Button
+                    key={m}
+                    variant={mood === m ? "default" : "outline"}
+                    size="icon"
+                    onClick={() => setMood(m)}
+                    className={`text-2xl rounded-full w-12 h-12 transition-smooth ${mood === m ? "scale-125 gradient-primary border-0" : ""
+                      }`}
+                  >
+                    {m}
+                  </Button>
+                ))}
+              </CardContent>
+            </Card>
+          </motion.div>
+
+          {/* Daily Reflection */}
+          <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }}>
+            <Card className="glass border-border/50">
+              <CardHeader>
+                <CardTitle>Write About Your Day</CardTitle>
+                <CardDescription>What was great? What could be better?</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <Textarea
+                  value={dailyReflection}
+                  onChange={(e) => setDailyReflection(e.target.value)}
+                  placeholder="Start writing your daily reflection..."
+                  className="min-h-[150px] bg-secondary/30 border-border resize-none"
+                />
+              </CardContent>
+            </Card>
+          </motion.div>
+
+          {/* Todos + Reflections Grid */}
+          <div className="grid md:grid-cols-2 gap-6">
+            <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.15 }}>
+              <Card className="glass border-border/50">
+                <CardHeader>
+                  <CardTitle>To-Do List</CardTitle>
+                  <CardDescription>Key tasks for today</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div className="flex gap-2 mb-4">
+                    <Input
+                      value={newTodo}
+                      onChange={(e) => setNewTodo(e.target.value)}
+                      onKeyDown={(e) => e.key === "Enter" && handleAddTodo()}
+                      placeholder="Add a new task..."
+                      className="bg-secondary/30 border-border"
+                    />
+                    <Button onClick={handleAddTodo} size="icon" className="gradient-primary border-0">
+                      <Plus className="h-4 w-4" />
                     </Button>
                   </div>
-                ))}
-                {todos.length === 0 && (
-                  <p className="text-sm text-muted-foreground text-center py-4">No tasks added yet</p>
-                )}
-              </div>
-            </CardContent>
-          </Card>
-        </motion.div>
+                  <div className="space-y-2">
+                    {todos.map((todo) => (
+                      <div key={todo.id} className="flex items-center justify-between p-2 rounded-md hover:bg-secondary/30 transition-smooth">
+                        <div className="flex items-center gap-3">
+                          <Checkbox checked={todo.completed} onCheckedChange={() => handleToggleTodo(todo.id)} />
+                          <span className={`text-sm ${todo.completed ? "line-through text-muted-foreground" : ""}`}>
+                            {todo.text}
+                          </span>
+                        </div>
+                        <Button variant="ghost" size="icon" onClick={() => handleDeleteTodo(todo.id)}>
+                          <Trash2 className="h-4 w-4 text-muted-foreground" />
+                        </Button>
+                      </div>
+                    ))}
+                    {todos.length === 0 && (
+                      <p className="text-sm text-muted-foreground text-center py-4">No tasks added yet</p>
+                    )}
+                  </div>
+                </CardContent>
+              </Card>
+            </motion.div>
 
-        <div className="space-y-6">
-          <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }}>
-            <Card className="glass border-border/50">
-              <CardHeader>
-                <CardTitle>Mistakes & Reflection</CardTitle>
-                <CardDescription>What went wrong? What did you learn?</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <Textarea
-                  value={mistakesReflection}
-                  onChange={(e) => setMistakesReflection(e.target.value)}
-                  placeholder="Reflect on setbacks or challenges..."
-                  className="bg-secondary/30 border-border resize-none"
-                />
-              </CardContent>
-            </Card>
-          </motion.div>
+            <div className="space-y-6">
+              <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }}>
+                <Card className="glass border-border/50">
+                  <CardHeader>
+                    <CardTitle>Mistakes & Reflection</CardTitle>
+                    <CardDescription>What went wrong? What did you learn?</CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <Textarea
+                      value={mistakesReflection}
+                      onChange={(e) => setMistakesReflection(e.target.value)}
+                      placeholder="Reflect on setbacks or challenges..."
+                      className="bg-secondary/30 border-border resize-none"
+                    />
+                  </CardContent>
+                </Card>
+              </motion.div>
 
-          <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.25 }}>
-            <Card className="glass border-border/50">
-              <CardHeader>
-                <CardTitle>Steps Towards Success</CardTitle>
-                <CardDescription>Concrete solutions and next actions</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <Textarea
-                  value={successSteps}
-                  onChange={(e) => setSuccessSteps(e.target.value)}
-                  placeholder="Outline your plan to improve..."
-                  className="bg-secondary/30 border-border resize-none"
-                />
-              </CardContent>
-            </Card>
-          </motion.div>
-        </div>
-      </div>
+              <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.25 }}>
+                <Card className="glass border-border/50">
+                  <CardHeader>
+                    <CardTitle>Steps Towards Success</CardTitle>
+                    <CardDescription>Concrete solutions and next actions</CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <Textarea
+                      value={successSteps}
+                      onChange={(e) => setSuccessSteps(e.target.value)}
+                      placeholder="Outline your plan to improve..."
+                      className="bg-secondary/30 border-border resize-none"
+                    />
+                  </CardContent>
+                </Card>
+              </motion.div>
+            </div>
+          </div>
 
-      {/* Save Button */}
-      <div className="flex justify-center">
-        <Button
-          onClick={handleSaveJournal}
-          size="lg"
-          className="gradient-primary hover:opacity-90 px-8"
-          disabled={saveReflection.isPending}
-        >
-          {saveReflection.isPending ? "Saving..." : "Save Today's Journal"}
-        </Button>
-      </div>
+          {/* Save Button */}
+          <div className="flex flex-col items-center gap-3">
+            <Button
+              onClick={handleSaveJournal}
+              size="lg"
+              className="gradient-primary hover:opacity-90 px-8"
+              disabled={saveReflection.isPending}
+            >
+              {saveReflection.isPending ? "Saving..." : (isEditing ? "Update Journal" : "Save Today's Journal")}
+            </Button>
+            {isEditing && (
+              <Button variant="ghost" onClick={() => setIsEditing(false)}>
+                Cancel Edit
+              </Button>
+            )}
+          </div>
+        </>
+      ) : (
+        <Card className="glass border-border/50 text-center py-10">
+          <CardContent className="pt-6">
+            <h3 className="text-2xl font-bold mb-2">Journal saved for today! ✨</h3>
+            <p className="text-muted-foreground mb-4">You have already completed your daily reflection.</p>
+            <Button variant="outline" onClick={() => {
+              const todayEntry = reflections.find((r: any) => r.reflection_date === todayAppDate);
+              if (todayEntry) handleEdit(todayEntry);
+            }}>
+              Edit Today's Journal
+            </Button>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Past Entries */}
       <div>
@@ -483,13 +526,32 @@ const JournalPage = () => {
                               {format(new Date(entry.created_at), "hh:mm:ss a")}
                             </p>
                           </div>
-                          <Button
-                            variant="destructive"
-                            size="sm"
-                            className="gradient-danger"
-                          >
-                            Delete
-                          </Button>
+                          <div className="flex gap-2">
+                            {entry.reflection_date === todayAppDate && (
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => handleEdit(entry)}
+                              >
+                                Edit
+                              </Button>
+                            )}
+                            <Button
+                              variant="destructive"
+                              size="sm"
+                              className="gradient-danger"
+                              onClick={() => {
+                                if (window.confirm("Are you sure you want to delete this journal entry?")) {
+                                  deleteReflection.mutate(entry.id);
+                                  if (isEditing && entry.reflection_date === todayAppDate) {
+                                    setIsEditing(false);
+                                  }
+                                }
+                              }}
+                            >
+                              Delete
+                            </Button>
+                          </div>
                         </div>
 
                         <div className="grid md:grid-cols-2 gap-6">

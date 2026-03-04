@@ -421,26 +421,29 @@ export const useSaveReflection = () => {
   const { user } = useAuth();
 
   return useMutation({
-    mutationFn: async (content: string) => {
-      // Saving journal costs 5 B coins
-      const { data: profile } = await supabase
-        .from("profiles")
-        .select("b_coin_balance")
-        .eq("user_id", user!.id)
-        .single();
+    mutationFn: async ({ content, isEdit }: { content: string, isEdit?: boolean }) => {
+      const today = getAppDate(); // Current date in IST (resets at midnight)
 
-      const bBalance = (profile as any)?.b_coin_balance || 0;
-      if (bBalance < 5) {
-        throw new Error("Not enough B Coins! You need 5 B Coins to save a journal.");
+      if (!isEdit) {
+        // Saving journal costs 5 B coins
+        const { data: profile } = await supabase
+          .from("profiles")
+          .select("b_coin_balance")
+          .eq("user_id", user!.id)
+          .single();
+
+        const bBalance = (profile as any)?.b_coin_balance || 0;
+        if (bBalance < 5) {
+          throw new Error("Not enough B Coins! You need 5 B Coins to save a journal.");
+        }
+
+        // Deduct B coins
+        await supabase
+          .from("profiles")
+          .update({ b_coin_balance: bBalance - 5 })
+          .eq("user_id", user!.id);
       }
 
-      // Deduct B coins
-      await supabase
-        .from("profiles")
-        .update({ b_coin_balance: bBalance - 5 })
-        .eq("user_id", user!.id);
-
-      const today = getAppDate(); // Current date in IST (resets at midnight)
       const { data, error } = await supabase
         .from("daily_reflections")
         .upsert(
@@ -450,32 +453,63 @@ export const useSaveReflection = () => {
         .select()
         .single();
       if (error) throw error;
-      return data;
+      return { data, isEdit };
     },
-    onSuccess: async () => {
-      // Award XP for journal entry
-      try {
-        await supabase.rpc("add_xp_to_user", {
-          p_user_id: user!.id,
-          p_xp_amount: 15,
-          p_activity_type: "journal",
-          p_description: "Wrote a journal entry"
-        });
+    onSuccess: async (result) => {
+      if (!result.isEdit) {
+        // Award XP for journal entry
+        try {
+          await supabase.rpc("add_xp_to_user", {
+            p_user_id: user!.id,
+            p_xp_amount: 15,
+            p_activity_type: "journal",
+            p_description: "Wrote a journal entry"
+          });
 
-        // Optimistically update XP
-        optimisticXPUpdate(queryClient, user!.id, 15);
-      } catch (error) {
-        console.error("Failed to award XP:", error);
+          // Optimistically update XP
+          optimisticXPUpdate(queryClient, user!.id, 15);
+        } catch (error) {
+          console.error("Failed to award XP:", error);
+        }
       }
 
       queryClient.invalidateQueries({ queryKey: ["reflections"] });
+      queryClient.invalidateQueries({ queryKey: ["today-reflection"] });
       queryClient.invalidateQueries({ queryKey: ["profile"] });
       queryClient.invalidateQueries({ queryKey: ["level-info"] });
 
-      toast.success("Reflection saved! (-5 B Coins, +15 XP)");
+      if (result.isEdit) {
+        toast.success("Reflection updated!");
+      } else {
+        toast.success("Reflection saved! (-5 B Coins, +15 XP)");
+      }
     },
     onError: (error: any) => {
       toast.error(error.message || "Failed to save reflection");
+    },
+  });
+};
+
+export const useDeleteReflection = () => {
+  const queryClient = useQueryClient();
+  const { user } = useAuth();
+
+  return useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await supabase
+        .from("daily_reflections")
+        .delete()
+        .eq("id", id)
+        .eq("user_id", user!.id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["reflections"] });
+      queryClient.invalidateQueries({ queryKey: ["today-reflection"] });
+      toast.success("Reflection deleted");
+    },
+    onError: (error: any) => {
+      toast.error(error.message || "Failed to delete reflection");
     },
   });
 };
