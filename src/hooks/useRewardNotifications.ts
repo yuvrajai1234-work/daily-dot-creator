@@ -1,6 +1,6 @@
 import { useEffect, useRef } from "react";
 import { usePopupNotifications } from "@/contexts/NotificationContext";
-import { useTodayCompletions, useTodayReflection } from "@/hooks/useHabits";
+import { useTodayCompletions } from "@/hooks/useHabits";
 import { useClaimedRewards } from "@/hooks/useCoins";
 import { useUserStats, useAchievements, useUserAchievements } from "@/hooks/useAchievements";
 import { useAuth } from "@/components/AuthProvider";
@@ -20,7 +20,6 @@ let lastNotificationDate = new Date().toDateString();
 export const useRewardNotifications = () => {
     const { showNotification } = usePopupNotifications();
     const { data: todayCompletions = [] } = useTodayCompletions();
-    const { data: todayReflection } = useTodayReflection();
     const { data: claimedRewards = [], isLoading: isClaimedLoading } = useClaimedRewards();
     const { data: stats } = useUserStats();
     const { data: achievements = [] } = useAchievements();
@@ -45,7 +44,6 @@ export const useRewardNotifications = () => {
     });
 
     const hasCompletedHabitToday = todayCompletions.length > 0;
-    const hasWrittenReflectionToday = !!todayReflection;
     const hasCommunityActivityToday = todayCommunityMessages.length > 0;
     const claimedIds = new Set(claimedRewards.map((cr) => cr.reward_id));
     const earnedIds = new Set(userAchievements.map((ua) => ua.achievement_id));
@@ -87,22 +85,6 @@ export const useRewardNotifications = () => {
                 duration: 3000,
             });
             notifiedSet.add("quest-habit");
-        }
-
-        // Reflection Quest
-        if (
-            hasWrittenReflectionToday &&
-            !claimedIds.has("quest-reflection") &&
-            !notifiedSet.has("quest-reflection")
-        ) {
-            showNotification({
-                type: "reward",
-                title: "📝 Reflection Bonus",
-                message: "Thoughtful! Claim your 5 B Coins for writing a reflection.",
-                route: "/inbox",
-                duration: 3000,
-            });
-            notifiedSet.add("quest-reflection");
         }
 
         // Community Quest
@@ -163,7 +145,6 @@ export const useRewardNotifications = () => {
         }
     }, [
         hasCompletedHabitToday,
-        hasWrittenReflectionToday,
         hasCommunityActivityToday,
         claimedIds,
         earnedIds,

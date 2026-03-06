@@ -1,5 +1,5 @@
 import { useMemo } from "react";
-import { useTodayCompletions, useHabits, useTodayReflection } from "@/hooks/useHabits";
+import { useTodayCompletions, useHabits } from "@/hooks/useHabits";
 import { useUserStats, useAchievements, useUserAchievements } from "@/hooks/useAchievements";
 import { useClaimedRewards, useCycleStreakRewards } from "@/hooks/useCoins";
 import { useReminders } from "@/hooks/useReminders";
@@ -24,7 +24,6 @@ export interface AppNotification {
 export const useNotifications = () => {
   const { data: todayCompletions = [] } = useTodayCompletions();
   const { data: habits = [] } = useHabits();
-  const { data: todayReflection } = useTodayReflection();
   const { data: stats } = useUserStats();
   const { data: achievements = [] } = useAchievements();
   const { data: userAchievements = [] } = useUserAchievements();
@@ -52,7 +51,6 @@ export const useNotifications = () => {
   });
 
   const hasCompletedHabitToday = todayCompletions.length > 0;
-  const hasWrittenReflectionToday = !!todayReflection;
   const hasCommunityActivityToday = todayCommunityMessages.length > 0;
   const currentStreak = stats?.currentStreak || 0;
   const bestStreak = stats?.bestStreak || 0;
@@ -97,20 +95,6 @@ export const useNotifications = () => {
         icon: "✅",
         claimable: true,
         claimReward: 10,
-        timestamp: now,
-      });
-    }
-
-    // Reflection quest - only show if not claimed
-    if (hasWrittenReflectionToday && !claimedIds.has("quest-reflection")) {
-      notifs.push({
-        id: "quest-reflection",
-        type: "quest",
-        title: "Reflection Written",
-        description: "You wrote a daily reflection!",
-        icon: "📝",
-        claimable: true,
-        claimReward: 5,
         timestamp: now,
       });
     }
