@@ -5,6 +5,7 @@ import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip
 import { useAuth } from "@/components/AuthProvider";
 import { useTheme } from "@/contexts/ThemeContext";
 import { useState } from "react";
+import AvatarWithFrame from "@/components/AvatarWithFrame";
 import {
   ChevronsLeft,
   ChevronsRight,
@@ -101,18 +102,12 @@ const AppSidebar = ({ isCollapsed, setIsCollapsed }: AppSidebarProps) => {
         className={`px-4 py-4 border-b ${isCollapsed ? "flex justify-center" : ""}`}
       >
         <div className={`flex items-center gap-3 ${isCollapsed ? "justify-center" : ""}`}>
-          <Avatar className="h-9 w-9 border-2 border-primary/30">
-            {avatarUrl && !avatarUrl.startsWith("http") ? (
-              <div className="w-full h-full flex items-center justify-center text-2xl bg-primary/10">
-                {avatarUrl}
-              </div>
-            ) : (
-              <>
-                <AvatarImage src={avatarUrl} alt={userName} />
-                <AvatarFallback className="bg-primary/20 text-primary text-sm">{initials}</AvatarFallback>
-              </>
-            )}
-          </Avatar>
+          <AvatarWithFrame
+            avatarUrl={avatarUrl}
+            fallback={initials}
+            frameId={settings.avatarFrame}
+            size="sm"
+          />
           {!isCollapsed && (
             <div className="flex-1 min-w-0">
               <p style={{ color: textPrimary }} className="text-sm font-semibold truncate">{userName}</p>

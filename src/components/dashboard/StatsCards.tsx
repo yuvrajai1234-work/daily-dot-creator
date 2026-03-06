@@ -1,5 +1,5 @@
 import { Card, CardContent } from "@/components/ui/card";
-import { Calendar, Flame, Trophy, TrendingUp } from "lucide-react";
+import { Calendar, Flame, Trophy, TrendingUp, ChevronRight } from "lucide-react";
 import { motion } from "framer-motion";
 import { ImprovementDialog } from "./ImprovementDialog";
 
@@ -24,13 +24,22 @@ const StatsCards = ({ todayScore, currentStreak, cycleDay, improvement }: StatsC
         const isImprovement = stat.label === "Improvement";
 
         const cardContent = (
-          <Card className={`border-border/50 bg-card hover:border-primary/30 transition-smooth h-full ${isImprovement ? 'cursor-pointer' : ''}`}>
-            <CardContent className="p-5">
-              <div className="flex items-center justify-between">
-                <p className="text-sm text-muted-foreground">{stat.label}</p>
-                <stat.icon className={`w-5 h-5 ${stat.color}`} />
+          <Card className={`border-border/50 bg-card hover:border-primary/30 transition-smooth h-full ${isImprovement ? 'cursor-pointer group' : ''}`}>
+            <CardContent className="p-5 flex flex-col justify-between h-full">
+              <div>
+                <div className="flex items-center justify-between">
+                  <p className="text-sm text-muted-foreground">
+                    {stat.label}
+                  </p>
+                  <stat.icon className={`w-5 h-5 ${stat.color}`} />
+                </div>
+                <div className="flex items-end justify-between mt-2">
+                  <p className="text-2xl font-bold">{stat.value}</p>
+                  {isImprovement && (
+                    <ChevronRight className="w-6 h-6 opacity-40 group-hover:opacity-100 group-hover:translate-x-1 transition-all text-primary" />
+                  )}
+                </div>
               </div>
-              <p className="text-2xl font-bold mt-2">{stat.value}</p>
             </CardContent>
           </Card>
         );

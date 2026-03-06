@@ -3,7 +3,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/components/AuthProvider";
 import { useProfile } from "@/hooks/useProfile";
 import { toast } from "sonner";
-import { getAppDate } from "@/lib/dateUtils";
+import { getAppDate, getCycleStartDate } from "@/lib/dateUtils";
 
 // No per-level cap — B Coins are unlimited (reset weekly)
 export const getMaxBCoins = (_level: number) => Infinity;
@@ -18,6 +18,38 @@ export interface ClaimedReward {
   coins_claimed: number;
   claimed_at: string;
 }
+
+// Hook to get cycle-based streak rewards
+export const useCycleStreakRewards = () => {
+  const { user } = useAuth();
+  const { data: profile } = useProfile();
+
+  return useQuery({
+    queryKey: ["cycle-streak-rewards", user?.id, (profile as any)?.created_at],
+    queryFn: async (): Promise<ClaimedReward[]> => {
+      if (!user) return [];
+
+      // Calculate start date of current cycle
+      const cycleStart = getCycleStartDate((profile as any)?.created_at);
+      const cycleStartStr = getAppDate(); // Just use simple ISO for comparison - better yet, use local timestamp
+      const y = cycleStart.getFullYear();
+      const m = String(cycleStart.getMonth() + 1).padStart(2, "0");
+      const d = String(cycleStart.getDate()).padStart(2, "0");
+      const cycleStartFormatted = `${y}-${m}-${d}`;
+
+      const { data, error } = await supabase
+        .from("claimed_rewards")
+        .select("*")
+        .eq("user_id", user.id)
+        .eq("reward_type", "streak")
+        .gte("claim_date", cycleStartFormatted);
+
+      if (error) throw error;
+      return (data as any) || [];
+    },
+    enabled: !!user,
+  });
+};
 
 // Hook to get today's claimed rewards
 export const useClaimedRewards = () => {

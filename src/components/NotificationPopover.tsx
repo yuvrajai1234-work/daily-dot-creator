@@ -7,7 +7,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { useNotifications, AppNotification } from "@/hooks/useNotifications";
-import { useClaimACoins, useClaimBCoins } from "@/hooks/useCoins";
+import { useClaimACoins, useClaimBCoins, useClaimStreakReward } from "@/hooks/useCoins";
 import { useNavigate } from "react-router-dom";
 
 const typeIcon = (type: AppNotification["type"]) => {
@@ -25,6 +25,7 @@ const NotificationPopover = () => {
   const navigate = useNavigate();
   const claimACoins = useClaimACoins();
   const claimBCoins = useClaimBCoins();
+  const claimStreakReward = useClaimStreakReward();
 
   const handleClaim = (notif: AppNotification, e: React.MouseEvent) => {
     e.stopPropagation(); // Prevent navigation when claiming
@@ -34,14 +35,17 @@ const NotificationPopover = () => {
       // Achievement claims give A coins
       const achievementId = notif.id.replace("achievement-", "");
       claimACoins.mutate({ amount: notif.claimReward, achievementId });
+    } else if (notif.type === "streak") {
+      // Streak claims give A coins
+      claimStreakReward.mutate({ amount: notif.claimReward, rewardId: notif.id });
     } else {
-      // Quests, streaks, daily engagement give B coins and need to track claims
+      // Quests, daily engagement give B coins and need to track claims
       claimBCoins.mutate({ amount: notif.claimReward, rewardId: notif.id });
     }
   };
 
   const getCoinLabel = (notif: AppNotification) => {
-    return notif.type === "achievement" ? "A Coins" : "B Coins";
+    return (notif.type === "achievement" || notif.type === "streak") ? "A Coins" : "B Coins";
   };
 
   const handleNotificationClick = (notif: AppNotification) => {
@@ -107,7 +111,7 @@ const NotificationPopover = () => {
                         <Button
                           size="sm"
                           className="h-6 text-xs px-2 gradient-primary hover:opacity-90 gap-1"
-                          disabled={claimACoins.isPending || claimBCoins.isPending}
+                          disabled={claimACoins.isPending || claimBCoins.isPending || claimStreakReward.isPending}
                           onClick={(e) => handleClaim(notif, e)}
                         >
                           <CheckCircle className="w-3 h-3" />

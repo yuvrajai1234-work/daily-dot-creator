@@ -216,6 +216,7 @@ export type Database = {
           id: string
           is_archived: boolean
           name: string
+          sort_order: number
           updated_at: string
           user_id: string
         }
@@ -227,6 +228,7 @@ export type Database = {
           id?: string
           is_archived?: boolean
           name: string
+          sort_order?: number
           updated_at?: string
           user_id: string
         }
@@ -238,6 +240,7 @@ export type Database = {
           id?: string
           is_archived?: boolean
           name?: string
+          sort_order?: number
           updated_at?: string
           user_id?: string
         }

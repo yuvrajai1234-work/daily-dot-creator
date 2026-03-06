@@ -1,9 +1,14 @@
 import { useMemo } from "react";
 import { useTodayCompletions, useHabits, useTodayReflection } from "@/hooks/useHabits";
 import { useUserStats, useAchievements, useUserAchievements } from "@/hooks/useAchievements";
-import { useClaimedRewards } from "@/hooks/useCoins";
+import { useClaimedRewards, useCycleStreakRewards } from "@/hooks/useCoins";
 import { useReminders } from "@/hooks/useReminders";
 import { format } from "date-fns";
+import { useProfile } from "@/hooks/useProfile";
+import { getCycleStartDate } from "@/lib/dateUtils";
+import { useAuth } from "@/components/AuthProvider";
+import { useQuery } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
 
 export interface AppNotification {
   id: string;
@@ -24,13 +29,45 @@ export const useNotifications = () => {
   const { data: achievements = [] } = useAchievements();
   const { data: userAchievements = [] } = useUserAchievements();
   const { data: claimedRewards = [] } = useClaimedRewards();
+  const { data: cycleStreakRewards = [] } = useCycleStreakRewards();
+  const { data: profile } = useProfile();
   const { reminders } = useReminders();
+  const { user } = useAuth();
+
+  // Check if user sent any community message today
+  const todayStr = new Date().toISOString().slice(0, 10);
+  const { data: todayCommunityMessages = [] } = useQuery({
+    queryKey: ["today-community-activity-notifs", user?.id, todayStr],
+    queryFn: async () => {
+      if (!user) return [];
+      const { data } = await supabase
+        .from("community_messages" as any)
+        .select("id")
+        .eq("user_id", user.id)
+        .gte("created_at", `${todayStr}T00:00:00`)
+        .lte("created_at", `${todayStr}T23:59:59`);
+      return data || [];
+    },
+    enabled: !!user,
+  });
 
   const hasCompletedHabitToday = todayCompletions.length > 0;
   const hasWrittenReflectionToday = !!todayReflection;
-  const currentStreak = stats?.bestStreak || 0;
+  const hasCommunityActivityToday = todayCommunityMessages.length > 0;
+  const currentStreak = stats?.currentStreak || 0;
+  const bestStreak = stats?.bestStreak || 0;
   const earnedIds = new Set(userAchievements.map((ua) => ua.achievement_id));
   const claimedIds = new Set(claimedRewards.map((cr) => cr.reward_id));
+  const claimedCycleStreakIds = new Set(cycleStreakRewards.map((cr) => cr.reward_id));
+
+  const accountCreatedAt = (profile as any)?.created_at;
+  const cycleNumber = useMemo(() => {
+    if (!accountCreatedAt) return 0;
+    const created = new Date(accountCreatedAt);
+    const now = new Date();
+    const diffDays = Math.floor((now.getTime() - created.getTime()) / (1000 * 60 * 60 * 24));
+    return Math.floor(Math.max(0, diffDays) / 28);
+  }, [accountCreatedAt]);
 
   const notifications = useMemo<AppNotification[]>(() => {
     const notifs: AppNotification[] = [];
@@ -78,17 +115,31 @@ export const useNotifications = () => {
       });
     }
 
+    // Community quest - only show if not claimed
+    if (hasCommunityActivityToday && !claimedIds.has("quest-community")) {
+      notifs.push({
+        id: "quest-community",
+        type: "quest",
+        title: "Community Bonus",
+        description: "Thanks for engaging!",
+        icon: "👥",
+        claimable: true,
+        claimReward: 8,
+        timestamp: now,
+      });
+    }
+
     // Streak milestones
     const milestones = [
-      { days: 3, reward: 5, label: "3-Day Streak" },
-      { days: 7, reward: 10, label: "7-Day Streak" },
-      { days: 15, reward: 25, label: "15-Day Streak" },
-      { days: 30, reward: 50, label: "30-Day Streak" },
+      { days: 3, reward: 3, label: "3-Day Streak" },
+      { days: 7, reward: 7, label: "7-Day Streak" },
+      { days: 15, reward: 15, label: "15-Day Streak" },
+      { days: 28, reward: 28, label: "28-Day Streak" },
     ];
 
     milestones.forEach((m) => {
-      const streakId = `streak-${m.days}`;
-      if (currentStreak >= m.days && !claimedIds.has(streakId)) {
+      const streakId = `streak-${m.days}-cycle-${cycleNumber}`;
+      if (currentStreak >= m.days && !claimedCycleStreakIds.has(streakId)) {
         notifs.push({
           id: streakId,
           type: "streak",
@@ -107,7 +158,7 @@ export const useNotifications = () => {
       if (!earnedIds.has(ach.id)) {
         // Check if user qualifies
         let qualifies = false;
-        if (ach.requirement_type === "streak" && currentStreak >= ach.requirement_value) qualifies = true;
+        if (ach.requirement_type === "streak" && bestStreak >= ach.requirement_value) qualifies = true;
         if (ach.requirement_type === "total_completions" && (stats?.totalCompletions || 0) >= ach.requirement_value) qualifies = true;
         if (ach.requirement_type === "total_habits" && (stats?.totalHabits || 0) >= ach.requirement_value) qualifies = true;
         if (ach.requirement_type === "total_reflections" && (stats?.totalReflections || 0) >= ach.requirement_value) qualifies = true;
@@ -144,7 +195,7 @@ export const useNotifications = () => {
     });
 
     return notifs;
-  }, [todayCompletions, habits, stats, achievements, userAchievements, hasCompletedHabitToday, currentStreak, earnedIds, claimedIds, reminders]);
+  }, [todayCompletions, habits, stats, achievements, userAchievements, hasCompletedHabitToday, hasCommunityActivityToday, currentStreak, bestStreak, earnedIds, claimedIds, claimedCycleStreakIds, cycleNumber, reminders]);
 
   const claimableCount = notifications.filter((n) => n.claimable).length;
 

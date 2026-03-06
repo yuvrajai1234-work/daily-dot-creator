@@ -12,6 +12,7 @@ export interface Habit {
   icon: string;
   color: string;
   description: string | null;
+  sort_order?: number;
   is_archived: boolean;
   created_at: string;
   updated_at: string;
@@ -37,6 +38,7 @@ export const useHabits = () => {
         .select("*")
         .eq("user_id", user!.id)
         .eq("is_archived", false)
+        .order("sort_order", { ascending: true })
         .order("created_at", { ascending: true });
       if (error) throw error;
       return data as Habit[];
@@ -161,9 +163,20 @@ export const useCreateHabit = () => {
         .update({ b_coin_balance: bBalance - 50 })
         .eq("user_id", user!.id);
 
+      // Get max sort_order
+      const { data: maxSortData } = await supabase
+        .from("habits")
+        .select("sort_order")
+        .eq("user_id", user!.id)
+        .order("sort_order", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
+      const nextSortOrder = (maxSortData?.sort_order ?? 0) + 1;
+
       const { data, error } = await supabase
         .from("habits")
-        .insert({ ...habit, user_id: user!.id })
+        .insert({ ...habit, user_id: user!.id, sort_order: nextSortOrder })
         .select()
         .single();
       if (error) throw error;
@@ -194,6 +207,33 @@ export const useDeleteHabit = () => {
     },
     onError: (error: any) => {
       toast.error(error.message || "Failed to delete habit");
+    },
+  });
+};
+
+export const useUpdateHabitsOrder = () => {
+  const queryClient = useQueryClient();
+  const { user } = useAuth();
+
+  return useMutation({
+    mutationFn: async (habitsKeys: { id: string; sort_order: number }[]) => {
+      // Supabase natively doesn't have a built-in multiple row update with distinct values (UPSERT works but we must fetch all required columns to avoid nullifying them)
+      // For a few rows, we can just promise.all or use an RPC. Wait, upsert with `onConflict: 'id'` should safely update if we provide the id and sort_order ONLY, as long as it's not overriding unspecified columns with default? Wait! Supabase UPSERT overwrites whole rows if we omit columns! (it acts as INSERT unless we use JSON-based RPC)
+      // To be safe, we will do sequential updates as habits count is usually small (e.g. <20)
+
+      const promises = habitsKeys.map((h) =>
+        supabase.from("habits").update({ sort_order: h.sort_order }).eq("id", h.id).eq("user_id", user!.id)
+      );
+
+      await Promise.all(promises);
+    },
+    onSuccess: () => {
+      // Don't strongly invalidate immediately to prevent UI jumps if using optimistic UI,
+      // but if we are not optimistic syncing we can invalidate. 
+      // In this case, Dashboard will handle optimistic updates via local state.
+    },
+    onError: (error: any) => {
+      toast.error(error.message || "Failed to update sorting");
     },
   });
 };

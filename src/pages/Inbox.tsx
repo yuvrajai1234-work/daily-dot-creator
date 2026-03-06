@@ -9,7 +9,7 @@ import { motion } from "framer-motion";
 import { useAuth } from "@/components/AuthProvider";
 import { useTodayCompletions } from "@/hooks/useHabits";
 import { useUserStats } from "@/hooks/useAchievements";
-import { useClaimedRewards, useClaimBCoins, useClaimStreakReward } from "@/hooks/useCoins";
+import { useClaimedRewards, useClaimBCoins, useClaimStreakReward, useCycleStreakRewards } from "@/hooks/useCoins";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useProfile } from "@/hooks/useProfile";
@@ -21,6 +21,7 @@ const InboxPage = () => {
   const { data: todayCompletions = [] } = useTodayCompletions();
   const { data: stats } = useUserStats();
   const { data: claimedRewards = [] } = useClaimedRewards();
+  const { data: cycleStreakRewards = [] } = useCycleStreakRewards();
   const { data: profile } = useProfile();
   const claimBCoins = useClaimBCoins();
   const claimStreakReward = useClaimStreakReward();
@@ -63,6 +64,7 @@ const InboxPage = () => {
 
   // Create a set of claimed reward IDs for quick lookup
   const claimedIds = new Set(claimedRewards.map((cr) => cr.reward_id));
+  const claimedCycleStreakIds = new Set(cycleStreakRewards.map((cr) => cr.reward_id));
 
   // Daily quests
   const quests = useMemo(
@@ -246,7 +248,7 @@ const InboxPage = () => {
         <TabsContent value="streaks" className="mt-4 space-y-3">
           {streakMilestones.map((milestone, i) => {
             const achieved = currentStreak >= milestone.days;
-            const claimed = claimedIds.has(milestone.rewardId);
+            const claimed = claimedCycleStreakIds.has(milestone.rewardId);
             const progress = Math.min((currentStreak / milestone.days) * 100, 100);
             const remaining = Math.max(0, milestone.days - currentStreak);
 

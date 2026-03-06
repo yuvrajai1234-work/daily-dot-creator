@@ -3,6 +3,9 @@ import { usePopupNotifications } from "@/contexts/NotificationContext";
 import { useTodayCompletions, useTodayReflection } from "@/hooks/useHabits";
 import { useClaimedRewards } from "@/hooks/useCoins";
 import { useUserStats, useAchievements, useUserAchievements } from "@/hooks/useAchievements";
+import { useAuth } from "@/components/AuthProvider";
+import { useQuery } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
 
 /**
  * Hook that monitors for claimable rewards and sends popup notifications
@@ -22,9 +25,28 @@ export const useRewardNotifications = () => {
     const { data: stats } = useUserStats();
     const { data: achievements = [] } = useAchievements();
     const { data: userAchievements = [] } = useUserAchievements();
+    const { user } = useAuth();
+
+    // Check if user sent any community message today
+    const todayStr = new Date().toISOString().slice(0, 10);
+    const { data: todayCommunityMessages = [] } = useQuery({
+        queryKey: ["today-community-activity-notifs", user?.id, todayStr],
+        queryFn: async () => {
+            if (!user) return [];
+            const { data } = await supabase
+                .from("community_messages" as any)
+                .select("id")
+                .eq("user_id", user.id)
+                .gte("created_at", `${todayStr}T00:00:00`)
+                .lte("created_at", `${todayStr}T23:59:59`);
+            return data || [];
+        },
+        enabled: !!user,
+    });
 
     const hasCompletedHabitToday = todayCompletions.length > 0;
     const hasWrittenReflectionToday = !!todayReflection;
+    const hasCommunityActivityToday = todayCommunityMessages.length > 0;
     const claimedIds = new Set(claimedRewards.map((cr) => cr.reward_id));
     const earnedIds = new Set(userAchievements.map((ua) => ua.achievement_id));
 
@@ -83,6 +105,22 @@ export const useRewardNotifications = () => {
             notifiedSet.add("quest-reflection");
         }
 
+        // Community Quest
+        if (
+            hasCommunityActivityToday &&
+            !claimedIds.has("quest-community") &&
+            !notifiedSet.has("quest-community")
+        ) {
+            showNotification({
+                type: "reward",
+                title: "👥 Community Bonus",
+                message: "Thanks for engaging! Claim your 8 B Coins.",
+                route: "/inbox",
+                duration: 3000,
+            });
+            notifiedSet.add("quest-community");
+        }
+
         // Check for unclaimed achievements
         if (achievements && stats) {
             achievements.forEach((achievement) => {
@@ -126,6 +164,7 @@ export const useRewardNotifications = () => {
     }, [
         hasCompletedHabitToday,
         hasWrittenReflectionToday,
+        hasCommunityActivityToday,
         claimedIds,
         earnedIds,
         achievements,

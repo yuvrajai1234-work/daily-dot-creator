@@ -1,5 +1,5 @@
-import { useMemo } from "react";
-import { useHabits, useTodayCompletions, useWeekCompletions, useLogEffort, useArchiveHabit } from "@/hooks/useHabits";
+import { useMemo, useState, useEffect } from "react";
+import { useHabits, useTodayCompletions, useWeekCompletions, useLogEffort, useArchiveHabit, useUpdateHabitsOrder } from "@/hooks/useHabits";
 import { useUserStats } from "@/hooks/useAchievements";
 import { useAuth } from "@/components/AuthProvider";
 import StatsCards from "@/components/dashboard/StatsCards";
@@ -13,6 +13,19 @@ import { supabase } from "@/integrations/supabase/client";
 import { useQuery } from "@tanstack/react-query";
 import { Bell, Users } from "lucide-react";
 import { useNavigate } from "react-router-dom";
+import {
+  DndContext,
+  closestCenter,
+  PointerSensor,
+  useSensor,
+  useSensors,
+} from "@dnd-kit/core";
+import {
+  arrayMove,
+  SortableContext,
+  rectSortingStrategy,
+} from "@dnd-kit/sortable";
+import { SortableHabitCard } from "@/components/dashboard/SortableHabitCard";
 
 
 const Dashboard = () => {
@@ -25,6 +38,37 @@ const Dashboard = () => {
   const { data: profile } = useProfile();
   const logEffort = useLogEffort();
   const archiveHabit = useArchiveHabit();
+  const updateHabitsOrder = useUpdateHabitsOrder();
+
+  const [localHabits, setLocalHabits] = useState(habits);
+
+  useEffect(() => {
+    setLocalHabits(habits);
+  }, [habits]);
+
+  const sensors = useSensors(
+    useSensor(PointerSensor, {
+      activationConstraint: {
+        delay: 750,
+        tolerance: 5,
+      },
+    })
+  );
+
+  const handleDragEnd = (event: any) => {
+    const { active, over } = event;
+
+    if (over && active.id !== over.id) {
+      const oldIndex = localHabits.findIndex((h) => h.id === active.id);
+      const newIndex = localHabits.findIndex((h) => h.id === over.id);
+      const newArray = arrayMove(localHabits, oldIndex, newIndex);
+
+      setLocalHabits(newArray);
+
+      const newOrder = newArray.map((h, i) => ({ id: h.id, sort_order: i }));
+      updateHabitsOrder.mutate(newOrder);
+    }
+  };
 
   // Check for pending join requests across communities the user administers
   const { myMemberships } = useCommunities();
@@ -214,7 +258,7 @@ const Dashboard = () => {
             <AddHabitDialog />
           </div>
 
-          {habits.length === 0 ? (
+          {localHabits.length === 0 ? (
             <div className="rounded-xl border border-dashed border-border/50 p-8 text-center">
               <p className="text-4xl mb-4">🎯</p>
               <p className="text-lg font-medium mb-2">No habits yet!</p>
@@ -222,24 +266,35 @@ const Dashboard = () => {
               <AddHabitDialog />
             </div>
           ) : (
-            <div className="grid sm:grid-cols-2 gap-4">
-              {habits.map((habit) => {
-                const todayCompletion = todayCompletions.find((c) => c.habit_id === habit.id);
-                return (
-                  <HabitCard
-                    key={habit.id}
-                    habit={habit}
-                    weekCompletions={weekCompletions}
-                    todayCompletion={todayCompletion}
-                    cycleWeekDates={cycleData.cycleWeekDates}
-                    prevCycleWeekDates={cycleData.prevCycleWeekDates}
-                    daysElapsedInWeek={cycleData.daysElapsedInWeek}
-                    onLogEffort={(habitId, level) => logEffort.mutate({ habitId, effortLevel: level, isNew: !todayCompletion })}
-                    onArchive={(habitId) => archiveHabit.mutate(habitId)}
-                  />
-                );
-              })}
-            </div>
+            <DndContext
+              sensors={sensors}
+              collisionDetection={closestCenter}
+              onDragEnd={handleDragEnd}
+            >
+              <SortableContext
+                items={localHabits.map((h) => h.id)}
+                strategy={rectSortingStrategy}
+              >
+                <div className="grid sm:grid-cols-2 gap-4">
+                  {localHabits.map((habit) => {
+                    const todayCompletion = todayCompletions.find((c) => c.habit_id === habit.id);
+                    return (
+                      <SortableHabitCard
+                        key={habit.id}
+                        habit={habit}
+                        weekCompletions={weekCompletions}
+                        todayCompletion={todayCompletion}
+                        cycleWeekDates={cycleData.cycleWeekDates}
+                        prevCycleWeekDates={cycleData.prevCycleWeekDates}
+                        daysElapsedInWeek={cycleData.daysElapsedInWeek}
+                        onLogEffort={(habitId, level) => logEffort.mutate({ habitId, effortLevel: level, isNew: !todayCompletion })}
+                        onArchive={(habitId) => archiveHabit.mutate(habitId)}
+                      />
+                    );
+                  })}
+                </div>
+              </SortableContext>
+            </DndContext>
           )}
         </div>
 
