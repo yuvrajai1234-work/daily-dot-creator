@@ -5,6 +5,7 @@ import { useAuth } from "@/components/AuthProvider";
 import StatsCards from "@/components/dashboard/StatsCards";
 import HabitCard from "@/components/dashboard/HabitCard";
 import AIReflection from "@/components/dashboard/AIReflection";
+import TopEvents from "@/components/dashboard/TopEvents";
 import AddHabitDialog from "@/components/AddHabitDialog";
 import { getGreeting, getAppDate, getCycleStartDate, formatLocalISODate } from "@/lib/dateUtils";
 import { useProfile } from "@/hooks/useProfile";
@@ -299,8 +300,9 @@ const Dashboard = () => {
         </div>
 
         {/* Right Column */}
-        <div className="space-y-4">
+        <div className="space-y-6">
           <AIReflection completionRate={completionRate} userName={userName} />
+          <TopEvents />
         </div>
       </div>
     </div>
