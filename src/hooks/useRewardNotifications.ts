@@ -6,6 +6,7 @@ import { useUserStats, useAchievements, useUserAchievements } from "@/hooks/useA
 import { useAuth } from "@/components/AuthProvider";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { getAppDate } from "@/lib/dateUtils";
 
 /**
  * Hook that monitors for claimable rewards and sends popup notifications
@@ -26,8 +27,8 @@ export const useRewardNotifications = () => {
     const { data: userAchievements = [] } = useUserAchievements();
     const { user } = useAuth();
 
-    // Check if user sent any community message today
-    const todayStr = new Date().toISOString().slice(0, 10);
+    // Check if user sent any community message today (IST)
+    const todayStr = getAppDate();
     const { data: todayCommunityMessages = [] } = useQuery({
         queryKey: ["today-community-activity-notifs", user?.id, todayStr],
         queryFn: async () => {
@@ -36,8 +37,8 @@ export const useRewardNotifications = () => {
                 .from("community_messages" as any)
                 .select("id")
                 .eq("user_id", user.id)
-                .gte("created_at", `${todayStr}T00:00:00`)
-                .lte("created_at", `${todayStr}T23:59:59`);
+                .gte("created_at", `${todayStr}T00:00:00+05:30`)
+                .lte("created_at", `${todayStr}T23:59:59+05:30`);
             return data || [];
         },
         enabled: !!user,

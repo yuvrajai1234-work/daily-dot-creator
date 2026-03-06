@@ -13,7 +13,7 @@ import { useClaimedRewards, useClaimBCoins, useClaimStreakReward, useCycleStreak
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useProfile } from "@/hooks/useProfile";
-import { getCycleStartDate } from "@/lib/dateUtils";
+import { getCycleStartDate, getAppDate } from "@/lib/dateUtils";
 import { toast } from "sonner";
 
 const InboxPage = () => {
@@ -42,8 +42,8 @@ const InboxPage = () => {
     return Math.max(0, 28 - elapsed - 1);
   }, [cycleStartDate]);
 
-  // Check if user sent any community message today
-  const today = new Date().toISOString().slice(0, 10);
+  // Check if user sent any community message today (IST)
+  const today = getAppDate();
   const { data: todayCommunityMessages = [] } = useQuery({
     queryKey: ["today-community-activity", user?.id, today],
     queryFn: async () => {
@@ -51,8 +51,8 @@ const InboxPage = () => {
         .from("community_messages" as any)
         .select("id")
         .eq("user_id", user!.id)
-        .gte("created_at", `${today}T00:00:00`)
-        .lte("created_at", `${today}T23:59:59`);
+        .gte("created_at", `${today}T00:00:00+05:30`)
+        .lte("created_at", `${today}T23:59:59+05:30`);
       return data || [];
     },
     enabled: !!user,

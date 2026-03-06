@@ -12,6 +12,7 @@ import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/components/AuthProvider";
 import { useQueryClient } from "@tanstack/react-query";
+import { getAppDate } from "@/lib/dateUtils";
 
 const subscriptionPlans = [
   {
@@ -44,8 +45,8 @@ const subscriptionPlans = [
 // XP is rewarded for the first 5 ad watches per day only
 const MAX_XP_ADS = 5;
 
-// localStorage key scoped to today's date — auto-resets each calendar day
-const getTodayAdKey = () => `ad_views_${new Date().toISOString().slice(0, 10)}`;
+// localStorage key scoped to today's date (IST) — auto-resets each calendar day
+const getTodayAdKey = () => `ad_views_${getAppDate()}`;
 const getTodayAdCount = () => parseInt(localStorage.getItem(getTodayAdKey()) || "0", 10);
 const incrementTodayAdCount = () => {
   const key = getTodayAdKey();

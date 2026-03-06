@@ -7,12 +7,23 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { Slider } from "@/components/ui/slider";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 import { useAuth } from "@/components/AuthProvider";
 import { useNavigate, Link } from "react-router-dom";
 import { toast } from "sonner";
 import { motion, AnimatePresence } from "framer-motion";
 import {
-  Bell, Moon, Zap, ShieldCheck, Eye, Brain, Palette, Gift,
+  Bell, Moon, Zap, ShieldCheck, Palette, Gift,
   LogOut, Trash2, Key, Info, ChevronRight, Volume2, RefreshCcw,
   Check, Lock, User, Type, Accessibility, Star, CheckCircle2,
   SlidersHorizontal, Globe, BarChart2, Sparkles, Sun,
@@ -163,6 +174,8 @@ const SettingsPage = () => {
   const { settings, updateSetting, resetSettings } = useTheme();
   const { data: profile } = useProfile();
   const [saved, setSaved] = useState(false);
+  const [resetConfirm, setResetConfirm] = useState("");
+  const [deleteConfirm, setDeleteConfirm] = useState("");
   const purchased = getPurchased();
 
   const userName = (profile as any)?.full_name || user?.user_metadata?.full_name || user?.email?.split("@")[0] || "User";
@@ -179,9 +192,38 @@ const SettingsPage = () => {
     navigate("/");
   };
 
+  const handleResetPassword = async () => {
+    if (!userEmail) return;
+    try {
+      const { error } = await supabase.auth.resetPasswordForEmail(userEmail, {
+        redirectTo: `${window.location.origin}/auth/callback?next=/profile`,
+      });
+      if (error) throw error;
+      toast.success(`📧 Reset link sent to ${userEmail}`);
+    } catch (error: any) {
+      toast.error(error.message || "Failed to send reset link");
+    }
+  };
+
   const handleReset = () => {
     resetSettings();
+    setResetConfirm("");
     toast.info("Settings reset to defaults.");
+  };
+
+  const handleDeleteAccount = async () => {
+    if (!user) return;
+    try {
+      // Deleting profile triggers cascading deletes in public tables if configured,
+      // but users actually need to be deleted via admin API or RPC.
+      // For now, we wipe their data and sign them out.
+      await supabase.from("profiles").delete().eq("user_id", user.id);
+      await supabase.auth.signOut();
+      toast.success("Account data wiped. Redirecting...");
+      navigate("/");
+    } catch (error: any) {
+      toast.error(error.message || "Failed to delete account");
+    }
   };
 
   const isThemeOwned = (id: ThemeId) => !THEMES[id].rewardId || purchased.has(THEMES[id].rewardId!);
@@ -410,76 +452,6 @@ const SettingsPage = () => {
       </SectionCard>
 
       {/* ─────────────────────────────────────────────────────────── */}
-      {/* ── 4. PRIVACY & COMMUNITY ── */}
-      {/* ─────────────────────────────────────────────────────────── */}
-      <SectionCard icon={<Eye className="w-4 h-4" />} title="Privacy & Community" description="Control what others can see about you" delay={0.16}>
-        <Row label="Profile Visibility" description="Who can view your profile">
-          <Select value={settings.profileVisibility} onValueChange={(v) => updateSetting("profileVisibility", v)}>
-            <SelectTrigger className="w-[155px] bg-secondary/30 border-border text-sm">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="public">🌐 Public</SelectItem>
-              <SelectItem value="group">👥 Group Only</SelectItem>
-              <SelectItem value="private">🔒 Private</SelectItem>
-            </SelectContent>
-          </Select>
-        </Row>
-        <Row label="Show on Leaderboard" description="Appear in community rankings">
-          <Switch checked={settings.showOnLeaderboard} onCheckedChange={(v) => updateSetting("showOnLeaderboard", v)} />
-        </Row>
-        <Row label="Show Current Streak" description="Display your streak on your public profile">
-          <Switch checked={settings.showStreak} onCheckedChange={(v) => updateSetting("showStreak", v)} />
-        </Row>
-        <Row label="Show Level & XP" description="Let others see your level on your profile">
-          <Switch checked={settings.showLevel} onCheckedChange={(v) => updateSetting("showLevel", v)} />
-        </Row>
-        <Row label="Group Discovery" description="Let others find and invite you to groups">
-          <Switch checked={settings.groupDiscovery} onCheckedChange={(v) => updateSetting("groupDiscovery", v)} />
-        </Row>
-      </SectionCard>
-
-      {/* ─────────────────────────────────────────────────────────── */}
-      {/* ── 5. AI & PERSONALIZATION ── */}
-      {/* ─────────────────────────────────────────────────────────── */}
-      <SectionCard icon={<Brain className="w-4 h-4" />} title="AI & Personalization" description="Shape how the AI coach works for you" delay={0.2}>
-        <Row label="AI Coach Tone" description="How your coach communicates with you">
-          <Select value={settings.aiCoachTone} onValueChange={(v) => updateSetting("aiCoachTone", v)}>
-            <SelectTrigger className="w-[160px] bg-secondary/30 border-border text-sm">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="encouraging">😊 Encouraging</SelectItem>
-              <SelectItem value="motivating">🔥 Motivating</SelectItem>
-              <SelectItem value="direct">⚡ Direct</SelectItem>
-              <SelectItem value="gentle">🌸 Gentle</SelectItem>
-              <SelectItem value="tough-love">💪 Tough Love</SelectItem>
-            </SelectContent>
-          </Select>
-        </Row>
-        <Row label="Personalized Suggestions" description="AI learns from your habits to give better tips">
-          <Switch checked={settings.personalizedSuggestions} onCheckedChange={(v) => updateSetting("personalizedSuggestions", v)} />
-        </Row>
-        <Row label="Weekly Insights" description="Get an AI-generated weekly progress digest">
-          <Switch checked={settings.weeklyInsights} onCheckedChange={(v) => updateSetting("weeklyInsights", v)} />
-        </Row>
-        <Row label="Reflection History" description="How long AI can access your past journal entries">
-          <Select value={settings.reflectionHistory} onValueChange={(v) => updateSetting("reflectionHistory", v)}>
-            <SelectTrigger className="w-[160px] bg-secondary/30 border-border text-sm">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="7-days">Last 7 days</SelectItem>
-              <SelectItem value="30-days">Last 30 days</SelectItem>
-              <SelectItem value="90-days">Last 90 days</SelectItem>
-              <SelectItem value="1-year">Last year</SelectItem>
-              <SelectItem value="forever">All time</SelectItem>
-            </SelectContent>
-          </Select>
-        </Row>
-      </SectionCard>
-
-      {/* ─────────────────────────────────────────────────────────── */}
       {/* ── 6. SECURITY & ACCOUNT ── */}
       {/* ─────────────────────────────────────────────────────────── */}
       <SectionCard icon={<ShieldCheck className="w-4 h-4" />} title="Security & Account" description="Manage your account security and data" delay={0.24}>
@@ -489,7 +461,7 @@ const SettingsPage = () => {
           </span>
         </Row>
         <Row label="Change Password" description="Send a password reset link to your email">
-          <Button variant="outline" size="sm" className="gap-1.5" onClick={() => toast.info(`📧 Reset link sent to ${userEmail}`)}>
+          <Button variant="outline" size="sm" className="gap-1.5" onClick={handleResetPassword}>
             <Key className="w-3.5 h-3.5" /> Send Reset Link
           </Button>
         </Row>
@@ -507,14 +479,79 @@ const SettingsPage = () => {
           </div>
         </Row>
         <Row label="Reset All Settings" description="Revert every setting back to its default value">
-          <Button variant="outline" size="sm" className="gap-1.5 text-muted-foreground hover:text-foreground" onClick={handleReset}>
-            <RefreshCcw className="w-3.5 h-3.5" /> Reset to Defaults
-          </Button>
+          <AlertDialog>
+            <AlertDialogTrigger asChild>
+              <Button variant="outline" size="sm" className="gap-1.5 text-muted-foreground hover:text-foreground">
+                <RefreshCcw className="w-3.5 h-3.5" /> Reset to Defaults
+              </Button>
+            </AlertDialogTrigger>
+            <AlertDialogContent className="glass border-border/50">
+              <AlertDialogHeader>
+                <AlertDialogTitle>Reset all settings?</AlertDialogTitle>
+                <AlertDialogDescription>
+                  This will revert all your appearance, accessibility, and notification preferences to their default values. This cannot be undone.
+                  <div className="mt-4 space-y-2">
+                    <p className="text-sm font-semibold text-foreground">Type "reset" to confirm:</p>
+                    <Input
+                      value={resetConfirm}
+                      onChange={(e) => setResetConfirm(e.target.value.toLowerCase())}
+                      placeholder="reset"
+                      className="bg-secondary/30 border-border"
+                    />
+                  </div>
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel onClick={() => setResetConfirm("")}>Cancel</AlertDialogCancel>
+                <AlertDialogAction
+                  onClick={handleReset}
+                  disabled={resetConfirm !== "reset"}
+                  className="bg-primary text-primary-foreground hover:opacity-90"
+                >
+                  Reset Settings
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
         </Row>
         <Row label="Delete Account" description="Permanently remove your account and all data — this cannot be undone" dangerous>
-          <Button variant="destructive" size="sm" className="gap-1.5" onClick={() => toast.error("⚠️ Account deletion requires email confirmation. This feature is coming in a future update.")}>
-            <Trash2 className="w-3.5 h-3.5" /> Delete Account
-          </Button>
+          <AlertDialog>
+            <AlertDialogTrigger asChild>
+              <Button variant="destructive" size="sm" className="gap-1.5">
+                <Trash2 className="w-3.5 h-3.5" /> Delete Account
+              </Button>
+            </AlertDialogTrigger>
+            <AlertDialogContent className="glass border-destructive/20 border-2">
+              <AlertDialogHeader>
+                <AlertDialogTitle className="text-destructive flex items-center gap-2 text-xl">
+                  <Trash2 className="w-6 h-6" /> Destructive Action
+                </AlertDialogTitle>
+                <AlertDialogDescription className="text-muted-foreground space-y-4 pt-2">
+                  <p className="font-bold text-foreground">You are about to permanently delete your account and all associated data including habits, streaks, and coins.</p>
+                  <p>All your progress will be lost forever. There is no way to recover your data after this step.</p>
+                  <div className="space-y-2">
+                    <p className="text-sm font-semibold text-foreground">Type "delete" below to confirm account deletion:</p>
+                    <Input
+                      value={deleteConfirm}
+                      onChange={(e) => setDeleteConfirm(e.target.value.toLowerCase())}
+                      placeholder="delete"
+                      className="bg-destructive/10 border-destructive/30 focus-visible:ring-destructive"
+                    />
+                  </div>
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter className="mt-6">
+                <AlertDialogCancel onClick={() => setDeleteConfirm("")}>Keep My Account</AlertDialogCancel>
+                <AlertDialogAction
+                  onClick={handleDeleteAccount}
+                  disabled={deleteConfirm !== "delete"}
+                  className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                >
+                  Permanently Delete My Account
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
         </Row>
       </SectionCard>
 

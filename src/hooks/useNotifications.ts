@@ -5,7 +5,7 @@ import { useClaimedRewards, useCycleStreakRewards } from "@/hooks/useCoins";
 import { useReminders } from "@/hooks/useReminders";
 import { format } from "date-fns";
 import { useProfile } from "@/hooks/useProfile";
-import { getCycleStartDate } from "@/lib/dateUtils";
+import { getCycleStartDate, getAppDate } from "@/lib/dateUtils";
 import { useAuth } from "@/components/AuthProvider";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
@@ -33,8 +33,8 @@ export const useNotifications = () => {
   const { reminders } = useReminders();
   const { user } = useAuth();
 
-  // Check if user sent any community message today
-  const todayStr = new Date().toISOString().slice(0, 10);
+  // Check if user sent any community message today (IST)
+  const todayStr = getAppDate();
   const { data: todayCommunityMessages = [] } = useQuery({
     queryKey: ["today-community-activity-notifs", user?.id, todayStr],
     queryFn: async () => {
@@ -43,8 +43,8 @@ export const useNotifications = () => {
         .from("community_messages" as any)
         .select("id")
         .eq("user_id", user.id)
-        .gte("created_at", `${todayStr}T00:00:00`)
-        .lte("created_at", `${todayStr}T23:59:59`);
+        .gte("created_at", `${todayStr}T00:00:00+05:30`)
+        .lte("created_at", `${todayStr}T23:59:59+05:30`);
       return data || [];
     },
     enabled: !!user,
