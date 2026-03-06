@@ -35,12 +35,23 @@ export const SortableHabitCard = ({ habit, ...props }: SortableHabitCardProps) =
         <div
             ref={setNodeRef}
             style={style}
-            className={`relative select-none outline-none ${isDragging ? "opacity-90 scale-105 cursor-grabbing" : ""}`}
+            className={`relative select-none outline-none rounded-xl ${isDragging
+                    ? "opacity-100 scale-[1.02] cursor-grabbing shadow-[0_0_50px_rgba(255,255,255,0.3)] ring-4 ring-white/40 z-50 brightness-110 grayscale-[0.1]"
+                    : "transition-shadow duration-300 hover:shadow-xl"
+                }`}
             {...attributes}
             {...listeners}
         >
-            <div className={`absolute top-2 left-1/2 -translate-x-1/2 z-20 pointer-events-none transition-opacity duration-300 ${isDragging ? "opacity-100" : "opacity-0"}`}>
-                <GripHorizontal className="w-5 h-5 text-white/90 drop-shadow-md" />
+            {/* Spotlight Gradient Overlay when dragging */}
+            <div
+                className={`absolute inset-0 rounded-xl pointer-events-none transition-opacity duration-300 ${isDragging ? "opacity-100 bg-gradient-to-t from-white/10 to-white/5" : "opacity-0"
+                    }`}
+            />
+
+            {/* Grip Icon */}
+            <div className={`absolute top-2 left-1/2 -translate-x-1/2 z-20 pointer-events-none transition-all duration-300 ${isDragging ? "opacity-100 -translate-y-1 scale-110" : "opacity-0"
+                }`}>
+                <GripHorizontal className="w-5 h-5 text-white drop-shadow-[0_0_8px_rgba(255,255,255,0.8)]" />
             </div>
             <HabitCard habit={habit} {...props} />
         </div>
