@@ -410,58 +410,9 @@ const SettingsPage = () => {
       </SectionCard>
 
       {/* ─────────────────────────────────────────────────────────── */}
-      {/* ── 4. HABIT PREFERENCES ── */}
+      {/* ── 4. PRIVACY & COMMUNITY ── */}
       {/* ─────────────────────────────────────────────────────────── */}
-      <SectionCard icon={<Zap className="w-4 h-4" />} title="Habit Preferences" description="Tweak how your habits are tracked and displayed" delay={0.16}>
-        <Row label="Default Cycle Length" description="Duration of each habit tracking cycle">
-          <Select value={settings.cycleLength} onValueChange={(v) => updateSetting("cycleLength", v)}>
-            <SelectTrigger className="w-[160px] bg-secondary/30 border-border text-sm">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="2-weeks">2 weeks</SelectItem>
-              <SelectItem value="4-weeks">4 weeks</SelectItem>
-              <SelectItem value="6-weeks">6 weeks</SelectItem>
-              <SelectItem value="8-weeks">8 weeks</SelectItem>
-              <SelectItem value="12-weeks">12 weeks</SelectItem>
-            </SelectContent>
-          </Select>
-        </Row>
-        <Row label="Default Effort Level" description={`Pre-fill effort slider at: ${settings.defaultEffortLevel}/5`}>
-          <div className="w-[160px]">
-            <Slider
-              min={1} max={5} step={1}
-              value={[settings.defaultEffortLevel]}
-              onValueChange={([v]) => updateSetting("defaultEffortLevel", v)}
-              className="w-full"
-            />
-            <div className="flex justify-between text-[10px] text-muted-foreground mt-1">
-              <span>Easy</span><span>Hard</span>
-            </div>
-          </div>
-        </Row>
-        <Row label="Show Completed Habits" description="Keep completed habits visible in the daily list">
-          <Switch checked={settings.showCompletedHabits} onCheckedChange={(v) => updateSetting("showCompletedHabits", v)} />
-        </Row>
-        <Row label="Habit Sort Order" description="How habits appear in your daily list">
-          <Select value={settings.habitSortOrder} onValueChange={(v) => updateSetting("habitSortOrder", v)}>
-            <SelectTrigger className="w-[160px] bg-secondary/30 border-border text-sm">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="created">Date Created</SelectItem>
-              <SelectItem value="name">Alphabetical</SelectItem>
-              <SelectItem value="streak">Streak Length</SelectItem>
-              <SelectItem value="completion">Completion Rate</SelectItem>
-            </SelectContent>
-          </Select>
-        </Row>
-      </SectionCard>
-
-      {/* ─────────────────────────────────────────────────────────── */}
-      {/* ── 5. PRIVACY & COMMUNITY ── */}
-      {/* ─────────────────────────────────────────────────────────── */}
-      <SectionCard icon={<Eye className="w-4 h-4" />} title="Privacy & Community" description="Control what others can see about you" delay={0.2}>
+      <SectionCard icon={<Eye className="w-4 h-4" />} title="Privacy & Community" description="Control what others can see about you" delay={0.16}>
         <Row label="Profile Visibility" description="Who can view your profile">
           <Select value={settings.profileVisibility} onValueChange={(v) => updateSetting("profileVisibility", v)}>
             <SelectTrigger className="w-[155px] bg-secondary/30 border-border text-sm">
@@ -489,9 +440,9 @@ const SettingsPage = () => {
       </SectionCard>
 
       {/* ─────────────────────────────────────────────────────────── */}
-      {/* ── 6. AI & PERSONALIZATION ── */}
+      {/* ── 5. AI & PERSONALIZATION ── */}
       {/* ─────────────────────────────────────────────────────────── */}
-      <SectionCard icon={<Brain className="w-4 h-4" />} title="AI & Personalization" description="Shape how the AI coach works for you" delay={0.24}>
+      <SectionCard icon={<Brain className="w-4 h-4" />} title="AI & Personalization" description="Shape how the AI coach works for you" delay={0.2}>
         <Row label="AI Coach Tone" description="How your coach communicates with you">
           <Select value={settings.aiCoachTone} onValueChange={(v) => updateSetting("aiCoachTone", v)}>
             <SelectTrigger className="w-[160px] bg-secondary/30 border-border text-sm">
@@ -529,9 +480,9 @@ const SettingsPage = () => {
       </SectionCard>
 
       {/* ─────────────────────────────────────────────────────────── */}
-      {/* ── 7. SECURITY & ACCOUNT ── */}
+      {/* ── 6. SECURITY & ACCOUNT ── */}
       {/* ─────────────────────────────────────────────────────────── */}
-      <SectionCard icon={<ShieldCheck className="w-4 h-4" />} title="Security & Account" description="Manage your account security and data" delay={0.28}>
+      <SectionCard icon={<ShieldCheck className="w-4 h-4" />} title="Security & Account" description="Manage your account security and data" delay={0.24}>
         <Row label="Email" description="Your login email address">
           <span className="text-xs text-muted-foreground font-mono bg-secondary/40 px-2 py-1 rounded-lg max-w-[200px] truncate block">
             {userEmail}
@@ -571,7 +522,7 @@ const SettingsPage = () => {
       <motion.div
         initial={{ opacity: 0, y: 16 }}
         animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.32 }}
+        transition={{ delay: 0.28 }}
         className="flex flex-col sm:flex-row items-center justify-between gap-3 p-4 rounded-xl border border-border/40 glass"
       >
         <div>

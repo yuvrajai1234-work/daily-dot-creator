@@ -336,13 +336,38 @@ export const useUserSearch = (searchQuery: string) => {
 
             const { data, error } = await supabase
                 .from("profiles")
-                .select("user_id, full_name, avatar_url")
+                .select("user_id, full_name, avatar_url, profile_visibility")
                 .ilike("full_name", `%${searchQuery}%`)
                 .neq("user_id", user?.id)
-                .limit(10);
+                .limit(20);
 
             if (error) throw error;
-            return data;
+            if (!data) return [];
+
+            // Filter results based on profile visibility
+            const filteredResults = [];
+            for (const profile of data) {
+                const p = profile as any;
+                const visibility = p.profile_visibility || 'public';
+
+                if (visibility === 'public') {
+                    filteredResults.push(profile);
+                } else if (visibility === 'group') {
+                    // Check for shared community
+                    const { data: shared } = await (supabase as any)
+                        .rpc('check_shared_community', {
+                            user_a: user?.id,
+                            user_b: p.user_id
+                        });
+
+                    if (shared) {
+                        filteredResults.push(profile);
+                    }
+                }
+                // 'private' is ignored
+            }
+
+            return filteredResults;
         },
         enabled: !!user && searchQuery.trim().length > 0,
     });

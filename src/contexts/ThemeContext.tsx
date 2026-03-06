@@ -1,4 +1,6 @@
 import React, { createContext, useContext, useEffect, useState, useCallback } from "react";
+import { useAuth } from "@/components/AuthProvider";
+import { supabase } from "@/integrations/supabase/client";
 
 // ─── Theme definitions ─────────────────────────────────────────────────────────
 // Each theme overrides specific CSS variables on <html>
@@ -393,13 +395,64 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         applyThemeToDom(settings.theme, settings.darkMode, settings.reducedMotion, settings.compactMode, settings.highContrast, settings.fontSize);
     }, [settings.theme, settings.darkMode, settings.reducedMotion, settings.compactMode, settings.highContrast, settings.fontSize]);
 
+    // Sync remote profile settings to local state on initial load
+    const { user } = useAuth();
+    useEffect(() => {
+        if (!user) return;
+        const fetchRemoteSettings = async () => {
+            const { data, error } = await supabase.from('profiles').select('*').eq('user_id', user.id).single();
+            if (data) {
+                const remoteSettings: Partial<AppSettings> = {
+                    profileVisibility: (data as any).profile_visibility || 'public',
+                    showOnLeaderboard: (data as any).show_on_leaderboard ?? true,
+                    groupDiscovery: (data as any).group_discovery ?? true,
+                    showStreak: (data as any).show_streak ?? true,
+                    showLevel: (data as any).show_level ?? true,
+                };
+                updateSettings(remoteSettings);
+            }
+        };
+        fetchRemoteSettings();
+    }, [user?.id]);
+
     const updateSetting = useCallback(<K extends keyof AppSettings>(key: K, value: AppSettings[K]) => {
         setSettings((prev) => {
             const next = { ...prev, [key]: value };
             localStorage.setItem(SETTINGS_KEY, JSON.stringify(next));
             return next;
         });
-    }, []);
+
+        // Persist specific privacy settings to database if user is logged in
+        if (user) {
+            const privacyKeys: (keyof AppSettings)[] = [
+                'profileVisibility',
+                'showOnLeaderboard',
+                'groupDiscovery',
+                'showStreak',
+                'showLevel'
+            ];
+
+            if (privacyKeys.includes(key)) {
+                // Map frontend keys to backend columns
+                const columnMap: Record<string, string> = {
+                    profileVisibility: 'profile_visibility',
+                    showOnLeaderboard: 'show_on_leaderboard',
+                    groupDiscovery: 'group_discovery',
+                    showStreak: 'show_streak',
+                    showLevel: 'show_level'
+                };
+
+                const column = columnMap[key as string];
+                supabase
+                    .from('profiles')
+                    .update({ [column]: value })
+                    .eq('user_id', user.id)
+                    .then(({ error }) => {
+                        if (error) console.error(`Error updating remote ${key}:`, error);
+                    });
+            }
+        }
+    }, [user?.id]);
 
     const updateSettings = useCallback((partial: Partial<AppSettings>) => {
         setSettings((prev) => {

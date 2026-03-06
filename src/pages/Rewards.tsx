@@ -2,9 +2,10 @@ import { useState, useMemo } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Separator } from "@/components/ui/separator";
 import {
   Gift, ShoppingBag, Lock, CheckCircle, Star, Zap, Crown,
-  Shield, Palette, Bell, BookOpen, Sparkles, Trophy, X,
+  Shield, Palette, Bell, BookOpen, Sparkles, Trophy, X, Unlock,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useProfile } from "@/hooks/useProfile";
@@ -218,10 +219,11 @@ const RewardCard = ({
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ delay: Math.min(index * 0.04, 0.5), type: "spring", stiffness: 100 }}
-      whileHover={{ y: purchased ? 0 : -4 }}
-      className="h-full"
+      whileHover={purchased ? {} : { y: -5, scale: 1.02 }}
+      className="h-full relative group"
     >
-      <Card className={`glass flex flex-col h-full overflow-hidden transition-all duration-300 ${rc.border} ${purchased ? "opacity-75" : ""} ${!purchased && canAfford ? rc.glow : ""}`}>
+      <div className={`absolute -inset-0.5 rounded-2xl bg-gradient-to-br ${rc.gradient} opacity-0 group-hover:opacity-20 transition-opacity duration-300 pointer-events-none`} />
+      <Card className={`glass flex flex-col h-full overflow-hidden transition-all duration-300 ${rc.border} ${purchased ? "opacity-75" : "hover:shadow-glow hover:shadow-primary/20"} ${!purchased && canAfford ? rc.glow : ""}`}>
         {/* Rarity accent bar */}
         <div className={`h-1 w-full bg-gradient-to-r ${rc.gradient}`} />
 
@@ -290,6 +292,7 @@ const RewardsPage = () => {
 
   const [category, setCategory] = useState("All");
   const [rarityFilter, setRarityFilter] = useState<Rarity | "all">("all");
+  const [availabilityFilter, setAvailabilityFilter] = useState<"all" | "unlocked" | "locked">("all");
   const [confirmReward, setConfirmReward] = useState<Reward | null>(null);
   const [purchased, setPurchased] = useState<Set<number>>(() => getPurchased());
 
@@ -304,6 +307,13 @@ const RewardsPage = () => {
   const filtered = useMemo(() => {
     let list = category === "All" ? REWARDS : REWARDS.filter((r) => r.category === category);
     if (rarityFilter !== "all") list = list.filter((r) => r.rarity === rarityFilter);
+
+    if (availabilityFilter === "unlocked") {
+      list = list.filter((r) => purchased.has(r.id));
+    } else if (availabilityFilter === "locked") {
+      list = list.filter((r) => !purchased.has(r.id));
+    }
+
     // Sort: affordable → locked → owned
     return [...list].sort((a, b) => {
       const aOwned = purchased.has(a.id), bOwned = purchased.has(b.id);
@@ -314,7 +324,7 @@ const RewardsPage = () => {
       if (!aAfford && bAfford) return 1;
       return a.cost - b.cost;
     });
-  }, [category, rarityFilter, purchased, aCoins]);
+  }, [category, rarityFilter, availabilityFilter, purchased, aCoins]);
 
   const handleConfirm = () => {
     if (!confirmReward) return;
@@ -409,9 +419,34 @@ const RewardsPage = () => {
         </div>
 
         {/* ── Filters ── */}
-        <div className="space-y-3">
+        <div className="space-y-4 bg-secondary/20 p-4 rounded-2xl border border-border/50">
+          {/* Availability pills */}
+          <div className="flex items-center gap-2 flex-wrap pb-1">
+            <span className="text-xs text-muted-foreground font-bold uppercase tracking-wider mr-2">Quick Filter:</span>
+            {[
+              { id: "all", label: "All Rewards", icon: <Gift className="w-3.5 h-3.5" />, activeClass: "bg-primary text-primary-foreground" },
+              { id: "unlocked", label: "Unlocked", icon: <Unlock className="w-3.5 h-3.5" />, activeClass: "bg-emerald-500/20 text-emerald-500 border-emerald-500/40" },
+              { id: "locked", label: "Locked", icon: <Lock className="w-3.5 h-3.5" />, activeClass: "bg-amber-500/20 text-amber-500 border-amber-500/40" }
+            ].map((f) => (
+              <button
+                key={f.id}
+                onClick={() => setAvailabilityFilter(f.id as any)}
+                className={`flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-bold border transition-all duration-300 ${availabilityFilter === f.id
+                  ? `${f.activeClass} shadow-glow shadow-primary/10`
+                  : "border-border/40 text-muted-foreground hover:border-border/80 hover:bg-secondary/30"
+                  }`}
+              >
+                {f.icon}
+                {f.label}
+              </button>
+            ))}
+          </div>
+
+          <Separator className="bg-border/30" />
+
           {/* Category pills */}
           <div className="flex items-center gap-2 flex-wrap">
+            <span className="text-xs text-muted-foreground font-bold uppercase tracking-wider mr-2">Category:</span>
             {CATEGORIES.map((cat) => (
               <button
                 key={cat}
@@ -427,9 +462,8 @@ const RewardsPage = () => {
             ))}
           </div>
 
-          {/* Rarity pills */}
           <div className="flex items-center gap-2 flex-wrap">
-            <span className="text-xs text-muted-foreground">Rarity:</span>
+            <span className="text-xs text-muted-foreground font-bold uppercase tracking-wider mr-2">Rarity:</span>
             {(["all", "common", "rare", "epic", "legendary"] as const).map((r) => {
               const rc = r !== "all" ? RARITY[r] : null;
               return (

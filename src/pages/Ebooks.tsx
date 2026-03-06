@@ -1,8 +1,8 @@
 import { Card, CardContent, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { BookOpen, Download, Star, Clock, Lock, ArrowUpRight } from "lucide-react";
-import { motion } from "framer-motion";
+import { BookOpen, Download, Star, Clock, Lock, ArrowUpRight, X, Sparkles, ShoppingBag } from "lucide-react";
+import { motion, AnimatePresence } from "framer-motion";
 import { toast } from "sonner";
 import { useState, useEffect } from "react";
 import { useAuth } from "@/components/AuthProvider";
@@ -18,11 +18,117 @@ const ebooks = [
   { id: 6, title: "Walden", author: "Henry David Thoreau", pages: 352, rating: 4.5, category: "Simplicity", description: "A reflection upon simple living in natural surroundings and personal declaration of independence.", free: false, cost: 150, url: "https://www.gutenberg.org/files/205/205-h/205-h.htm" },
 ];
 
+// ─── Confirm Purchase Dialog ──────────────────────────────────────────────────
+const ConfirmPurchaseDialog = ({
+  book,
+  aCoins,
+  onConfirm,
+  onCancel,
+  isPending,
+}: {
+  book: typeof ebooks[0];
+  aCoins: number;
+  onConfirm: () => void;
+  onCancel: () => void;
+  isPending: boolean;
+}) => {
+  const canAfford = aCoins >= (book.cost || 0);
+  const cost = book.cost || 0;
+
+  return (
+    <motion.div
+      className="fixed inset-0 z-50 flex items-center justify-center p-4"
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+    >
+      {/* Backdrop */}
+      <motion.div
+        className="absolute inset-0 bg-black/60 backdrop-blur-sm"
+        onClick={onCancel}
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+      />
+
+      {/* Dialog */}
+      <motion.div
+        className="relative z-10 w-full max-w-sm rounded-2xl border border-border/50 bg-[hsl(var(--card))] p-6 shadow-2xl"
+        initial={{ scale: 0.85, opacity: 0, y: 20 }}
+        animate={{ scale: 1, opacity: 1, y: 0 }}
+        exit={{ scale: 0.85, opacity: 0, y: 20 }}
+        transition={{ type: "spring", stiffness: 300, damping: 25 }}
+      >
+        <button onClick={onCancel} className="absolute top-4 right-4 text-muted-foreground hover:text-foreground">
+          <X className="w-4 h-4" />
+        </button>
+
+        <div className="h-1 -mx-6 -mt-6 mb-5 rounded-t-2xl bg-gradient-to-r from-primary to-primary/80" />
+
+        <div className="text-center space-y-3">
+          <div className="mx-auto w-16 h-16 rounded-xl bg-primary/10 flex items-center justify-center">
+            <BookOpen className="w-8 h-8 text-primary" />
+          </div>
+          <h2 className="text-xl font-bold">{book.title}</h2>
+          <p className="text-sm text-muted-foreground">by {book.author}</p>
+
+          <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full border border-primary/30 bg-primary/10 text-xs font-medium text-primary">
+            <Sparkles className="w-3 h-3" />
+            {book.category}
+          </div>
+        </div>
+
+        <div className="mt-5 rounded-xl bg-secondary/40 p-4 flex items-center justify-between">
+          <div>
+            <p className="text-xs text-muted-foreground">Cost</p>
+            <p className={`text-2xl font-bold ${canAfford ? "text-amber-400" : "text-destructive"}`}>
+              {cost} <span className="text-sm font-normal text-muted-foreground">A Coins</span>
+            </p>
+          </div>
+          <div className="text-right">
+            <p className="text-xs text-muted-foreground">Your Balance</p>
+            <p className={`text-xl font-bold ${canAfford ? "text-foreground" : "text-destructive"}`}>
+              {aCoins}
+            </p>
+          </div>
+        </div>
+
+        {!canAfford && (
+          <p className="mt-3 text-center text-xs text-destructive">
+            You need {cost - aCoins} more A Coins. Earn them by completing achievements!
+          </p>
+        )}
+
+        <div className="mt-4 flex gap-3">
+          <Button variant="outline" className="flex-1" onClick={onCancel}>
+            Cancel
+          </Button>
+          <Button
+            className="flex-1 gradient-primary text-white border-0 hover:opacity-90"
+            disabled={!canAfford || isPending}
+            onClick={onConfirm}
+          >
+            {isPending ? (
+              <span className="flex items-center gap-2">
+                <div className="w-3 h-3 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                Redeeming…
+              </span>
+            ) : (
+              <><ShoppingBag className="w-4 h-4 mr-1.5" /> Confirm</>
+            )}
+          </Button>
+        </div>
+      </motion.div>
+    </motion.div>
+  );
+};
+
 const EbooksPage = () => {
   const { user } = useAuth();
   const { data: profile } = useProfile();
   const [purchased, setPurchased] = useState<Set<number>>(new Set());
   const [isProcessing, setIsProcessing] = useState(false);
+  const [statusFilter, setStatusFilter] = useState<"all" | "unlocked" | "locked">("all");
+  const [confirmBook, setConfirmBook] = useState<typeof ebooks[0] | null>(null);
 
   useEffect(() => {
     try {
@@ -31,22 +137,35 @@ const EbooksPage = () => {
     } catch { }
   }, []);
 
-  const handleAction = async (book: typeof ebooks[0]) => {
+  const aCoins = (profile as any)?.a_coin_balance || 0;
+
+  const filteredEbooks = ebooks.filter(book => {
+    if (statusFilter === "all") return true;
+    const isUnlocked = book.free || purchased.has(book.id);
+    if (statusFilter === "unlocked") return isUnlocked;
+    if (statusFilter === "locked") return !isUnlocked;
+    return true;
+  });
+
+  const handleAction = (book: typeof ebooks[0]) => {
     if (book.free || purchased.has(book.id)) {
       window.open(book.url, "_blank");
       return;
     }
 
-    if (isProcessing) return;
+    setConfirmBook(book);
+  };
+
+  const executePurchase = async () => {
+    if (!confirmBook || isProcessing) return;
 
     if (!user) {
       toast.error("Please log in to purchase books.");
       return;
     }
 
-    const aCoins = (profile as any)?.a_coin_balance || 0;
-    if (aCoins < (book.cost || 0)) {
-      toast.error(`Not enough A Coins. You need ${(book.cost || 0)} but have ${aCoins}.`);
+    if (aCoins < (confirmBook.cost || 0)) {
+      toast.error(`Not enough A Coins. You need ${(confirmBook.cost || 0)} but have ${aCoins}.`);
       return;
     }
 
@@ -54,17 +173,18 @@ const EbooksPage = () => {
     try {
       const { error } = await supabase
         .from("profiles")
-        .update({ a_coin_balance: aCoins - (book.cost || 0) } as any)
+        .update({ a_coin_balance: aCoins - (confirmBook.cost || 0) } as any)
         .eq("user_id", user.id);
 
       if (error) throw error;
 
-      const nextPurchased = new Set(purchased).add(book.id);
+      const nextPurchased = new Set(purchased).add(confirmBook.id);
       setPurchased(nextPurchased);
       localStorage.setItem("dd_purchased_ebooks", JSON.stringify(Array.from(nextPurchased)));
 
-      toast.success(`Successfully unlocked "${book.title}"!`);
-      window.open(book.url, "_blank");
+      toast.success(`Successfully unlocked "${confirmBook.title}"!`);
+      window.open(confirmBook.url, "_blank");
+      setConfirmBook(null);
     } catch (e: any) {
       toast.error("Failed to process transaction: " + e.message);
     } finally {
@@ -73,96 +193,131 @@ const EbooksPage = () => {
   };
 
   return (
-    <div className="space-y-6">
-      <div>
-        <h1 className="text-3xl font-bold">E-books</h1>
-        <p className="text-muted-foreground">Resources to help you grow and build better habits</p>
-      </div>
+    <>
+      <AnimatePresence>
+        {confirmBook && (
+          <ConfirmPurchaseDialog
+            book={confirmBook}
+            aCoins={aCoins}
+            onConfirm={executePurchase}
+            onCancel={() => setConfirmBook(null)}
+            isPending={isProcessing}
+          />
+        )}
+      </AnimatePresence>
 
-      {/* Featured */}
-      <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}>
-        <Card className="gradient-hero border-0 shadow-primary-glow overflow-hidden">
-          <CardContent className="p-6 flex flex-col md:flex-row items-center gap-6">
-            <div className="w-24 h-32 rounded-lg bg-foreground/10 flex items-center justify-center flex-shrink-0">
-              <BookOpen className="w-12 h-12 opacity-60" />
-            </div>
-            <div className="text-center md:text-left">
-              <Badge className="bg-warning/20 text-warning border-0 mb-2">Featured</Badge>
-              <h2 className="text-2xl font-bold">Meditations</h2>
-              <p className="text-sm opacity-80 mt-1">
-                The ultimate guide to stoicism and resilience by Marcus Aurelius. Free open-source classic.
-              </p>
-              <Button className="mt-4 bg-foreground/20 hover:bg-foreground/30 border-0" onClick={() => handleAction(ebooks[0])}>
-                <BookOpen className="w-4 h-4 mr-2" /> Read Now
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
-      </motion.div>
+      <div className="space-y-6">
+        <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
+          <div>
+            <h1 className="text-3xl font-bold">E-books</h1>
+            <p className="text-muted-foreground">Resources to help you grow and build better habits</p>
+          </div>
 
-      {/* Grid */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-        {ebooks.map((book, i) => (
-          <motion.div
-            key={book.id}
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: i * 0.05 }}
-            whileHover={{ y: -3 }}
-          >
-            <Card className="glass border-border/50 flex flex-col h-full">
-              <CardHeader className="pb-2">
-                <div className="flex items-start justify-between">
-                  <Badge variant="outline" className="text-xs">{book.category}</Badge>
-                  {book.free ? (
-                    <Badge className="bg-success/20 text-success border-0 text-xs">Free</Badge>
-                  ) : (
-                    <Badge className="bg-warning/20 text-warning border-0 text-xs">{book.cost} coins</Badge>
-                  )}
-                </div>
-                <CardTitle className="text-lg mt-2">{book.title}</CardTitle>
-                <p className="text-xs text-muted-foreground">by {book.author}</p>
-              </CardHeader>
-              <CardContent className="flex-grow">
-                <p className="text-sm text-muted-foreground mb-3">{book.description}</p>
-                <div className="flex items-center gap-4 text-xs text-muted-foreground">
-                  <span className="flex items-center gap-1">
-                    <Star className="w-3 h-3 text-warning" /> {book.rating}
-                  </span>
-                  <span className="flex items-center gap-1">
-                    <Clock className="w-3 h-3" /> {book.pages} pages
-                  </span>
-                </div>
-              </CardContent>
-              <CardFooter>
-                <Button
-                  className="w-full gradient-primary border-0 hover:opacity-90"
-                  onClick={() => handleAction(book)}
-                  disabled={isProcessing}
-                >
-                  {book.free || purchased.has(book.id) ? (
-                    <>
-                      <BookOpen className="w-4 h-4 mr-2" /> Read Now
-                      <ArrowUpRight className="w-3 h-3 ml-1 opacity-50" />
-                    </>
-                  ) : (
-                    <>
-                      <Lock className="w-4 h-4 mr-2 opacity-80" /> Unlock ({book.cost} coins)
-                    </>
-                  )}
+          <div className="flex items-center gap-2 bg-secondary/20 p-1 rounded-xl border border-border/50 w-fit">
+            {[
+              { id: "all", label: "All Items" },
+              { id: "unlocked", label: "Unlocked" },
+              { id: "locked", label: "Locked" }
+            ].map((f) => (
+              <button
+                key={f.id}
+                onClick={() => setStatusFilter(f.id as any)}
+                className={`px-4 py-1.5 rounded-lg text-xs font-bold transition-all ${statusFilter === f.id
+                  ? "bg-primary text-primary-foreground shadow-sm"
+                  : "text-muted-foreground hover:text-foreground hover:bg-secondary/40"
+                  }`}
+              >
+                {f.label}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* Featured */}
+        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}>
+          <Card className="gradient-hero border-0 shadow-primary-glow overflow-hidden">
+            <CardContent className="p-6 flex flex-col md:flex-row items-center gap-6">
+              <div className="w-24 h-32 rounded-lg bg-foreground/10 flex items-center justify-center flex-shrink-0">
+                <BookOpen className="w-12 h-12 opacity-60" />
+              </div>
+              <div className="text-center md:text-left">
+                <Badge className="bg-warning/20 text-warning border-0 mb-2">Featured</Badge>
+                <h2 className="text-2xl font-bold">Meditations</h2>
+                <p className="text-sm opacity-80 mt-1">
+                  The ultimate guide to stoicism and resilience by Marcus Aurelius. Free open-source classic.
+                </p>
+                <Button className="mt-4 bg-foreground/20 hover:bg-foreground/30 border-0" onClick={() => handleAction(ebooks[0])}>
+                  <BookOpen className="w-4 h-4 mr-2" /> Read Now
                 </Button>
-              </CardFooter>
-            </Card>
-          </motion.div>
-        ))}
-      </div>
+              </div>
+            </CardContent>
+          </Card>
+        </motion.div>
 
-      <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.5 }} className="py-12 text-center text-muted-foreground flex flex-col items-center">
-        <BookOpen className="w-8 h-8 opacity-20 mb-3" />
-        <p className="text-sm font-medium">More books will come in this section soon!</p>
-        <p className="text-xs opacity-70 mt-1">We're expanding our library of open-source and public domain classics.</p>
-      </motion.div>
-    </div>
+        {/* Grid */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+          {filteredEbooks.map((book, i) => (
+            <motion.div
+              key={book.id}
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: i * 0.05 }}
+              whileHover={{ y: -3 }}
+            >
+              <Card className="glass border-border/50 flex flex-col h-full">
+                <CardHeader className="pb-2">
+                  <div className="flex items-start justify-between">
+                    <Badge variant="outline" className="text-xs">{book.category}</Badge>
+                    {book.free ? (
+                      <Badge className="bg-success/20 text-success border-0 text-xs">Free</Badge>
+                    ) : (
+                      <Badge className="bg-warning/20 text-warning border-0 text-xs">{book.cost} A coins</Badge>
+                    )}
+                  </div>
+                  <CardTitle className="text-lg mt-2">{book.title}</CardTitle>
+                  <p className="text-xs text-muted-foreground">by {book.author}</p>
+                </CardHeader>
+                <CardContent className="flex-grow">
+                  <p className="text-sm text-muted-foreground mb-3">{book.description}</p>
+                  <div className="flex items-center gap-4 text-xs text-muted-foreground">
+                    <span className="flex items-center gap-1">
+                      <Star className="w-3 h-3 text-warning" /> {book.rating}
+                    </span>
+                    <span className="flex items-center gap-1">
+                      <Clock className="w-3 h-3" /> {book.pages} pages
+                    </span>
+                  </div>
+                </CardContent>
+                <CardFooter>
+                  <Button
+                    className="w-full gradient-primary border-0 hover:opacity-90"
+                    onClick={() => handleAction(book)}
+                    disabled={isProcessing}
+                  >
+                    {book.free || purchased.has(book.id) ? (
+                      <>
+                        <BookOpen className="w-4 h-4 mr-2" /> Read Now
+                        <ArrowUpRight className="w-3 h-3 ml-1 opacity-50" />
+                      </>
+                    ) : (
+                      <>
+                        <Lock className="w-4 h-4 mr-2 opacity-80" /> Unlock ({book.cost} A coins)
+                      </>
+                    )}
+                  </Button>
+                </CardFooter>
+              </Card>
+            </motion.div>
+          ))}
+        </div>
+
+        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.5 }} className="py-12 text-center text-muted-foreground flex flex-col items-center">
+          <BookOpen className="w-8 h-8 opacity-20 mb-3" />
+          <p className="text-sm font-medium">More books will come in this section soon!</p>
+          <p className="text-xs opacity-70 mt-1">We're expanding our library of open-source and public domain classics.</p>
+        </motion.div>
+      </div>
+    </>
   );
 };
 
