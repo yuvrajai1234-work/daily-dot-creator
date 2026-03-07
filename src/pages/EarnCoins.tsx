@@ -107,7 +107,10 @@ const EarnCoinsPage = () => {
     }
   };
 
-  const { isAdLoaded, showAd, isWatchingRequested } = useRewardedAd(handleClaimReward);
+  const { isAdLoaded, showAd, isWatchingRequested, isAdBlockerActive } = useRewardedAd(
+    handleClaimReward,
+    () => setIsWatching(false)
+  );
 
   const bCoins = (profile as any)?.b_coin_balance || 0;
   const daysUntilReset = differenceInDays(endOfWeek(new Date(), { weekStartsOn: 1 }), new Date());
@@ -117,6 +120,11 @@ const EarnCoinsPage = () => {
 
   const handleWatchAd = () => {
     if (!user || isWatching || isWatchingRequested) return;
+
+    if (isAdBlockerActive) {
+      toast.error("It looks like an ad blocker is preventing ads from loading. Please disable it to earn coins!");
+      return;
+    }
 
     if (!isAdLoaded) {
       toast.info("Preparing your ad experience... please wait.");
