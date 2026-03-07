@@ -36,11 +36,7 @@ import { useProfile } from "@/hooks/useProfile";
 import AvatarWithFrame from "@/components/AvatarWithFrame";
 import { supabase } from "@/integrations/supabase/client";
 
-// ─── Purchased rewards helper ──────────────────────────────────────────────────
-const getPurchased = (): Set<number> => {
-  try { return new Set(JSON.parse(localStorage.getItem("dd_purchased_rewards") || "[]")); }
-  catch { return new Set(); }
-};
+// ─── Purchased rewards tracking is now managed via the database ────────────────
 
 // ─── Sub-components ────────────────────────────────────────────────────────────
 const SectionCard = ({
@@ -176,7 +172,9 @@ const SettingsPage = () => {
   const [saved, setSaved] = useState(false);
   const [resetConfirm, setResetConfirm] = useState("");
   const [deleteConfirm, setDeleteConfirm] = useState("");
-  const purchased = getPurchased();
+
+  const purchasedArray: number[] = (profile as any)?.unlocked_rewards || [];
+  const purchased = new Set(purchasedArray);
 
   const userName = (profile as any)?.full_name || user?.user_metadata?.full_name || user?.email?.split("@")[0] || "User";
   const userEmail = user?.email || "";
