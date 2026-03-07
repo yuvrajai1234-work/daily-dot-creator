@@ -317,25 +317,35 @@ export const useSpendACoins = () => {
   const { user } = useAuth();
 
   return useMutation({
-    mutationFn: async ({ amount }: { amount: number }) => {
-      const { data: profile, error: fetchErr } = await supabase
+    mutationFn: async ({ amount, rewardId }: { amount: number; rewardId?: number }) => {
+      const { data, error: fetchErr } = await supabase
         .from("profiles")
-        .select("a_coin_balance")
+        .select("a_coin_balance, unlocked_rewards")
         .eq("user_id", user!.id)
         .single();
       if (fetchErr) throw fetchErr;
 
+      const profile = data as any;
       if ((profile.a_coin_balance || 0) < amount) {
         throw new Error("Not enough A Coins!");
       }
 
       const newBalance = (profile.a_coin_balance || 0) - amount;
+      const currentRewards = (profile as any).unlocked_rewards || [];
+      const newRewards = rewardId && !currentRewards.includes(rewardId)
+        ? [...currentRewards, rewardId]
+        : currentRewards;
+
       const { error } = await supabase
         .from("profiles")
-        .update({ a_coin_balance: newBalance })
+        .update({
+          a_coin_balance: newBalance,
+          unlocked_rewards: newRewards
+        } as any)
         .eq("user_id", user!.id);
+
       if (error) throw error;
-      return newBalance;
+      return { newBalance, newRewards };
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["profile"] });

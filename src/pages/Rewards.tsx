@@ -13,13 +13,8 @@ import { useSpendACoins } from "@/hooks/useCoins";
 import { toast } from "sonner";
 
 // ─── Reward catalogue ─────────────────────────────────────────────────────────
-// "purchased" tracking is managed via localStorage so it persists per browser.
-// For a production app this should be a DB table — swap the helpers below.
-const PURCHASED_KEY = "dd_purchased_rewards";
-const getPurchased = (): Set<number> =>
-  new Set(JSON.parse(localStorage.getItem(PURCHASED_KEY) || "[]"));
-const savePurchased = (ids: Set<number>) =>
-  localStorage.setItem(PURCHASED_KEY, JSON.stringify([...ids]));
+// "purchased" tracking is now managed via the 'unlocked_rewards' column in the 'profiles' table.
+// This ensures that rewards persist across different browsers and devices.
 
 type Rarity = "common" | "rare" | "epic" | "legendary";
 
@@ -294,10 +289,11 @@ const RewardsPage = () => {
   const [rarityFilter, setRarityFilter] = useState<Rarity | "all">("all");
   const [availabilityFilter, setAvailabilityFilter] = useState<"all" | "unlocked" | "locked">("all");
   const [confirmReward, setConfirmReward] = useState<Reward | null>(null);
-  const [purchased, setPurchased] = useState<Set<number>>(() => getPurchased());
 
   const aCoins: number = (profile as any)?.a_coin_balance || 0;
   const pCoins: number = (profile as any)?.p_coin_balance || 0;
+  const purchasedArray: number[] = (profile as any)?.unlocked_rewards || [];
+  const purchased = useMemo(() => new Set(purchasedArray), [purchasedArray]);
 
   const totalSpent = useMemo(
     () => REWARDS.filter((r) => purchased.has(r.id)).reduce((s, r) => s + r.cost, 0),
@@ -329,13 +325,9 @@ const RewardsPage = () => {
   const handleConfirm = () => {
     if (!confirmReward) return;
     spendACoins.mutate(
-      { amount: confirmReward.cost },
+      { amount: confirmReward.cost, rewardId: confirmReward.id },
       {
         onSuccess: () => {
-          const newSet = new Set(purchased);
-          newSet.add(confirmReward.id);
-          setPurchased(newSet);
-          savePurchased(newSet);
           toast.success(`🎉 "${confirmReward.name}" redeemed! Enjoy your reward.`);
           setConfirmReward(null);
         },
