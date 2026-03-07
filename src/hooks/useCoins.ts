@@ -141,33 +141,12 @@ export const useClaimBCoins = () => {
 
   return useMutation({
     mutationFn: async ({ amount, rewardId }: { amount: number; rewardId?: string }) => {
-      const { data: profile, error: fetchErr } = await supabase
-        .from("profiles")
-        .select("b_coin_balance, level, b_coin_level, b_coin_last_reset")
-        .eq("user_id", user!.id)
-        .single();
-      if (fetchErr) throw fetchErr;
+      const { data: newBalance, error: rpcError } = await supabase.rpc("add_b_coins", {
+        p_user_id: user!.id,
+        p_amount: amount
+      } as any);
 
-      // Check weekly reset
-      const lastReset = new Date(profile.b_coin_last_reset);
-      const now = new Date();
-      const daysSinceReset = (now.getTime() - lastReset.getTime()) / (1000 * 60 * 60 * 24);
-
-      let currentBalance = profile.b_coin_balance || 0;
-      let resetDate = profile.b_coin_last_reset;
-
-      if (daysSinceReset >= 7) {
-        currentBalance = 0;
-        resetDate = now.toISOString();
-      }
-
-      const newBalance = currentBalance + amount;
-
-      const { error } = await supabase
-        .from("profiles")
-        .update({ b_coin_balance: newBalance, b_coin_last_reset: resetDate })
-        .eq("user_id", user!.id);
-      if (error) throw error;
+      if (rpcError) throw rpcError;
 
       // Record the claim if rewardId is provided
       if (rewardId) {

@@ -374,6 +374,13 @@ export type Database = {
       }
     }
     Functions: {
+      add_b_coins: {
+        Args: {
+          p_amount: number
+          p_user_id: string
+        }
+        Returns: number
+      }
       add_xp_to_user: {
         Args: {
           p_activity_id?: string

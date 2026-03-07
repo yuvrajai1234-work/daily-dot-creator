@@ -73,22 +73,14 @@ const EarnCoinsPage = () => {
     const givesXP = newCount <= MAX_XP_ADS;
 
     try {
-      // Always give 10 B Coins — watching is unlimited
-      const { data: profileData } = await supabase
-        .from("profiles")
-        .select("b_coin_balance")
-        .eq("user_id", user.id)
-        .single();
+      // Use centralized RPC to add coins (handles weekly reset automatically)
+      const { data: newBalance, error: rpcError } = await supabase.rpc("add_b_coins", {
+        p_user_id: user.id,
+        p_amount: 10
+      });
 
-      if (profileData) {
-        const currentBalance = profileData.b_coin_balance || 0;
-        const newBalance = currentBalance + 10;
-        await supabase
-          .from("profiles")
-          .update({ b_coin_balance: newBalance })
-          .eq("user_id", user.id);
-        queryClient.invalidateQueries({ queryKey: ["profile"] });
-      }
+      if (rpcError) throw rpcError;
+      queryClient.invalidateQueries({ queryKey: ["profile"] });
 
       // Give XP only for the first MAX_XP_ADS watches per day
       if (givesXP) {
