@@ -236,7 +236,7 @@ const AIAssistant = () => {
                 // Welcome message
                 setMessages([{
                     role: "assistant",
-                    content: `Hey ${userName}! 👋 I'm your **DailyDots AI Coach**. I have full access to your habits, stats, achievements and progress.\n\nI can:\n- 📊 Analyze your habit patterns\n- 🎯 Recommend what to focus on\n- 🏆 Guide you toward achievements\n- 💡 Answer any questions about the app\n- 💪 Motivate you with personalized insights\n\nWhat would you like to explore today?`,
+                    content: `Hey ${userName}! 👋 I'm **Adonis**. I have full access to your habits, stats, achievements and progress.\n\nI can:\n- 📊 Analyze your habit patterns\n- 🎯 Recommend what to focus on\n- 🏆 Guide you toward achievements\n- 💡 Answer any questions about the app\n- 💪 Motivate you with personalized insights\n\nWhat would you like to explore today?`,
                     timestamp: new Date(),
                 }]);
             }
@@ -376,8 +376,8 @@ const AIAssistant = () => {
                                 <Sparkles className="w-4 h-4 text-white" />
                             </div>
                             <div className="flex-1 min-w-0">
-                                <p className="font-bold text-sm">DailyDots AI Coach</p>
-                                <p className="text-[10px] text-muted-foreground">Powered by Groq · Knows your data</p>
+                                <p className="font-bold text-sm">Adonis</p>
+                                <p className="text-[10px] text-muted-foreground">Powered by Groq</p>
                             </div>
                             <div className="flex items-center gap-1">
                                 <button onClick={clearChat} title="Clear chat" className="p-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-secondary/50 transition-colors">
