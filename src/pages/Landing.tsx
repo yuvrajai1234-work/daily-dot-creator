@@ -1,7 +1,17 @@
-import { Link } from "react-router-dom";
+import { useEffect } from "react";
+import { Link, useNavigate } from "react-router-dom";
 import { HeroSection, FeaturesSection, CTASection } from "@/components/landing/LandingSections";
+import { useAuth } from "@/components/AuthProvider";
 
 const Landing = () => {
+  const { user, loading } = useAuth();
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    if (!loading && user) {
+      navigate("/dashboard");
+    }
+  }, [user, loading, navigate]);
   return (
     <div className="flex flex-col min-h-screen">
       <HeroSection />
