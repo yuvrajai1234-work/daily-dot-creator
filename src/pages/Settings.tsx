@@ -214,12 +214,13 @@ const SettingsPage = () => {
   const handleDeleteAccount = async () => {
     if (!user) return;
     try {
-      // Deleting profile triggers cascading deletes in public tables if configured,
-      // but users actually need to be deleted via admin API or RPC.
-      // For now, we wipe their data and sign them out.
-      await supabase.from("profiles").delete().eq("user_id", user.id);
+      // Calling the custom RPC function that deletes the auth user,
+      // which will cascade down and wipe all user data across all tables.
+      const { error } = await (supabase as any).rpc("delete_user");
+      if (error) throw error;
+
       await supabase.auth.signOut();
-      toast.success("Account data wiped. Redirecting...");
+      toast.success("Account permanently deleted. Hope to see you again!");
       navigate("/");
     } catch (error: any) {
       toast.error(error.message || "Failed to delete account");
