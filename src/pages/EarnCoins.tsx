@@ -13,6 +13,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/components/AuthProvider";
 import { useQueryClient } from "@tanstack/react-query";
 import { getAppDate } from "@/lib/dateUtils";
+import { useRewardedAd } from "@/hooks/useRewardedAd";
 
 const subscriptionPlans = [
   {
@@ -64,15 +65,8 @@ const EarnCoinsPage = () => {
   const addXP = useAddXP();
   const queryClient = useQueryClient();
 
-  const bCoins = (profile as any)?.b_coin_balance || 0;
-  const daysUntilReset = differenceInDays(endOfWeek(new Date(), { weekStartsOn: 1 }), new Date());
-
-  const xpLimitReached = adViews >= MAX_XP_ADS;
-  const xpAdsLeft = Math.max(0, MAX_XP_ADS - adViews);
-
-  const handleWatchAd = async () => {
-    if (!user || isWatching) return;
-    setIsWatching(true);
+  const handleClaimReward = async () => {
+    if (!user) return;
 
     const newCount = incrementTodayAdCount();
     setAdViews(newCount);
@@ -82,7 +76,7 @@ const EarnCoinsPage = () => {
       // Always give 10 B Coins — watching is unlimited
       const { data: profileData } = await supabase
         .from("profiles")
-        .select("b_coin_balance, level")
+        .select("b_coin_balance")
         .eq("user_id", user.id)
         .single();
 
@@ -111,6 +105,25 @@ const EarnCoinsPage = () => {
     } finally {
       setIsWatching(false);
     }
+  };
+
+  const { isAdLoaded, showAd, isWatchingRequested } = useRewardedAd(handleClaimReward);
+
+  const bCoins = (profile as any)?.b_coin_balance || 0;
+  const daysUntilReset = differenceInDays(endOfWeek(new Date(), { weekStartsOn: 1 }), new Date());
+
+  const xpLimitReached = adViews >= MAX_XP_ADS;
+  const xpAdsLeft = Math.max(0, MAX_XP_ADS - adViews);
+
+  const handleWatchAd = () => {
+    if (!user || isWatching || isWatchingRequested) return;
+
+    if (!isAdLoaded) {
+      toast.info("Preparing your ad experience... please wait.");
+    }
+
+    setIsWatching(true);
+    showAd();
   };
 
   return (
@@ -199,11 +212,26 @@ const EarnCoinsPage = () => {
             <div className="flex flex-col items-end gap-1.5">
               <Button
                 onClick={handleWatchAd}
-                disabled={isWatching}
-                className="gradient-primary border-0 hover:opacity-90"
+                disabled={isWatching || isWatchingRequested}
+                className="gradient-primary border-0 hover:opacity-90 min-w-[140px]"
               >
-                <Play className="w-4 h-4 mr-2" />
-                {isWatching ? "Loading..." : "Watch Ad"}
+                {isWatching || isWatchingRequested ? (
+                  <>
+                    <motion.span
+                      animate={{ rotate: 360 }}
+                      transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
+                      className="mr-2"
+                    >
+                      <Zap className="w-4 h-4 text-yellow-400" />
+                    </motion.span>
+                    {isAdLoaded ? "Opening..." : "Loading Ad..."}
+                  </>
+                ) : (
+                  <>
+                    <Play className="w-4 h-4 mr-2" />
+                    Watch Ad
+                  </>
+                )}
               </Button>
               {/* XP reward status */}
               <div className="text-xs flex items-center gap-1">
