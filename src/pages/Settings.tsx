@@ -205,10 +205,62 @@ const SettingsPage = () => {
     }
   };
 
-  const handleReset = () => {
+  const handleReset = async () => {
     resetSettings();
     setResetConfirm("");
-    toast.info("Settings reset to defaults.");
+
+    if (user) {
+      try {
+        // 1. Reset Profile table fields
+        const profileDefaults = {
+          profile_visibility: 'public',
+          show_on_leaderboard: true,
+          group_discovery: true,
+          show_streak: true,
+          show_level: true,
+          personality_traits: [],
+          personality_type: 'ENTJ', // 50/50 result
+          life_balance: {
+            Career: 0,
+            Strength: 0,
+            Relationships: 0,
+            Spirituality: 0,
+            Learning: 0,
+            Nutrition: 0,
+          }
+        };
+
+        const { error: profileError } = await supabase
+          .from('profiles')
+          .update(profileDefaults as any)
+          .eq('user_id', user.id);
+
+        if (profileError) throw profileError;
+
+        // 2. Reset Auth Metadata
+        const metadataDefaults = {
+          introvertExtrovert: 50,
+          analyticalCreative: 50,
+          loyalFickle: 50,
+          passiveActive: 50,
+          lifeBalanceScores: profileDefaults.life_balance,
+          personality_traits: [],
+        };
+
+        const { error: authError } = await supabase.auth.updateUser({
+          data: metadataDefaults
+        });
+
+        if (authError) throw authError;
+
+        toast.success("✅ All settings and profile data reset to defaults.");
+      } catch (error: any) {
+        console.error("Reset error:", error);
+        toast.error("Failed to reset database data. Local settings were reset.");
+      }
+    } else {
+      toast.info("Settings reset to defaults.");
+    }
   };
 
   const handleDeleteAccount = async () => {
