@@ -7,6 +7,11 @@ import { useAuth } from "@/components/AuthProvider";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { getAppDate } from "@/lib/dateUtils";
+import {
+    sendRewardNotification,
+    sendAchievementNotification,
+    sendStreakNotification,
+} from "@/lib/deviceNotifications";
 
 /**
  * Hook that monitors for claimable rewards and sends popup notifications
@@ -69,6 +74,7 @@ export const useRewardNotifications = () => {
                 route: "/inbox",
                 duration: 3000,
             });
+            sendRewardNotification("🔑 Daily Login Reward", "Welcome back! Claim your 5 B Coins for logging in today.");
             notifiedSet.add("quest-login");
         }
 
@@ -85,6 +91,7 @@ export const useRewardNotifications = () => {
                 route: "/inbox",
                 duration: 3000,
             });
+            sendRewardNotification("✅ Habit Completed!", "Great job! Claim your 10 B Coins for completing a habit.");
             notifiedSet.add("quest-habit");
         }
 
@@ -101,6 +108,7 @@ export const useRewardNotifications = () => {
                 route: "/inbox",
                 duration: 3000,
             });
+            sendRewardNotification("👥 Community Bonus", "Thanks for engaging! Claim your 8 B Coins.");
             notifiedSet.add("quest-community");
         }
 
@@ -140,6 +148,7 @@ export const useRewardNotifications = () => {
                         route: "/achievements",
                         duration: 3000,
                     });
+                    sendAchievementNotification(achievement.name, achievement.coin_reward);
                     notifiedSet.add(notifKey);
                 }
             });
