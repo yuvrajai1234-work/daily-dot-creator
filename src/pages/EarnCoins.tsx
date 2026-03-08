@@ -93,6 +93,10 @@ const EarnCoinsPage = () => {
       const { data, error } = await supabase.functions.invoke("check-subscription");
       if (error) throw error;
       setSubscriptionStatus(data);
+      if (data?.coins_credited && data?.coins_amount > 0) {
+        toast.success(`🎉 +${data.coins_amount} P Coins credited for your subscription!`);
+        queryClient.invalidateQueries({ queryKey: ["profile"] });
+      }
     } catch (err) {
       console.warn("Failed to check subscription:", err);
     }
