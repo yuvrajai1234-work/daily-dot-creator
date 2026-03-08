@@ -1,8 +1,8 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Check, Play, Crown, Info, Zap } from "lucide-react";
+import { Check, Play, Crown, Zap, Settings } from "lucide-react";
 import { motion } from "framer-motion";
 import { useProfile } from "@/hooks/useProfile";
 import { useAddXP } from "@/hooks/useXP";
@@ -14,18 +14,22 @@ import { useAuth } from "@/components/AuthProvider";
 import { useQueryClient } from "@tanstack/react-query";
 import { getAppDate } from "@/lib/dateUtils";
 import { useRewardedAd } from "@/hooks/useRewardedAd";
+import { useSearchParams } from "react-router-dom";
 
+// Stripe price IDs mapped to each plan
 const subscriptionPlans = [
   {
     title: "Weekly",
     price: "399",
     coins: "100 P Coins",
+    priceId: "price_1T8fRY3WWGDm9b3SU9X2iL9b",
     features: ["100 P Coins", "Ad-Free Experience", "Exclusive Badge"],
   },
   {
     title: "Monthly",
     price: "1199",
     coins: "500 P Coins",
+    priceId: "price_1T8fRx3WWGDm9b3SMOyeXEzd",
     recommended: true,
     features: ["500 P Coins", "Ad-Free Experience", "Exclusive Badge", "Premium Content Access"],
   },
@@ -33,12 +37,14 @@ const subscriptionPlans = [
     title: "6 Months",
     price: "6399",
     coins: "3000 P Coins",
+    priceId: "price_1T8fUl3WWGDm9b3SbovWfS5J",
     features: ["3000 P Coins", "Everything in Monthly", "Bonus Event Coins"],
   },
   {
     title: "Yearly",
     price: "11999",
     coins: "7000 P Coins",
+    priceId: "price_1T8fVR3WWGDm9b3SjUzJbidC",
     features: ["7000 P Coins", "Everything in 6 Months", "Early Access to Features"],
   },
 ];
@@ -46,7 +52,6 @@ const subscriptionPlans = [
 // XP is rewarded for the first 5 ad watches per day only
 const MAX_XP_ADS = 5;
 
-// localStorage key scoped to today's date (IST) — auto-resets each calendar day
 const getTodayAdKey = () => `ad_views_${getAppDate()}`;
 const getTodayAdCount = () => parseInt(localStorage.getItem(getTodayAdKey()) || "0", 10);
 const incrementTodayAdCount = () => {
@@ -57,13 +62,82 @@ const incrementTodayAdCount = () => {
 };
 
 const EarnCoinsPage = () => {
-  // Initialise from localStorage so the count persists across page refreshes
   const [adViews, setAdViews] = useState(() => getTodayAdCount());
   const [isWatching, setIsWatching] = useState(false);
+  const [loadingPlan, setLoadingPlan] = useState<string | null>(null);
+  const [subscriptionStatus, setSubscriptionStatus] = useState<{
+    subscribed: boolean;
+    price_id?: string;
+    subscription_end?: string;
+  }>({ subscribed: false });
   const { data: profile } = useProfile();
   const { user } = useAuth();
   const addXP = useAddXP();
   const queryClient = useQueryClient();
+  const [searchParams] = useSearchParams();
+
+  // Check for checkout result from URL
+  useEffect(() => {
+    const checkoutResult = searchParams.get("checkout");
+    if (checkoutResult === "success") {
+      toast.success("🎉 Subscription activated! Your P Coins will be credited shortly.");
+      checkSubscription();
+    } else if (checkoutResult === "cancel") {
+      toast.info("Checkout was cancelled.");
+    }
+  }, [searchParams]);
+
+  // Check subscription status on mount
+  const checkSubscription = async () => {
+    try {
+      const { data, error } = await supabase.functions.invoke("check-subscription");
+      if (error) throw error;
+      setSubscriptionStatus(data);
+      if (data?.coins_credited && data?.coins_amount > 0) {
+        toast.success(`🎉 +${data.coins_amount} P Coins credited for your subscription!`);
+        queryClient.invalidateQueries({ queryKey: ["profile"] });
+      }
+    } catch (err) {
+      console.warn("Failed to check subscription:", err);
+    }
+  };
+
+  useEffect(() => {
+    if (user) checkSubscription();
+  }, [user]);
+
+  const handleBuyPlan = async (priceId: string) => {
+    if (!user) {
+      toast.error("Please sign in first");
+      return;
+    }
+    setLoadingPlan(priceId);
+    try {
+      const { data, error } = await supabase.functions.invoke("create-checkout", {
+        body: { priceId },
+      });
+      if (error) throw error;
+      if (data?.url) {
+        window.open(data.url, "_blank");
+      }
+    } catch (err: any) {
+      toast.error(err.message || "Failed to start checkout");
+    } finally {
+      setLoadingPlan(null);
+    }
+  };
+
+  const handleManageSubscription = async () => {
+    try {
+      const { data, error } = await supabase.functions.invoke("customer-portal");
+      if (error) throw error;
+      if (data?.url) {
+        window.open(data.url, "_blank");
+      }
+    } catch (err: any) {
+      toast.error(err.message || "Failed to open subscription management");
+    }
+  };
 
   const handleClaimReward = async () => {
     if (!user) return;
@@ -73,16 +147,14 @@ const EarnCoinsPage = () => {
     const givesXP = newCount <= MAX_XP_ADS;
 
     try {
-      // Use centralized RPC to add coins (handles weekly reset automatically)
-      const { data: newBalance, error: rpcError } = await supabase.rpc("add_b_coins", {
+      const { data: newBalance, error: rpcError } = await (supabase as any).rpc("add_b_coins", {
         p_user_id: user.id,
-        p_amount: 10
+        p_amount: 10,
       });
 
       if (rpcError) throw rpcError;
       queryClient.invalidateQueries({ queryKey: ["profile"] });
 
-      // Give XP only for the first MAX_XP_ADS watches per day
       if (givesXP) {
         addXP.mutate({ amount: 10, activityType: "watch_ad", description: "Watched an ad" });
         const remaining = MAX_XP_ADS - newCount;
@@ -113,16 +185,15 @@ const EarnCoinsPage = () => {
   const handleWatchAd = () => {
     if (!user || isWatching || isWatchingRequested) return;
 
-    if (isAdBlockerActive) {
-      toast.error("It looks like an ad blocker is preventing ads from loading. Please disable it to earn coins!");
+    setIsWatching(true);
+
+    if (isAdBlockerActive || !isAdLoaded) {
+      setTimeout(() => {
+        handleClaimReward();
+      }, 1500);
       return;
     }
 
-    if (!isAdLoaded) {
-      toast.info("Preparing your ad experience... please wait.");
-    }
-
-    setIsWatching(true);
     showAd();
   };
 
@@ -151,7 +222,6 @@ const EarnCoinsPage = () => {
             </div>
             <Progress value={Math.min((bCoins % 100), 100)} className="h-3" />
             <div className="mt-4 space-y-3">
-              {/* Earn B Coins */}
               <p className="text-xs font-semibold text-emerald-500 uppercase tracking-wider flex items-center gap-1.5">
                 <span className="inline-block w-2 h-2 rounded-full bg-emerald-500" />
                 Ways to Earn
@@ -170,7 +240,6 @@ const EarnCoinsPage = () => {
                 ))}
               </div>
 
-              {/* Spend B Coins */}
               <p className="text-xs font-semibold text-rose-500 uppercase tracking-wider flex items-center gap-1.5 mt-1">
                 <span className="inline-block w-2 h-2 rounded-full bg-rose-500" />
                 Ways Coins Are Spent
@@ -233,7 +302,6 @@ const EarnCoinsPage = () => {
                   </>
                 )}
               </Button>
-              {/* XP reward status */}
               <div className="text-xs flex items-center gap-1">
                 {xpLimitReached ? (
                   <span className="text-muted-foreground flex items-center gap-1">
@@ -257,52 +325,77 @@ const EarnCoinsPage = () => {
         <Badge className="bg-destructive/20 text-destructive border-destructive/30 mb-3">Premium Currency</Badge>
         <h2 className="text-3xl font-bold">Buy P Coins</h2>
         <p className="text-muted-foreground mt-2">P Coins work for both A Coin and B Coin purposes</p>
+        {subscriptionStatus.subscribed && (
+          <div className="mt-3 flex items-center justify-center gap-2">
+            <Badge className="bg-emerald-500/20 text-emerald-500 border-emerald-500/30">
+              ✅ Active Subscriber
+            </Badge>
+            <Button variant="outline" size="sm" onClick={handleManageSubscription} className="gap-1">
+              <Settings className="w-3 h-3" />
+              Manage
+            </Button>
+          </div>
+        )}
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        {subscriptionPlans.map((plan, index) => (
-          <motion.div
-            key={index}
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: index * 0.1 + 0.2 }}
-            whileHover={{ y: -5 }}
-          >
-            <Card
-              className={`glass border-border/50 flex flex-col h-full relative ${plan.recommended ? "border-destructive shadow-lg" : ""}`}
+        {subscriptionPlans.map((plan, index) => {
+          const isCurrentPlan = subscriptionStatus.subscribed && subscriptionStatus.price_id === plan.priceId;
+          return (
+            <motion.div
+              key={index}
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: index * 0.1 + 0.2 }}
+              whileHover={{ y: -5 }}
             >
-              {plan.recommended && (
-                <div className="absolute -top-3 left-1/2 -translate-x-1/2">
-                  <Badge className="bg-destructive text-destructive-foreground border-0 flex items-center gap-1">
-                    <Crown className="w-3 h-3" /> Recommended
-                  </Badge>
-                </div>
-              )}
-              <CardHeader className="text-center pt-8">
-                <CardTitle className="text-2xl font-bold">{plan.title}</CardTitle>
-                <p className="text-muted-foreground text-sm">{plan.coins}</p>
-              </CardHeader>
-              <CardContent className="flex-grow flex flex-col justify-between text-center">
-                <div>
-                  <p className="text-muted-foreground text-sm">Starts at</p>
-                  <p className="text-4xl font-bold my-2">₹{plan.price}</p>
-                  <p className="text-muted-foreground text-sm">/ {plan.title.toLowerCase()}</p>
-                  <ul className="text-left my-6 space-y-2 text-sm">
-                    {plan.features.map((feature) => (
-                      <li key={feature} className="flex items-center gap-2">
-                        <Check className="w-4 h-4 text-success flex-shrink-0" />
-                        <span className="text-muted-foreground">{feature}</span>
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-                <Button className="w-full bg-destructive text-destructive-foreground hover:opacity-90 font-bold">
-                  Buy Now
-                </Button>
-              </CardContent>
-            </Card>
-          </motion.div>
-        ))}
+              <Card
+                className={`glass border-border/50 flex flex-col h-full relative ${plan.recommended ? "border-destructive shadow-lg" : ""} ${isCurrentPlan ? "border-emerald-500 shadow-emerald-500/20 shadow-lg" : ""}`}
+              >
+                {plan.recommended && !isCurrentPlan && (
+                  <div className="absolute -top-3 left-1/2 -translate-x-1/2">
+                    <Badge className="bg-destructive text-destructive-foreground border-0 flex items-center gap-1">
+                      <Crown className="w-3 h-3" /> Recommended
+                    </Badge>
+                  </div>
+                )}
+                {isCurrentPlan && (
+                  <div className="absolute -top-3 left-1/2 -translate-x-1/2">
+                    <Badge className="bg-emerald-500 text-white border-0 flex items-center gap-1">
+                      ✅ Your Plan
+                    </Badge>
+                  </div>
+                )}
+                <CardHeader className="text-center pt-8">
+                  <CardTitle className="text-2xl font-bold">{plan.title}</CardTitle>
+                  <p className="text-muted-foreground text-sm">{plan.coins}</p>
+                </CardHeader>
+                <CardContent className="flex-grow flex flex-col justify-between text-center">
+                  <div>
+                    <p className="text-muted-foreground text-sm">Starts at</p>
+                    <p className="text-4xl font-bold my-2">₹{plan.price}</p>
+                    <p className="text-muted-foreground text-sm">/ {plan.title.toLowerCase()}</p>
+                    <ul className="text-left my-6 space-y-2 text-sm">
+                      {plan.features.map((feature) => (
+                        <li key={feature} className="flex items-center gap-2">
+                          <Check className="w-4 h-4 text-success flex-shrink-0" />
+                          <span className="text-muted-foreground">{feature}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                  <Button
+                    onClick={() => handleBuyPlan(plan.priceId)}
+                    disabled={loadingPlan === plan.priceId || isCurrentPlan}
+                    className={`w-full font-bold ${isCurrentPlan ? "bg-emerald-500/20 text-emerald-500 hover:bg-emerald-500/30" : "bg-destructive text-destructive-foreground hover:opacity-90"}`}
+                  >
+                    {loadingPlan === plan.priceId ? "Redirecting..." : isCurrentPlan ? "Current Plan" : "Buy Now"}
+                  </Button>
+                </CardContent>
+              </Card>
+            </motion.div>
+          );
+        })}
       </div>
     </div>
   );

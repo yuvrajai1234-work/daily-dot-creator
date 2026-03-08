@@ -52,7 +52,7 @@ const useCommunitiesXP = (communities: Community[]) => {
                 }));
             }
 
-            const { data: profiles, error: profErr } = await supabase
+            const { data: profiles, error: profErr } = await (supabase as any)
                 .from("profiles")
                 .select("user_id, total_xp")
                 .in("user_id", allUserIds);

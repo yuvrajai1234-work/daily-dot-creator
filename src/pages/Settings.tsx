@@ -1,4 +1,5 @@
-import { useState } from "react";
+import { useState, useCallback } from "react";
+import { requestNotificationPermission, getNotificationPermission, sendDeviceNotification } from "@/lib/deviceNotifications";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
@@ -474,7 +475,33 @@ const SettingsPage = () => {
       {/* ─────────────────────────────────────────────────────────── */}
       <SectionCard icon={<Bell className="w-4 h-4" />} title="Notifications" description="Control when and how you get notified" delay={0.12}>
         <Row label="Push Notifications" description="Allow browser / device notifications">
-          <Switch checked={settings.notifications} onCheckedChange={(v) => updateSetting("notifications", v)} />
+          <Switch
+            checked={settings.notifications}
+            onCheckedChange={async (v) => {
+              if (v) {
+                const granted = await requestNotificationPermission();
+                if (!granted) {
+                  const perm = getNotificationPermission();
+                  if (perm === "denied") {
+                    toast.error("Notifications are blocked. Please enable them in your browser settings.");
+                  } else {
+                    toast.info("Please allow notifications when prompted by your browser.");
+                  }
+                  return;
+                }
+                updateSetting("notifications", true);
+                // Send a test notification to confirm it works
+                sendDeviceNotification("🔔 Notifications Enabled!", {
+                  body: "You'll now receive device notifications from DailyDots.",
+                  tag: "test-notification",
+                });
+                toast.success("Device notifications enabled!");
+              } else {
+                updateSetting("notifications", false);
+                toast.info("Device notifications disabled.");
+              }
+            }}
+          />
         </Row>
         <Row label="Daily Reminders" description="Get nudged to log your habits each day">
           <div className="flex items-center gap-2">

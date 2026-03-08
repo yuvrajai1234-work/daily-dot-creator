@@ -37,7 +37,7 @@ export const useCycleStreakRewards = () => {
       const d = String(cycleStart.getDate()).padStart(2, "0");
       const cycleStartFormatted = `${y}-${m}-${d}`;
 
-      const { data, error } = await supabase
+      const { data, error } = await (supabase as any)
         .from("claimed_rewards")
         .select("*")
         .eq("user_id", user.id)
@@ -61,7 +61,7 @@ export const useClaimedRewards = () => {
       if (!user) return [];
 
       const today = getAppDate(); // Current date in IST (resets at midnight)
-      const { data, error } = await supabase
+      const { data, error } = await (supabase as any)
         .from("claimed_rewards")
         .select("*")
         .eq("user_id", user.id)
@@ -112,7 +112,7 @@ export const useClaimACoins = () => {
 
       // Award XP for claiming achievement
       try {
-        await supabase.rpc("add_xp_to_user", {
+        await (supabase as any).rpc("add_xp_to_user", {
           p_user_id: user!.id,
           p_xp_amount: 20,
           p_activity_type: "claim_reward",
@@ -141,7 +141,7 @@ export const useClaimBCoins = () => {
 
   return useMutation({
     mutationFn: async ({ amount, rewardId }: { amount: number; rewardId?: string }) => {
-      const { data: newBalance, error: rpcError } = await supabase.rpc("add_b_coins", {
+      const { data: newBalance, error: rpcError } = await (supabase as any).rpc("add_b_coins", {
         p_user_id: user!.id,
         p_amount: amount
       } as any);
@@ -150,7 +150,7 @@ export const useClaimBCoins = () => {
 
       // Record the claim if rewardId is provided
       if (rewardId) {
-        const { error: claimError } = await supabase
+        const { error: claimError } = await (supabase as any)
           .from("claimed_rewards")
           .insert({
             user_id: user!.id,
@@ -170,7 +170,7 @@ export const useClaimBCoins = () => {
 
       // Award XP for claiming quest reward
       try {
-        await supabase.rpc("add_xp_to_user", {
+        await (supabase as any).rpc("add_xp_to_user", {
           p_user_id: user!.id,
           p_xp_amount: 10,
           p_activity_type: "claim_reward",
@@ -215,7 +215,7 @@ export const useClaimStreakReward = () => {
       if (error) throw error;
 
       // Record the claim
-      const { error: claimError } = await supabase
+      const { error: claimError } = await (supabase as any)
         .from("claimed_rewards")
         .insert({
           user_id: user!.id,
@@ -234,7 +234,7 @@ export const useClaimStreakReward = () => {
 
       // Award XP for claiming streak reward
       try {
-        await supabase.rpc("add_xp_to_user", {
+        await (supabase as any).rpc("add_xp_to_user", {
           p_user_id: user!.id,
           p_xp_amount: 30, // Higher XP for streaks
           p_activity_type: "streak", // Ensure this activity type exists in XP_REWARDS or is handled

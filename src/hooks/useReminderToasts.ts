@@ -2,10 +2,49 @@ import { useEffect } from "react";
 import { format } from "date-fns";
 import { usePopupNotifications } from "@/contexts/NotificationContext";
 import { useReminders } from "@/hooks/useReminders";
+import { sendDeviceNotification, sendDailyReminderNotification } from "@/lib/deviceNotifications";
 
 export const useReminderToasts = () => {
     const { showNotification } = usePopupNotifications();
     const { reminders, markAsNotified } = useReminders();
+
+    // Daily reminder scheduler based on user's preferred time
+    useEffect(() => {
+        const scheduleDaily = () => {
+            try {
+                const raw = localStorage.getItem("dd_settings_v2");
+                if (!raw) return;
+                const settings = JSON.parse(raw);
+                if (!settings.dailyReminders) return;
+
+                const [hours, minutes] = (settings.reminderTime || "09:00").split(":").map(Number);
+                const now = new Date();
+                const target = new Date();
+                target.setHours(hours, minutes, 0, 0);
+
+                // If time already passed today, schedule for tomorrow
+                if (target <= now) {
+                    target.setDate(target.getDate() + 1);
+                }
+
+                const delay = target.getTime() - now.getTime();
+                const timer = setTimeout(() => {
+                    sendDailyReminderNotification();
+                    // Re-schedule for next day
+                    scheduleDaily();
+                }, delay);
+
+                return timer;
+            } catch {
+                return undefined;
+            }
+        };
+
+        const timer = scheduleDaily();
+        return () => {
+            if (timer) clearTimeout(timer);
+        };
+    }, []);
 
     useEffect(() => {
         const checkReminders = () => {
@@ -23,13 +62,17 @@ export const useReminderToasts = () => {
                         title: "🎉 Special Event Today!",
                         message: `Don't forget: ${r.title}`,
                         route: "/calendar",
-                        duration: 8000, // Longer duration for special events
+                        duration: 8000,
+                    });
+                    sendDeviceNotification("🎉 Special Event Today!", {
+                        body: `Don't forget: ${r.title}`,
+                        tag: `event-${r.id}`,
+                        onClick: () => { window.location.href = "/calendar"; },
                     });
                     markAsNotified(r.id, "day");
                 }
 
-                // 2. Time-based Notification (For both special and regular)
-                // Trigger if time has arrived or passed
+                // 2. Time-based Notification
                 if (!r.notifiedTime && currentTime >= r.time) {
                     showNotification({
                         type: r.isSpecial ? "event" : "reminder",
@@ -38,16 +81,21 @@ export const useReminderToasts = () => {
                         route: "/calendar",
                         duration: r.isSpecial ? 8000 : 5000,
                     });
+                    sendDeviceNotification(
+                        r.isSpecial ? "🚨 Event Starting!" : "🔔 Reminder",
+                        {
+                            body: r.isSpecial ? `It's time for: ${r.title}` : r.title,
+                            tag: `reminder-${r.id}`,
+                            onClick: () => { window.location.href = "/calendar"; },
+                        }
+                    );
                     markAsNotified(r.id, "time");
                 }
             });
         };
 
-        // Check immediately on mount/update
         checkReminders();
-
-        // Check every 30 seconds for time updates
         const interval = setInterval(checkReminders, 30000);
         return () => clearInterval(interval);
-    }, [reminders, showNotification, markAsNotified]); // Re-run if reminders list changes
+    }, [reminders, showNotification, markAsNotified]);
 };

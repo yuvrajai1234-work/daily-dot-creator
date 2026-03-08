@@ -1,0 +1,4 @@
+﻿supabase/functions/check-subscription/index.ts
+supabase/functions/create-checkout/index.ts
+supabase/functions/customer-portal/index.ts
+supabase/migrations/20260308105014_391a39fc-e7ca-42a0-a523-fb82c466cb00.sql
