@@ -180,6 +180,7 @@ export type Database = {
           id: string
           is_archived: boolean
           name: string
+          sort_order: number
           updated_at: string
           user_id: string
         }
@@ -191,6 +192,7 @@ export type Database = {
           id?: string
           is_archived?: boolean
           name: string
+          sort_order?: number
           updated_at?: string
           user_id: string
         }
@@ -202,6 +204,7 @@ export type Database = {
           id?: string
           is_archived?: boolean
           name?: string
+          sort_order?: number
           updated_at?: string
           user_id?: string
         }
@@ -216,9 +219,12 @@ export type Database = {
           b_coin_level: number
           coin_balance: number
           created_at: string
+          current_xp: number
           full_name: string | null
           id: string
+          level: number
           p_coin_balance: number
+          total_xp: number
           updated_at: string
           user_id: string
         }
@@ -230,9 +236,12 @@ export type Database = {
           b_coin_level?: number
           coin_balance?: number
           created_at?: string
+          current_xp?: number
           full_name?: string | null
           id?: string
+          level?: number
           p_coin_balance?: number
+          total_xp?: number
           updated_at?: string
           user_id: string
         }
@@ -244,9 +253,12 @@ export type Database = {
           b_coin_level?: number
           coin_balance?: number
           created_at?: string
+          current_xp?: number
           full_name?: string | null
           id?: string
+          level?: number
           p_coin_balance?: number
+          total_xp?: number
           updated_at?: string
           user_id?: string
         }
@@ -286,7 +298,10 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      add_b_coins: {
+        Args: { p_amount: number; p_user_id: string }
+        Returns: number
+      }
     }
     Enums: {
       [_ in never]: never
