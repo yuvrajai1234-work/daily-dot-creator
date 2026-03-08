@@ -12,6 +12,14 @@ const logStep = (step: string, details?: any) => {
   console.log(`[CHECK-SUBSCRIPTION] ${step}${detailsStr}`);
 };
 
+// Map price IDs to P Coin amounts
+const PRICE_TO_COINS: Record<string, number> = {
+  "price_1T8fRY3WWGDm9b3SU9X2iL9b": 100,   // Weekly
+  "price_1T8fRx3WWGDm9b3SMOyeXEzd": 500,   // Monthly
+  "price_1T8fUl3WWGDm9b3SbovWfS5J": 3000,  // 6 Months
+  "price_1T8fVR3WWGDm9b3SjUzJbidC": 7000,  // Yearly
+};
+
 serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
@@ -61,13 +69,52 @@ serve(async (req) => {
     let productId = null;
     let priceId = null;
     let subscriptionEnd = null;
+    let coinsCredited = false;
 
     if (hasActiveSub) {
       const subscription = subscriptions.data[0];
-      subscriptionEnd = new Date(subscription.current_period_end * 1000).toISOString();
+      const periodEnd = new Date(subscription.current_period_end * 1000);
+      subscriptionEnd = periodEnd.toISOString();
       productId = subscription.items.data[0].price.product;
       priceId = subscription.items.data[0].price.id;
-      logStep("Active subscription found", { productId, priceId });
+      logStep("Active subscription found", { productId, priceId, subscriptionEnd });
+
+      // Credit P Coins if this billing period hasn't been credited yet
+      const coinAmount = PRICE_TO_COINS[priceId] || 0;
+      if (coinAmount > 0) {
+        // Check if we already credited for this period
+        const { data: profile } = await supabaseClient
+          .from("profiles")
+          .select("p_coin_last_credited_period_end")
+          .eq("user_id", user.id)
+          .single();
+
+        const lastCredited = profile?.p_coin_last_credited_period_end;
+        const alreadyCredited = lastCredited && new Date(lastCredited).getTime() === periodEnd.getTime();
+
+        if (!alreadyCredited) {
+          logStep("Crediting P Coins", { coinAmount, periodEnd: subscriptionEnd });
+          const { error: updateError } = await supabaseClient
+            .from("profiles")
+            .update({
+              p_coin_balance: (profile as any)?.p_coin_balance
+                ? (profile as any).p_coin_balance + coinAmount
+                : coinAmount,
+              p_coin_last_credited_period_end: subscriptionEnd,
+              updated_at: new Date().toISOString(),
+            })
+            .eq("user_id", user.id);
+
+          if (updateError) {
+            logStep("Failed to credit P Coins", { error: updateError.message });
+          } else {
+            coinsCredited = true;
+            logStep("P Coins credited successfully", { coinAmount });
+          }
+        } else {
+          logStep("P Coins already credited for this period");
+        }
+      }
     }
 
     return new Response(JSON.stringify({
@@ -75,6 +122,7 @@ serve(async (req) => {
       product_id: productId,
       price_id: priceId,
       subscription_end: subscriptionEnd,
+      coins_credited: coinsCredited,
     }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
       status: 200,
