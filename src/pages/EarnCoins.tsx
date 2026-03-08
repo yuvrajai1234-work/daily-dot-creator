@@ -117,6 +117,8 @@ const EarnCoinsPage = () => {
         body: { priceId },
       });
       if (error) throw error;
+      if (data?.error) throw new Error(data.error);
+
       if (data?.url) {
         window.open(data.url, "_blank");
       }
@@ -131,6 +133,8 @@ const EarnCoinsPage = () => {
     try {
       const { data, error } = await supabase.functions.invoke("customer-portal");
       if (error) throw error;
+      if (data?.error) throw new Error(data.error);
+
       if (data?.url) {
         window.open(data.url, "_blank");
       }
