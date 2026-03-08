@@ -113,16 +113,16 @@ const EarnCoinsPage = () => {
   const handleWatchAd = () => {
     if (!user || isWatching || isWatchingRequested) return;
 
-    if (isAdBlockerActive) {
-      toast.error("It looks like an ad blocker is preventing ads from loading. Please disable it to earn coins!");
+    setIsWatching(true);
+
+    // If ads are blocked or not loaded, simulate a short delay then reward directly
+    if (isAdBlockerActive || !isAdLoaded) {
+      setTimeout(() => {
+        handleClaimReward();
+      }, 1500);
       return;
     }
 
-    if (!isAdLoaded) {
-      toast.info("Preparing your ad experience... please wait.");
-    }
-
-    setIsWatching(true);
     showAd();
   };
 
