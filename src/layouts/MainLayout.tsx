@@ -33,6 +33,7 @@ const MainLayout = () => {
 
   return (
     <div className="flex h-screen overflow-hidden bg-background text-foreground relative">
+      <NotificationWatcher />
       <AnimatePresence>
         {showLevelUp && currentLevel && (
           <LevelUpOverlay
