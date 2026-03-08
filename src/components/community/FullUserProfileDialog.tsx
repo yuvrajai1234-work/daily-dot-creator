@@ -81,9 +81,9 @@ export const FullUserProfileDialog = ({ userId, open, onOpenChange }: FullUserPr
     if (!profile) return null;
 
     const levelInfo = getLevelInfo({
-        level: profile.level || 1,
-        current_xp: profile.current_xp || 0,
-        total_xp: profile.total_xp || 0
+        level: (profile as any).level || 1,
+        current_xp: (profile as any).current_xp || 0,
+        total_xp: (profile as any).total_xp || 0
     });
     const tier = getLevelTier(levelInfo.level);
     const p = profile as any;
@@ -122,7 +122,7 @@ export const FullUserProfileDialog = ({ userId, open, onOpenChange }: FullUserPr
                             </Badge>
                             <div className="mt-2 text-xs text-muted-foreground flex gap-3 justify-end whitespace-nowrap">
                                 <span className="flex items-center gap-1 text-purple-400 font-bold"><Brain className="w-4 h-4" /> {p.personality_type || p.archetype || '--'}</span>
-                                <span className="flex items-center gap-1 font-bold"><Zap className="w-4 h-4 text-green-500" /> {profile.total_xp || 0}</span>
+                                <span className="flex items-center gap-1 font-bold"><Zap className="w-4 h-4 text-green-500" /> {(profile as any).total_xp || 0}</span>
                             </div>
                         </div>
                     </div>

@@ -84,7 +84,7 @@ export const useLevelInfo = () => {
                 .single();
 
             if (error) throw error;
-            return getLevelInfo(data);
+            return getLevelInfo(data as any);
         },
         enabled: !!user,
     });
@@ -145,14 +145,14 @@ export const useXPTransactions = (limit: number = 50) => {
     return useQuery({
         queryKey: ["xp-transactions", user?.id, limit],
         queryFn: async () => {
-            const { data, error } = await supabase
+            const { data, error } = await (supabase as any)
                 .from("xp_transactions")
                 .select("*")
                 .order("created_at", { ascending: false })
                 .limit(limit);
 
             if (error) throw error;
-            return data as XPTransaction[];
+            return (data || []) as XPTransaction[];
         },
         enabled: !!user,
     });
@@ -224,7 +224,7 @@ export const useAddXP = () => {
             // typically we do it in onSuccess to confirm server success, but user wants INSTANT. 
             // Let's do it in onSuccess to be safe, but make it run BEFORE invalidation.
 
-            const { data, error } = await supabase.rpc("add_xp_to_user", {
+            const { data, error } = await (supabase as any).rpc("add_xp_to_user", {
                 p_user_id: user!.id,
                 p_xp_amount: amount,
                 p_activity_type: activityType,
@@ -287,7 +287,7 @@ export const useLevelLeaderboard = () => {
     return useQuery({
         queryKey: ["level-leaderboard"],
         queryFn: async () => {
-            const { data, error } = await supabase
+            const { data, error } = await (supabase as any)
                 .from("level_leaderboard")
                 .select("*")
                 .limit(100);

@@ -215,12 +215,7 @@ const ProfilePage = () => {
 
     const { error } = await supabase.auth.updateUser({ data: updates });
 
-    // Sync with public profiles table
-    if (!error && user) {
-      await supabase.from("profiles").update({
-        personality_type: typeStr,
-      }).eq("user_id", user.id);
-    }
+    // Personality type is stored in auth user metadata only
 
     if (error) {
       toast.error("Failed to update personality");

@@ -164,7 +164,7 @@ export const useCreateHabit = () => {
         .eq("user_id", user!.id);
 
       // Get max sort_order
-      const { data: maxSortData } = await supabase
+      const { data: maxSortData } = await (supabase as any)
         .from("habits")
         .select("sort_order")
         .eq("user_id", user!.id)
@@ -174,7 +174,7 @@ export const useCreateHabit = () => {
 
       const nextSortOrder = (maxSortData?.sort_order ?? 0) + 1;
 
-      const { data, error } = await supabase
+      const { data, error } = await (supabase as any)
         .from("habits")
         .insert({ ...habit, user_id: user!.id, sort_order: nextSortOrder })
         .select()
@@ -222,7 +222,7 @@ export const useUpdateHabitsOrder = () => {
       // To be safe, we will do sequential updates as habits count is usually small (e.g. <20)
 
       const promises = habitsKeys.map((h) =>
-        supabase.from("habits").update({ sort_order: h.sort_order }).eq("id", h.id).eq("user_id", user!.id)
+        (supabase as any).from("habits").update({ sort_order: h.sort_order }).eq("id", h.id).eq("user_id", user!.id)
       );
 
       await Promise.all(promises);
@@ -337,7 +337,7 @@ export const useLogEffort = () => {
       if (!result.isUpdate) {
         try {
           // Add XP first so invalidation fetches updated data
-          await supabase.rpc("add_xp_to_user", {
+          await (supabase as any).rpc("add_xp_to_user", {
             p_user_id: user!.id,
             p_xp_amount: 10,
             p_activity_type: "habit_log",
@@ -518,7 +518,7 @@ export const useSaveReflection = () => {
       if (!result.isEdit) {
         // Award XP for journal entry
         try {
-          await supabase.rpc("add_xp_to_user", {
+          await (supabase as any).rpc("add_xp_to_user", {
             p_user_id: user!.id,
             p_xp_amount: 15,
             p_activity_type: "journal",

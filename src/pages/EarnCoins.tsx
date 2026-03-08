@@ -74,7 +74,7 @@ const EarnCoinsPage = () => {
 
     try {
       // Use centralized RPC to add coins (handles weekly reset automatically)
-      const { data: newBalance, error: rpcError } = await supabase.rpc("add_b_coins", {
+      const { data: newBalance, error: rpcError } = await (supabase as any).rpc("add_b_coins", {
         p_user_id: user.id,
         p_amount: 10
       });

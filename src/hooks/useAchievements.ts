@@ -142,7 +142,7 @@ export const useUserStats = (targetUserId?: string) => {
         .single();
 
       // Get community posts count
-      const { count: communityPosts } = await supabase
+      const { count: communityPosts } = await (supabase as any)
         .from("xp_transactions")
         .select("*", { count: "exact", head: true })
         .eq("user_id", uId)
@@ -208,8 +208,8 @@ export const useUserStats = (targetUserId?: string) => {
         totalReflections: totalReflections || 0,
         bestStreak,
         currentStreak,
-        level: profileData?.level || 1,
-        totalXP: profileData?.total_xp || 0,
+        level: (profileData as any)?.level || 1,
+        totalXP: (profileData as any)?.total_xp || 0,
         daysActive,
         communityPosts: communityPosts || 0,
         longestHabitStreak: bestStreak,
