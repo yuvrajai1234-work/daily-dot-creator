@@ -224,6 +224,7 @@ export type Database = {
           id: string
           level: number
           p_coin_balance: number
+          p_coin_last_credited_period_end: string | null
           total_xp: number
           updated_at: string
           user_id: string
@@ -241,6 +242,7 @@ export type Database = {
           id?: string
           level?: number
           p_coin_balance?: number
+          p_coin_last_credited_period_end?: string | null
           total_xp?: number
           updated_at?: string
           user_id: string
@@ -258,6 +260,7 @@ export type Database = {
           id?: string
           level?: number
           p_coin_balance?: number
+          p_coin_last_credited_period_end?: string | null
           total_xp?: number
           updated_at?: string
           user_id?: string
@@ -301,6 +304,10 @@ export type Database = {
       add_b_coins: {
         Args: { p_amount: number; p_user_id: string }
         Returns: number
+      }
+      credit_p_coins: {
+        Args: { p_amount: number; p_period_end: string; p_user_id: string }
+        Returns: boolean
       }
     }
     Enums: {

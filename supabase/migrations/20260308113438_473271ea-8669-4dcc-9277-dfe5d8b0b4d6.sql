@@ -1,0 +1,1 @@
+ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS p_coin_last_credited_period_end timestamp with time zone DEFAULT NULL;

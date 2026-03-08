@@ -12,6 +12,13 @@ const logStep = (step: string, details?: any) => {
   console.log(`[CHECK-SUBSCRIPTION] ${step}${detailsStr}`);
 };
 
+const PRICE_TO_COINS: Record<string, number> = {
+  "price_1T8fRY3WWGDm9b3SU9X2iL9b": 100,
+  "price_1T8fRx3WWGDm9b3SMOyeXEzd": 500,
+  "price_1T8fUl3WWGDm9b3SbovWfS5J": 3000,
+  "price_1T8fVR3WWGDm9b3SjUzJbidC": 7000,
+};
+
 serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
@@ -61,13 +68,32 @@ serve(async (req) => {
     let productId = null;
     let priceId = null;
     let subscriptionEnd = null;
+    let coinsCredited = false;
+    let coinsAmount = 0;
 
     if (hasActiveSub) {
       const subscription = subscriptions.data[0];
-      subscriptionEnd = new Date(subscription.current_period_end * 1000).toISOString();
+      const periodEnd = new Date(subscription.current_period_end * 1000);
+      subscriptionEnd = periodEnd.toISOString();
       productId = subscription.items.data[0].price.product;
       priceId = subscription.items.data[0].price.id;
-      logStep("Active subscription found", { productId, priceId });
+      logStep("Active subscription found", { productId, priceId, subscriptionEnd });
+
+      coinsAmount = PRICE_TO_COINS[priceId] || 0;
+      if (coinsAmount > 0) {
+        const { data: credited, error: rpcError } = await supabaseClient.rpc("credit_p_coins", {
+          p_user_id: user.id,
+          p_amount: coinsAmount,
+          p_period_end: subscriptionEnd,
+        });
+
+        if (rpcError) {
+          logStep("Failed to credit P Coins", { error: rpcError.message });
+        } else {
+          coinsCredited = credited === true;
+          logStep(coinsCredited ? "P Coins credited" : "Already credited for this period", { coinsAmount });
+        }
+      }
     }
 
     return new Response(JSON.stringify({
@@ -75,6 +101,8 @@ serve(async (req) => {
       product_id: productId,
       price_id: priceId,
       subscription_end: subscriptionEnd,
+      coins_credited: coinsCredited,
+      coins_amount: coinsCredited ? coinsAmount : 0,
     }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
       status: 200,
