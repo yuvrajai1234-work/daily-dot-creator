@@ -236,7 +236,7 @@ const AIAssistant = () => {
                 // Welcome message
                 setMessages([{
                     role: "assistant",
-                    content: `Hey ${userName}! 👋 I'm **Adonis**. I have full access to your habits, stats, achievements and progress.\n\nI can:\n- 📊 Analyze your habit patterns\n- 🎯 Recommend what to focus on\n- 🏆 Guide you toward achievements\n- 💡 Answer any questions about the app\n- 💪 Motivate you with personalized insights\n\nWhat would you like to explore today?`,
+                    content: `Hey ${userName}! 👋 I'm **Adonis**. I have full access to your habits, stats, achievements and progress.\n\nI can:\n- 📊 Analyze your habit patterns\n- 🎯 Recommend what to focus on\n- 💡 Answer any questions about the app\n- \nWhat would you like to explore today?`,
                     timestamp: new Date(),
                 }]);
             }
