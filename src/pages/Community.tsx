@@ -202,7 +202,7 @@ const CommunityPage = () => {
                     {createCommunity.isPending ? (
                       <><span className="animate-spin mr-2">⏳</span> Creating...</>
                     ) : (
-                      `Create Team (${CREATE_COST} 🪙)`
+                      `Create Team (Costs ${CREATE_COST} B Coins)`
                     )}
                   </Button>
                 </div>

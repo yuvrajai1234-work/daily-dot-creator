@@ -85,7 +85,8 @@ const HabitCard = ({
 
   return (
     <motion.div
-      whileHover={{ scale: 1.01 }}
+      whileHover={typeof window !== 'undefined' && window.matchMedia('(hover: hover)').matches ? { scale: 1.01 } : {}}
+      whileTap={{ scale: 0.98 }}
       initial={{ opacity: 0, y: 10 }}
       animate={{ opacity: 1, y: 0 }}
     >
@@ -124,7 +125,7 @@ const HabitCard = ({
                     onClick={() => onArchive(habit.id)}
                   >
                     <Archive className="w-4 h-4 mr-2" />
-                    Archive Habit
+                    Archive Habit (Costs 50 B Coins)
                   </DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
@@ -157,7 +158,7 @@ const HabitCard = ({
 
           {/* Footer */}
           <div className="flex items-center justify-between mb-3 relative z-10 pointer-events-none">
-            <span className="text-xs text-white/70 font-medium">Log your effort:</span>
+            <span className="text-xs text-white/70 font-medium">Log your effort (Costs 15 B Coins):</span>
             <div className="flex items-center gap-1 text-xs text-white/70 pointer-events-auto cursor-default font-medium bg-black/10 px-2 py-1 rounded-full">
               <TrendingUp className="w-3 h-3" />
               <span>{improvement >= 0 ? "+" : ""}{improvement}%</span>

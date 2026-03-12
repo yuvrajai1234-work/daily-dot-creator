@@ -1,4 +1,4 @@
-import { MessageSquare, Castle, Star, Info } from "lucide-react";
+import { MessageSquare, Castle, Star, Info, Menu } from "lucide-react";
 import { motion } from "framer-motion";
 import { useState } from "react";
 import { useProfile } from "@/hooks/useProfile";
@@ -14,7 +14,11 @@ import {
 } from "@/components/ui/dialog";
 import { ScrollArea } from "@/components/ui/scroll-area";
 
-const TopBar = () => {
+interface TopBarProps {
+  onMenuClick?: () => void;
+}
+
+const TopBar = ({ onMenuClick }: TopBarProps) => {
   const { data: profile } = useProfile();
   const { data: levelInfo } = useLevelInfo();
   const [showTierDialog, setShowTierDialog] = useState(false);
@@ -29,18 +33,30 @@ const TopBar = () => {
   const tier = getLevelTier(userLevel);
 
   return (
-    <div className="flex items-center justify-end gap-1 px-4 py-2 border-b border-border/30 bg-background/80 backdrop-blur-sm">
-      {/* XP Progress Bar - Clickable to show tiers */}
+    <div className="flex items-center justify-between gap-1 px-2 md:px-4 py-2 border-b border-border/30 bg-background/80 backdrop-blur-sm w-full overflow-hidden">
+      
+      {/* ── Mobile: Hamburger Menu ── */}
+      <button 
+        onClick={onMenuClick}
+        className="md:hidden p-1.5 -ml-1 mr-1 rounded-lg hover:bg-secondary/50 transition-smooth shrink-0"
+      >
+        <Menu className="w-5 h-5 text-foreground" />
+      </button>
+
+      {/* Spacer on desktop (sidebar takes left side) */}
+      <div className="hidden md:flex flex-1" />
+
+      {/* XP Progress Bar - visible on all screens */}
       <div
         onClick={() => setShowTierDialog(true)}
-        className="flex flex-col gap-0.5 px-2 py-1 rounded-lg hover:bg-secondary/50 transition-smooth min-w-[120px] cursor-pointer"
+        className="flex flex-col gap-0.5 px-1 md:px-2 py-1 rounded-lg hover:bg-secondary/50 transition-smooth min-w-[90px] md:min-w-[120px] cursor-pointer shrink-0"
       >
         <div className="flex items-center justify-between">
-          <span className="text-[10px] text-green-500 font-semibold">
-            {currentXP} / {xpNeeded} XP
+          <span className="text-[9px] md:text-[10px] text-green-500 font-bold truncate">
+            {currentXP} / {xpNeeded}
           </span>
           <span
-            className="text-[10px] font-semibold px-1.5 py-0.5 rounded"
+            className="text-[9px] md:text-[10px] font-bold px-1 py-0.5 rounded leading-none"
             style={{
               backgroundColor: `${tier.color}20`,
               color: tier.color
@@ -65,53 +81,62 @@ const TopBar = () => {
         </div>
       </div>
 
-      {/* XP Level */}
-      <Link to="/dashboard" className="flex items-center gap-1 px-2 py-1 rounded-lg hover:bg-secondary/50 transition-smooth">
-        <div className="w-6 h-6 rounded-full bg-orange-500/20 flex items-center justify-center">
-          <Star className="w-3.5 h-3.5 text-orange-500 fill-orange-500" />
-        </div>
-        <span className="text-sm font-semibold">{userLevel}</span>
-      </Link>
+      {/* ── Stats Strip (Desktop & Mobile) ── */}
+      <div className="flex items-center gap-1 md:gap-1.5 shrink-0">
+        
+        {/* XP Level */}
+        <Link to="/profile" className="flex items-center gap-0.5 px-0.5 md:px-2 py-1 rounded-lg hover:bg-secondary/50 transition-smooth">
+          <div className="w-4 h-4 md:w-6 md:h-6 rounded-full bg-orange-500/20 flex items-center justify-center flex-shrink-0">
+            <Star className="w-2.5 h-2.5 md:w-3.5 md:h-3.5 text-orange-500 fill-orange-500" />
+          </div>
+          <span className="text-[10px] md:text-sm font-bold">{userLevel}</span>
+        </Link>
 
-      {/* A Coins */}
-      <Link to="/achievements" className="flex items-center gap-1 px-2 py-1 rounded-lg hover:bg-secondary/50 transition-smooth">
-        <div className="w-6 h-6 rounded-full bg-success/20 flex items-center justify-center">
-          <span className="text-xs font-bold text-success">A</span>
-        </div>
-        <span className="text-sm font-semibold">{aCoins}</span>
-      </Link>
+        {/* A Coins */}
+        <Link to="/achievements" className="flex items-center gap-0.5 px-0.5 md:px-2 py-1 rounded-lg hover:bg-secondary/50 transition-smooth">
+          <div className="w-4 h-4 md:w-6 md:h-6 rounded-full bg-success/20 flex items-center justify-center flex-shrink-0">
+            <span className="text-[9px] md:text-xs font-black text-success">A</span>
+          </div>
+          <span className="text-[10px] md:text-sm font-bold">{aCoins}</span>
+        </Link>
 
-      {/* B Coins */}
-      <Link to="/earn-coins" className="flex items-center gap-1 px-2 py-1 rounded-lg hover:bg-secondary/50 transition-smooth">
-        <div className="w-6 h-6 rounded-full bg-primary/20 flex items-center justify-center">
-          <span className="text-xs font-bold text-primary">B</span>
-        </div>
-        <span className="text-sm font-semibold">{bCoins}</span>
-      </Link>
+        {/* B Coins */}
+        <Link to="/earn-coins" className="flex items-center gap-0.5 px-0.5 md:px-2 py-1 rounded-lg hover:bg-secondary/50 transition-smooth">
+          <div className="w-4 h-4 md:w-6 md:h-6 rounded-full bg-primary/20 flex items-center justify-center flex-shrink-0">
+            <span className="text-[9px] md:text-xs font-black text-primary">B</span>
+          </div>
+          <span className="text-[10px] md:text-sm font-bold">{bCoins}</span>
+        </Link>
 
-      {/* P Coins */}
-      <Link to="/rewards" className="flex items-center gap-1 px-2 py-1 rounded-lg hover:bg-secondary/50 transition-smooth">
-        <div className="w-6 h-6 rounded-full bg-destructive/20 flex items-center justify-center">
-          <span className="text-xs font-bold text-destructive">P</span>
-        </div>
-        <span className="text-sm font-semibold">{pCoins}</span>
-      </Link>
+        {/* P Coins */}
+        <Link to="/rewards" className="flex items-center gap-0.5 px-0.5 md:px-2 py-1 rounded-lg hover:bg-secondary/50 transition-smooth">
+          <div className="w-4 h-4 md:w-6 md:h-6 rounded-full bg-destructive/20 flex items-center justify-center flex-shrink-0">
+            <span className="text-[9px] md:text-xs font-black text-destructive">P</span>
+          </div>
+          <span className="text-[10px] md:text-sm font-bold">{pCoins}</span>
+        </Link>
+      </div>
 
       {/* Divider */}
-      <div className="w-px h-5 bg-border/50 mx-1" />
+      <div className="w-px h-5 bg-border/50 mx-1 hidden sm:block shrink-0" />
 
-      {/* Community */}
-      <Link to="/community" className="p-2 rounded-lg hover:bg-secondary/50 transition-smooth">
-        <MessageSquare className="w-4 h-4 text-muted-foreground hover:text-foreground transition-smooth" />
-      </Link>
+      {/* Right icons group */}
+      <div className="flex items-center gap-0.5 shrink-0 pl-1">
+        {/* Community - desktop only */}
+        <Link to="/community" className="hidden md:flex p-2 rounded-lg hover:bg-secondary/50 transition-smooth">
+          <MessageSquare className="w-4 h-4 md:w-4 md:h-4 text-muted-foreground hover:text-foreground transition-smooth" />
+        </Link>
 
-      {/* Notifications Popover */}
-      <NotificationPopover />
+        {/* Notifications Popover */}
+        <div className="scale-90 md:scale-100 origin-center">
+          <NotificationPopover />
+        </div>
 
-      {/* Profile */}
-      <Link to="/profile" className="p-2 rounded-lg hover:bg-secondary/50 transition-smooth">
-        <Castle className="w-4 h-4 text-muted-foreground hover:text-foreground transition-smooth" />
-      </Link>
+        {/* Dashboard - desktop only (not specifically asked for mobile, save space) */}
+        <Link to="/dashboard" className="hidden md:flex p-2 rounded-lg hover:bg-secondary/50 transition-smooth">
+          <Castle className="w-4 h-4 text-muted-foreground hover:text-foreground transition-smooth" />
+        </Link>
+      </div>
       {/* Tier Info Dialog */}
       <Dialog open={showTierDialog} onOpenChange={setShowTierDialog}>
         <DialogContent className="sm:max-w-[425px] glass border-white/10 text-foreground">

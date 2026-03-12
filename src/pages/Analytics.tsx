@@ -137,40 +137,44 @@ const AnalyticsPage = () => {
             <CardDescription>Your combined effort score over the last 28 days.</CardDescription>
           </CardHeader>
           <CardContent>
-            <ResponsiveContainer width="100%" height={400}>
-              <AreaChart data={chartData} margin={{ top: 10, right: 30, left: 0, bottom: 0 }}>
-                <defs>
-                  <linearGradient id="colorScore" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="hsl(262, 83%, 58%)" stopOpacity={0.8} />
-                    <stop offset="95%" stopColor="hsl(262, 83%, 58%)" stopOpacity={0} />
-                  </linearGradient>
-                </defs>
-                <CartesianGrid strokeDasharray="3 3" stroke="hsl(240, 3.7%, 15.9%)" />
-                <XAxis
-                  dataKey="date"
-                  stroke="hsl(240, 5%, 64.9%)"
-                  fontSize={10}
-                  tickLine={false}
-                  axisLine={false}
-                  interval={0}
-                  minTickGap={0}
-                  angle={-45}
-                  textAnchor="end"
-                  height={55}
-                />
-                <YAxis stroke="hsl(240, 5%, 64.9%)" fontSize={12} />
-                <Tooltip
-                  contentStyle={{
-                    background: "hsl(240, 10%, 6%)",
-                    border: "1px solid hsl(240, 3.7%, 15.9%)",
-                    borderRadius: "8px",
-                    color: "hsl(0, 0%, 98%)",
-                  }}
-                  formatter={(value: number) => [`${value} pts`, "Score"]}
-                />
-                <Area type="monotone" dataKey="score" stroke="hsl(262, 83%, 58%)" fillOpacity={1} fill="url(#colorScore)" />
-              </AreaChart>
-            </ResponsiveContainer>
+            <div className="w-full overflow-x-auto custom-scrollbar pb-4">
+              <div className="min-w-[800px] h-[400px]">
+                <ResponsiveContainer width="100%" height="100%">
+                  <AreaChart data={chartData} margin={{ top: 10, right: 30, left: 0, bottom: 0 }}>
+                    <defs>
+                      <linearGradient id="colorScore" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="5%" stopColor="hsl(262, 83%, 58%)" stopOpacity={0.8} />
+                        <stop offset="95%" stopColor="hsl(262, 83%, 58%)" stopOpacity={0} />
+                      </linearGradient>
+                    </defs>
+                    <CartesianGrid strokeDasharray="3 3" stroke="hsl(240, 3.7%, 15.9%)" />
+                    <XAxis
+                      dataKey="date"
+                      stroke="hsl(240, 5%, 64.9%)"
+                      fontSize={10}
+                      tickLine={false}
+                      axisLine={false}
+                      interval={0}
+                      minTickGap={0}
+                      angle={-45}
+                      textAnchor="end"
+                      height={55}
+                    />
+                    <YAxis stroke="hsl(240, 5%, 64.9%)" fontSize={12} />
+                    <Tooltip
+                      contentStyle={{
+                        background: "hsl(240, 10%, 6%)",
+                        border: "1px solid hsl(240, 3.7%, 15.9%)",
+                        borderRadius: "8px",
+                        color: "hsl(0, 0%, 98%)",
+                      }}
+                      formatter={(value: number) => [`${value} pts`, "Score"]}
+                    />
+                    <Area type="monotone" dataKey="score" stroke="hsl(262, 83%, 58%)" fillOpacity={1} fill="url(#colorScore)" />
+                  </AreaChart>
+                </ResponsiveContainer>
+              </div>
+            </div>
           </CardContent>
         </Card>
       </motion.div>
@@ -216,8 +220,7 @@ const AnalyticsPage = () => {
                           <DropdownMenuContent>
                             <DropdownMenuItem onSelect={() => handleArchiveToggle(habit.id)} disabled={archiveHabit.isPending}>
                               <Archive className="mr-2 h-4 w-4" />
-                              <span className="flex-1">Move to Archive</span>
-                              <span className="flex items-center text-xs text-yellow-500 font-bold ml-4"><Coins className="w-3 h-3 mr-1" />50</span>
+                              <span className="flex-1">Move to Archive (Costs 50 B Coins)</span>
                             </DropdownMenuItem>
                           </DropdownMenuContent>
                         </DropdownMenu>

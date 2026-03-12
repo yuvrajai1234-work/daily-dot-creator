@@ -10,6 +10,7 @@ import { NotificationWatcher } from "@/components/NotificationWatcher";
 
 const MainLayout = () => {
   const [isCollapsed, setIsCollapsed] = useState(false);
+  const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
   const location = useLocation();
 
   // Real-time synchronization
@@ -31,6 +32,8 @@ const MainLayout = () => {
     setPrevLevel(currentLevel);
   }, [currentLevel, prevLevel]);
 
+  const isCommunity = location.pathname === '/community';
+
   return (
     <div className="flex h-screen overflow-hidden bg-background text-foreground relative">
       <NotificationWatcher />
@@ -44,19 +47,38 @@ const MainLayout = () => {
         )}
       </AnimatePresence>
 
-      <AppSidebar isCollapsed={isCollapsed} setIsCollapsed={setIsCollapsed} />
+      {/* ── Sidebar: Works as sticky on md+, drawer on mobile ── */}
+      <AppSidebar 
+        isCollapsed={isCollapsed} 
+        setIsCollapsed={setIsCollapsed} 
+        isMobileOpen={isMobileSidebarOpen}
+        setIsMobileOpen={setIsMobileSidebarOpen}
+      />
+
+      {/* ── Main content area ── */}
+      {/* On mobile: no left margin (sidebar is hidden). On desktop: margin matches sidebar */}
       <main
-        className={`flex-1 flex flex-col transition-all duration-300 h-full overflow-hidden ${isCollapsed ? "ml-16" : "ml-64"
-          }`}
+        className={`flex-1 flex flex-col transition-all duration-300 h-full overflow-hidden
+          ${isCollapsed ? "md:ml-16" : "md:ml-64"}
+          ml-0
+        `}
       >
-        <TopBar />
+        <TopBar onMenuClick={() => setIsMobileSidebarOpen(true)} />
+
         {/* Content Area */}
-        {/* If community page: remove padding/margin and hide overflow (inner components handle scroll) */}
-        {/* If other page: use standard padding and allow vertical scroll */}
-        <div className={`flex-1 w-full ${location.pathname === '/community' ? 'h-full overflow-hidden p-0' : 'overflow-y-auto p-6 max-w-7xl mx-auto'}`}>
+        <div
+          className={`flex-1 w-full
+            ${isCommunity
+              ? 'h-full overflow-hidden p-0'
+              : 'overflow-y-auto p-3 md:p-6 max-w-7xl mx-auto'
+            }
+          `}
+        >
           <Outlet />
         </div>
       </main>
+
+      {/* ── AI Assistant floating button ── */}
       <AIAssistant />
     </div>
   );

@@ -64,7 +64,7 @@ export const RemindersSection = ({ date }: RemindersSectionProps) => {
                             disabled={isPastDate || spendBCoins.isPending}
                         >
                             <Bell className="w-4 h-4" />
-                            Add Reminder ({REMINDER_COST} 🪙)
+                            Add Reminder (Costs {REMINDER_COST} B Coins)
                         </Button>
                     </div>
 

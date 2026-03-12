@@ -405,4 +405,43 @@
   .high-contrast .border {
     border-width: 2px !important;
   }
-}
+
+  /* ── Mobile / Touch ──────────────────────────────────────────────────────── */
+
+  /* Safe area padding for notched devices (iPhone X+, Android w/ notch) */
+  .safe-area-bottom {
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+  }
+
+  /* Remove ugly tap highlight on mobile */
+  * {
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  /* Momentum scrolling on iOS */
+  .overflow-y-auto,
+  .overflow-y-scroll {
+    -webkit-overflow-scrolling: touch;
+  }
+
+  /* Prevent content from shifting on overscroll */
+  body {
+    overscroll-behavior-y: none;
+  }
+
+  /* Make all interactive elements have minimum tap target size of 44x44px on mobile */
+  @media (max-width: 767px) {
+    button,
+    a,
+    [role="button"] {
+      min-height: 36px;
+    }
+
+    /* Ensure text doesn't get tiny on phone zoom */
+    input,
+    textarea,
+    select {
+      font-size: 16px !important; /* prevents iOS auto-zoom on focus */
+    }
+  }
+}

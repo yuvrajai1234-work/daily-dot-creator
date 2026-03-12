@@ -347,40 +347,46 @@ export const ImprovementDialog = ({ trigger, overallImprovement, singleHabitId }
                     )}
 
                     {/* Top Improvement Card */}
-                    <Card className="glass border-border/50">
-                        <CardContent className="p-8 flex flex-col items-center justify-center space-y-2 relative">
+                    <Card className="glass border-border/50 shadow-xl overflow-hidden">
+                        <div className="h-1.5 w-full bg-gradient-to-r from-primary/50 via-primary to-primary/50" />
+                        <CardContent className="p-6 sm:p-8 flex flex-col items-center justify-center space-y-3 relative">
                             <div className={`flex items-center gap-2 ${improvementColor}`}>
-                                <ImprovementIcon className="w-7 h-7" />
+                                <ImprovementIcon className="w-8 h-8 md:w-10 md:h-10" />
                             </div>
-                            <h2 className={`text-6xl font-bold ${improvementColor}`}>
+                            <h2 className={`text-5xl sm:text-7xl font-bold ${improvementColor} tracking-tighter`}>
                                 {overallImprovement > 0 ? "+" : ""}{overallImprovement}%
                             </h2>
-                            <p className="text-muted-foreground text-center">
-                                {weekLabel}{prevWeekLabel ? ` vs ${prevWeekLabel}` : " — first week"}
-                                {!singleHabitId && habits.length > 1 && (
-                                    <span className="ml-1 text-xs">(avg across {habits.length} habits)</span>
-                                )}
-                            </p>
+                            <div className="text-center space-y-1">
+                                <p className="text-sm sm:text-base font-bold text-foreground">
+                                    Overall Improvement
+                                </p>
+                                <p className="text-xs sm:text-sm text-muted-foreground px-4">
+                                    {weekLabel}{prevWeekLabel ? ` vs ${prevWeekLabel}` : " (Current Cycle)"}
+                                    {!singleHabitId && habits.length > 1 && (
+                                        <span className="block mt-0.5 opacity-80 text-[10px] sm:text-xs">Based on {habits.length} habits</span>
+                                    )}
+                                </p>
+                            </div>
                         </CardContent>
                     </Card>
 
                     {/* 28-Day Cycle Chart */}
-                    <Card className="glass border-border/50">
-                        <CardHeader>
-                            <div className="flex items-center justify-between">
-                                <div>
-                                    <CardTitle>28-Day Cycle — Daily Effort %</CardTitle>
-                                    <p className="text-sm text-muted-foreground mt-1">
-                                        Each day's effort as % of max. Dashed lines mark week boundaries.
+                    <Card className="glass border-border/50 overflow-hidden">
+                        <CardHeader className="pb-2">
+                            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                                <div className="space-y-1">
+                                    <CardTitle className="text-lg md:text-xl font-bold">28-Day Cycle Analysis</CardTitle>
+                                    <p className="text-xs md:text-sm text-muted-foreground leading-relaxed">
+                                        Your effort as % of max potential over the current 28-day cycle.
                                     </p>
                                 </div>
-                                <div className="flex gap-1">
+                                <div className="flex items-center gap-1.5 self-center sm:self-auto bg-secondary/20 p-1 rounded-lg">
                                     {[1, 2, 3, 4].map(w => (
                                         <span
                                             key={w}
-                                            className={`text-xs px-2 py-0.5 rounded-full font-medium ${w === cycleInfo.currentWeekIndex + 1
-                                                ? "bg-primary/30 text-primary"
-                                                : "bg-secondary/50 text-muted-foreground"
+                                            className={`text-[10px] md:text-xs px-2.5 py-1 rounded-md font-bold transition-all ${w === cycleInfo.currentWeekIndex + 1
+                                                ? "bg-primary text-white shadow-lg"
+                                                : "text-muted-foreground hover:bg-secondary/50"
                                                 }`}
                                         >
                                             W{w}
@@ -457,18 +463,17 @@ export const ImprovementDialog = ({ trigger, overallImprovement, singleHabitId }
 
                     {/* Per-Habit Breakdown — only shown for multi-habit view */}
                     {!singleHabitId && (
-                        <Card className="glass border-border/50">
-                            <CardHeader className="flex flex-row items-center justify-between pb-2">
-                                <div>
-                                    <CardTitle>Habit Breakdown</CardTitle>
-                                    <p className="text-sm text-muted-foreground mt-1">
-                                        {weekLabel} ({cycleInfo.dayInWeek + 1} day{cycleInfo.dayInWeek !== 0 ? "s" : ""} in)
-                                        {prevWeekLabel ? ` vs ${prevWeekLabel}` : " — first week, no prior week yet"}
+                        <Card className="glass border-border/50 overflow-hidden">
+                            <CardHeader className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-2">
+                                <div className="space-y-1">
+                                    <CardTitle className="text-lg md:text-xl font-bold">Habit Breakdown</CardTitle>
+                                    <p className="text-xs md:text-sm text-muted-foreground">
+                                        {weekLabel} summary · {cycleInfo.dayInWeek + 1} day{cycleInfo.dayInWeek !== 0 ? "s" : ""} complete
                                     </p>
                                 </div>
-                                <div className="text-right">
-                                    <span className="text-3xl font-bold">{habits.length}</span>
-                                    <p className="text-sm text-muted-foreground">Habits</p>
+                                <div className="flex items-center gap-2 sm:text-right bg-primary/5 px-3 py-1.5 rounded-xl border border-primary/10">
+                                    <span className="text-2xl font-black text-primary leading-none">{habits.length}</span>
+                                    <div className="text-[10px] font-bold uppercase tracking-wider text-primary/80">Active<br/>Habits</div>
                                 </div>
                             </CardHeader>
                             <CardContent className="space-y-8 pt-4">

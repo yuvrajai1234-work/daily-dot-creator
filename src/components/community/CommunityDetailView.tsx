@@ -25,7 +25,8 @@ import {
     Bell,
     Pin,
     HelpCircle,
-    Plus
+    Plus,
+    ChevronLeft
 } from "lucide-react";
 import { useAuth } from "@/components/AuthProvider";
 import { useFriendships, useCommunityNotifications, useMarkNotificationRead } from "@/hooks/useSocial";
@@ -53,6 +54,7 @@ export const CommunityDetailView = ({ community, onBack }: CommunityDetailViewPr
     const markNotificationRead = useMarkNotificationRead();
     const [highlightMessageId, setHighlightMessageId] = useState<string | null>(null);
     const [showMembers, setShowMembers] = useState(true);
+    const [mobileView, setMobileView] = useState<'channels' | 'chat' | 'members'>('channels');
 
     // Join requests (only fetched for admins)
     const myMemberData = members.find((m: any) => m.userId === user?.id);
@@ -219,11 +221,14 @@ export const CommunityDetailView = ({ community, onBack }: CommunityDetailViewPr
             />
 
             {/* LEFT SIDEBAR: Channels */}
-            <div className="w-[240px] flex flex-col bg-card border-r border-border flex-shrink-0">
+            <div className={`flex-col bg-card border-r border-border flex-shrink-0 w-full md:w-[240px] ${mobileView === 'channels' ? 'flex' : 'hidden md:flex'}`}>
                 {/* Header */}
                 <div className="h-12 border-b border-border flex items-center justify-between px-4 hover:bg-accent transition-colors cursor-pointer" onClick={onBack}>
-                    <h1 className="font-bold truncate text-sm text-foreground">{community.name}</h1>
-                    <div className="flex gap-1">
+                    <div className="flex items-center gap-1 overflow-hidden">
+                        <ChevronLeft className="w-4 h-4 md:hidden text-muted-foreground" />
+                        <h1 className="font-bold truncate text-sm text-foreground">{community.name}</h1>
+                    </div>
+                    <div className="flex gap-1 shrink-0">
                         {isAdmin && <Settings className="w-4 h-4 text-muted-foreground hover:text-foreground" onClick={(e) => { e.stopPropagation(); setSettingsOpen(true); }} />}
                         <X className="w-4 h-4 text-muted-foreground hover:text-foreground" />
                     </div>
@@ -259,7 +264,10 @@ export const CommunityDetailView = ({ community, onBack }: CommunityDetailViewPr
                                             {categoryChannels.map((channel) => (
                                                 <div
                                                     key={channel.id}
-                                                    onClick={() => setActiveChannelId(channel.id)}
+                                                    onClick={() => {
+                                                        setActiveChannelId(channel.id);
+                                                        setMobileView('chat');
+                                                    }}
                                                     className={`group flex items-center gap-1.5 px-2 py-1 rounded-md cursor-pointer transition-colors ${activeChannelId === channel.id
                                                         ? "bg-primary/20 text-primary font-semibold"
                                                         : "text-muted-foreground hover:bg-accent hover:text-foreground"
@@ -283,19 +291,21 @@ export const CommunityDetailView = ({ community, onBack }: CommunityDetailViewPr
             </div>
 
             {/* CENTER: Chat Area */}
-            <div className="flex-1 flex flex-col bg-background min-w-0">
+            <div className={`flex-col bg-background min-w-0 w-full md:w-auto md:flex-1 ${mobileView === 'chat' ? 'flex' : 'hidden md:flex'}`}>
                 {/* Header */}
                 <div className="h-12 border-b border-border flex items-center justify-between px-4 shadow-sm flex-shrink-0">
                     <div className="flex items-center gap-2 overflow-hidden">
-                        {/* Removed Hash icon */}
+                        <button onClick={() => setMobileView('channels')} className="md:hidden mr-1 text-muted-foreground hover:text-foreground shrink-0">
+                            <ChevronLeft className="w-6 h-6" />
+                        </button>
                         <h2 className="font-bold text-foreground truncate">{activeChannelObj?.name || "Select a channel"}</h2>
-                        {activeChannelObj?.category === 'WELCOME' && <span className="text-xs text-yellow-500 font-bold px-2 border border-yellow-500/20 rounded-full bg-yellow-500/10">Read Only</span>}
+                        {activeChannelObj?.category === 'WELCOME' && <span className="text-xs text-yellow-500 font-bold px-2 border border-yellow-500/20 rounded-full bg-yellow-500/10 shrink-0">Read Only</span>}
                     </div>
-                    <div className="flex items-center gap-3 text-muted-foreground">
+                    <div className="flex items-center gap-3 text-muted-foreground shrink-0">
                         {/* Desktop Member Toggle */}
                         <div title={showMembers ? "Hide Member List" : "Show Member List"}>
                             <Users
-                                className={`w-5 h-5 cursor-pointer transition-colors hidden lg:block ${showMembers ? 'text-foreground' : 'text-muted-foreground hover:text-foreground'}`}
+                                className={`w-5 h-5 cursor-pointer transition-colors hidden md:block ${showMembers ? 'text-foreground' : 'text-muted-foreground hover:text-foreground'}`}
                                 onClick={() => setShowMembers(!showMembers)}
                             />
                         </div>
@@ -448,8 +458,11 @@ export const CommunityDetailView = ({ community, onBack }: CommunityDetailViewPr
                                 </ScrollArea>
                             </PopoverContent>
                         </Popover>
-                        <Users className="w-5 h-5 cursor-pointer hover:text-foreground lg:hidden" />
-                        <div className="bg-secondary/50 flex items-center px-2 py-1 rounded text-sm w-36 overflow-hidden">
+                        <Users 
+                            className="w-5 h-5 cursor-pointer hover:text-foreground md:hidden shrink-0" 
+                            onClick={() => setMobileView('members')} 
+                        />
+                        <div className="bg-secondary/50 flex items-center px-2 py-1 rounded text-sm w-28 md:w-36 overflow-hidden hidden sm:flex shrink-0">
                             <input className="bg-transparent border-none outline-none text-foreground placeholder-muted-foreground w-full" placeholder="Search" />
                             <Search className="w-3 h-3 text-muted-foreground" />
                         </div>
@@ -483,11 +496,15 @@ export const CommunityDetailView = ({ community, onBack }: CommunityDetailViewPr
                 </div>
             </div>
 
-            {/* RIGHT SIDEBAR: Member List (Desktop only) */}
-            {showMembers && (
-                <div className="w-[240px] bg-card flex-col hidden lg:flex flex-shrink-0 border-l border-border">
-                    <div className="h-12 border-b border-border flex items-center justify-between px-4 font-bold text-muted-foreground text-xs tracking-wider">
+            {/* RIGHT SIDEBAR: Member List */}
+            <div className={`bg-card flex-col border-l border-border w-full md:w-auto lg:w-[240px] ${mobileView === 'members' ? 'flex flex-1 md:flex-none' : 'hidden'} ${showMembers ? 'lg:flex' : 'lg:hidden'}`}>
+                <div className="h-12 border-b border-border flex items-center justify-between px-4 font-bold text-muted-foreground text-xs tracking-wider">
+                    <div className="flex items-center gap-2">
+                        <button onClick={() => setMobileView('chat')} className="lg:hidden text-muted-foreground hover:text-foreground -ml-2">
+                            <ChevronLeft className="w-5 h-5" />
+                        </button>
                         <span>MEMBERS — {members.length}</span>
+                    </div>
                         {isAdminOrMod && (
                             <Dialog open={inviteOpen} onOpenChange={setInviteOpen}>
                                 <DialogTrigger asChild>
@@ -611,7 +628,6 @@ export const CommunityDetailView = ({ community, onBack }: CommunityDetailViewPr
                         </div>
                     </ScrollArea>
                 </div>
-            )}
         </div>
     );
 };

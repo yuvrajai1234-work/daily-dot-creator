@@ -23,6 +23,7 @@ import {
   LogOut,
   LayoutDashboard,
   Settings,
+  X,
 } from "lucide-react";
 
 const navLinks = [
@@ -44,9 +45,11 @@ const navLinks = [
 interface AppSidebarProps {
   isCollapsed: boolean;
   setIsCollapsed: (collapsed: boolean) => void;
+  isMobileOpen?: boolean;
+  setIsMobileOpen?: (open: boolean) => void;
 }
 
-const AppSidebar = ({ isCollapsed, setIsCollapsed }: AppSidebarProps) => {
+const AppSidebar = ({ isCollapsed, setIsCollapsed, isMobileOpen, setIsMobileOpen }: AppSidebarProps) => {
   const navigate = useNavigate();
   const { user, signOut } = useAuth();
   const { settings } = useTheme();
@@ -60,8 +63,13 @@ const AppSidebar = ({ isCollapsed, setIsCollapsed }: AppSidebarProps) => {
   const initials = userName.slice(0, 2).toUpperCase();
 
   const handleSignOut = async () => {
+    if (setIsMobileOpen) setIsMobileOpen(false);
     await signOut();
     navigate("/");
+  };
+
+  const handleLinkClick = () => {
+    if (setIsMobileOpen) setIsMobileOpen(false);
   };
 
   // ── Palette driven by dark/light ──────────────────────────────────────────
@@ -72,11 +80,21 @@ const AppSidebar = ({ isCollapsed, setIsCollapsed }: AppSidebarProps) => {
   const hoverBg = dark ? "#1e1e2e" : "#f1f5f9";
 
   return (
-    <aside
-      style={{ background: sidebarBg, borderRightColor: borderColor }}
-      className={`fixed left-0 top-0 h-screen z-40 flex flex-col border-r transition-all duration-300 ${isCollapsed ? "w-16" : "w-64"
-        }`}
-    >
+    <>
+      {/* ── Mobile Overlay ── */}
+      {isMobileOpen && (
+        <div 
+          className="fixed inset-0 z-40 bg-black/50 backdrop-blur-sm md:hidden"
+          onClick={() => setIsMobileOpen?.(false)}
+        />
+      )}
+
+      <aside
+        style={{ background: sidebarBg, borderRightColor: borderColor }}
+        className={`fixed left-0 top-0 h-screen z-50 flex flex-col border-r transition-transform duration-300 md:translate-x-0 ${
+          isCollapsed ? "md:w-16" : "md:w-64"
+        } w-64 ${isMobileOpen ? "translate-x-0" : "-translate-x-full"}`}
+      >
       {/* ── Logo ── */}
       <div
         style={{ borderBottomColor: borderColor }}
@@ -87,12 +105,22 @@ const AppSidebar = ({ isCollapsed, setIsCollapsed }: AppSidebarProps) => {
             DailyDots
           </h1>
         )}
+        {/* Desktop collapse button */}
         <button
           onClick={() => setIsCollapsed(!isCollapsed)}
           style={{ color: textPrimary }}
-          className="h-8 w-8 flex items-center justify-center rounded-lg transition-colors hover:opacity-70"
+          className="hidden md:flex h-8 w-8 items-center justify-center rounded-lg transition-colors hover:opacity-70"
         >
           {isCollapsed ? <ChevronsRight className="h-4 w-4" /> : <ChevronsLeft className="h-4 w-4" />}
+        </button>
+
+        {/* Mobile close button */}
+        <button
+          onClick={() => setIsMobileOpen?.(false)}
+          style={{ color: textPrimary }}
+          className="md:hidden flex h-8 w-8 items-center justify-center rounded-lg transition-colors hover:opacity-70"
+        >
+          <X className="h-5 w-5" />
         </button>
       </div>
 
@@ -126,6 +154,7 @@ const AppSidebar = ({ isCollapsed, setIsCollapsed }: AppSidebarProps) => {
                 to={link.to}
                 onMouseEnter={() => setHoveredLink(link.to)}
                 onMouseLeave={() => setHoveredLink(null)}
+                onClick={handleLinkClick}
               >
                 {({ isActive }) => (
                   <span
@@ -172,6 +201,7 @@ const AppSidebar = ({ isCollapsed, setIsCollapsed }: AppSidebarProps) => {
         </button>
       </div>
     </aside>
+    </>
   );
 };
 

@@ -34,7 +34,10 @@ export const SortableHabitCard = ({ habit, ...props }: SortableHabitCardProps) =
     return (
         <div
             ref={setNodeRef}
-            style={style}
+            style={{
+                ...style,
+                touchAction: isDragging ? "none" : "pan-y"
+            }}
             className={`relative select-none outline-none rounded-xl ${isDragging
                     ? "opacity-100 scale-[1.02] cursor-grabbing shadow-[0_0_50px_rgba(255,255,255,0.3)] ring-4 ring-white/40 z-50 brightness-110 grayscale-[0.1]"
                     : "transition-shadow duration-300 hover:shadow-xl"

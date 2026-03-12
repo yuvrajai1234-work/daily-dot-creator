@@ -376,7 +376,7 @@ const JournalPage = () => {
               className="gradient-primary hover:opacity-90 px-8"
               disabled={saveReflection.isPending}
             >
-              {saveReflection.isPending ? "Saving..." : (isEditing ? "Update Journal" : "Save Today's Journal")}
+              {saveReflection.isPending ? "Saving..." : (isEditing ? "Update Journal" : "Save Today's Journal (Costs 10 B Coins)")}
             </Button>
             {isEditing && (
               <Button variant="ghost" onClick={() => setIsEditing(false)}>
@@ -402,15 +402,15 @@ const JournalPage = () => {
 
       {/* Past Entries */}
       <div>
-        <div className="flex items-center justify-between mb-4 gap-4">
+        <div className="flex flex-col md:flex-row md:items-center justify-between mb-4 gap-4">
           <h2 className="text-2xl font-bold">Past Entries</h2>
-          <div className="flex gap-2">
+          <div className="flex flex-col sm:flex-row gap-2 w-full md:w-auto">
             {/* Search by Heading */}
             <Popover>
               <PopoverTrigger asChild>
-                <Button variant="outline" className="w-[300px] justify-start text-left font-normal">
-                  <Search className="mr-2 h-4 w-4" />
-                  {headingSearch ? `"${headingSearch}"` : "Search by heading..."}
+                <Button variant="outline" className="w-full sm:w-[300px] justify-start text-left font-normal">
+                  <Search className="mr-2 h-4 w-4 shrink-0" />
+                  <span className="truncate">{headingSearch ? `"${headingSearch}"` : "Search by heading..."}</span>
                 </Button>
               </PopoverTrigger>
               <PopoverContent className="w-[300px] p-0" align="end">
@@ -449,9 +449,9 @@ const JournalPage = () => {
             {/* Date Picker */}
             <Popover>
               <PopoverTrigger asChild>
-                <Button variant="outline" className="w-[260px] justify-start text-left font-normal">
-                  <CalendarIcon className="mr-2 h-4 w-4" />
-                  {format(browsingDate, "PPP")}
+                <Button variant="outline" className="w-full sm:w-[260px] justify-start text-left font-normal">
+                  <CalendarIcon className="mr-2 h-4 w-4 shrink-0" />
+                  <span className="truncate">{format(browsingDate, "PPP")}</span>
                 </Button>
               </PopoverTrigger>
               <PopoverContent className="w-auto p-0">
@@ -486,7 +486,7 @@ const JournalPage = () => {
           </Button>
 
           {/* Entry Display Content */}
-          <div className="px-16">
+          <div className="px-12 md:px-16">
             {isLoading ? (
               <p className="text-muted-foreground text-center py-8">Loading entries...</p>
             ) : filteredReflections.length === 0 ? (

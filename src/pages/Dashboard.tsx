@@ -18,6 +18,7 @@ import {
   DndContext,
   closestCenter,
   PointerSensor,
+  TouchSensor,
   useSensor,
   useSensors,
 } from "@dnd-kit/core";
@@ -50,8 +51,13 @@ const Dashboard = () => {
   const sensors = useSensors(
     useSensor(PointerSensor, {
       activationConstraint: {
-        delay: 750,
-        tolerance: 5,
+        distance: 8,
+      },
+    }),
+    useSensor(TouchSensor, {
+      activationConstraint: {
+        delay: 300,
+        tolerance: 6,
       },
     })
   );

@@ -301,29 +301,40 @@ const SettingsPage = () => {
 
       {/* ── Account Card ── */}
       <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }}>
-        <Card className="glass border-border/50 overflow-hidden">
+        <Card className="glass border-border/50 overflow-hidden shadow-xl">
           <div className="h-1 w-full bg-gradient-to-r from-primary to-primary-glow" />
-          <CardContent className="p-4 flex items-center gap-4">
-            <div className={`w-14 h-14 rounded-full bg-primary/20 flex items-center justify-center text-xl font-bold text-primary flex-shrink-0 ${AVATAR_FRAMES[settings.avatarFrame]?.css || ""}`}>
-              {userName.slice(0, 1).toUpperCase()}
+          <CardContent className="p-4 sm:p-5 flex flex-col sm:flex-row items-center sm:items-start gap-4 sm:gap-6">
+            <div className="flex-shrink-0">
+              <AvatarWithFrame
+                avatarUrl=""
+                fallback={userName.slice(0, 1).toUpperCase()}
+                frameId={settings.avatarFrame}
+                size="xl"
+              />
             </div>
-            <div className="flex-1 min-w-0">
-              <p className="font-bold text-base truncate">{userName}</p>
-              <p className="text-xs text-muted-foreground truncate">{userEmail}</p>
-              <div className="flex items-center gap-2 mt-1.5">
-                <Badge variant="outline" className="text-[10px] h-5 border-primary/40 text-primary">
+
+            <div className="flex-1 min-w-0 text-center sm:text-left">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                <div className="min-w-0">
+                  <p className="font-bold text-lg md:text-xl truncate">{userName}</p>
+                  <p className="text-xs text-muted-foreground truncate">{userEmail}</p>
+                </div>
+                <Link to="/profile" className="flex-shrink-0">
+                  <Button variant="outline" size="sm" className="gap-1.5 w-full sm:w-auto">
+                    <User className="w-3.5 h-3.5" /> Profile
+                  </Button>
+                </Link>
+              </div>
+
+              <div className="flex flex-wrap items-center justify-center sm:justify-start gap-2 mt-3">
+                <Badge variant="outline" className="text-[10px] sm:text-xs py-0.5 px-2 border-primary/40 text-primary bg-primary/5">
                   {THEMES[settings.theme].icon} {THEMES[settings.theme].name}
                 </Badge>
-                <Badge variant="outline" className="text-[10px] h-5">
+                <Badge variant="outline" className="text-[10px] sm:text-xs py-0.5 px-2 bg-secondary/30">
                   {AVATAR_FRAMES[settings.avatarFrame].icon} {AVATAR_FRAMES[settings.avatarFrame].name}
                 </Badge>
               </div>
             </div>
-            <Link to="/profile">
-              <Button variant="outline" size="sm" className="gap-1.5 flex-shrink-0">
-                <User className="w-3.5 h-3.5" /> Profile
-              </Button>
-            </Link>
           </CardContent>
         </Card>
       </motion.div>
