@@ -283,7 +283,14 @@ const SETTINGS_KEY = "dd_settings_v2";
 const loadSettings = (): AppSettings => {
     try {
         const raw = localStorage.getItem(SETTINGS_KEY);
-        return raw ? { ...DEFAULT_SETTINGS, ...JSON.parse(raw) } : DEFAULT_SETTINGS;
+        if (!raw) return DEFAULT_SETTINGS;
+        const parsed = JSON.parse(raw);
+        // Always reset avatarFrame to "none" on cold load.
+        // The ThemeContext will sync the correct frame from the DB
+        // after auth, preventing locked frames from bleeding over
+        // when users share a device or switch accounts.
+        parsed.avatarFrame = "none";
+        return { ...DEFAULT_SETTINGS, ...parsed };
     } catch {
         return DEFAULT_SETTINGS;
     }
@@ -409,6 +416,22 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
                     showStreak: (data as any).show_streak ?? true,
                     showLevel: (data as any).show_level ?? true,
                 };
+
+                // Sync avatar frame from DB — prevents a locked frame from
+                // bleeding over via localStorage when users switch accounts
+                const dbFrame = (data as any).avatar_frame as AvatarFrameId | null;
+                if (dbFrame && dbFrame in AVATAR_FRAMES) {
+                    // Check the user actually owns that frame (reward check)
+                    const purchasedArray: number[] = (data as any).unlocked_rewards || [];
+                    const purchased = new Set(purchasedArray);
+                    const frameEntry = AVATAR_FRAMES[dbFrame];
+                    const ownsFrame = !frameEntry.rewardId || purchased.has(frameEntry.rewardId);
+                    remoteSettings.avatarFrame = ownsFrame ? dbFrame : "none";
+                } else {
+                    // No frame in DB yet — clear any leftover from localStorage
+                    remoteSettings.avatarFrame = "none";
+                }
+
                 updateSettings(remoteSettings);
             }
         };

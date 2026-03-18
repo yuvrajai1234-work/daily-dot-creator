@@ -133,7 +133,7 @@ const AddHabitDialog = () => {
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <Button size="sm" className="rounded-full gradient-primary hover:opacity-90 px-5">
+        <Button size="sm" data-onboarding="add-habit-btn" className="rounded-full gradient-primary hover:opacity-90 px-5">
           <Plus className="w-4 h-4 mr-1" /> Add New Habit
         </Button>
       </DialogTrigger>

@@ -53,7 +53,7 @@ const StatsCards = ({ todayScore, currentStreak, cycleDay, improvement }: StatsC
             className={isImprovement ? "flex" : ""}
           >
             {isImprovement ? (
-              <ImprovementDialog trigger={<div className="w-full flex-1">{cardContent}</div>} overallImprovement={improvement} />
+              <ImprovementDialog trigger={<div data-onboarding="improvement-card" className="w-full flex-1">{cardContent}</div>} overallImprovement={improvement} />
             ) : (
               cardContent
             )}

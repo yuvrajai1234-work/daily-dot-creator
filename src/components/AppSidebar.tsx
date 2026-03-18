@@ -152,6 +152,7 @@ const AppSidebar = ({ isCollapsed, setIsCollapsed, isMobileOpen, setIsMobileOpen
             <TooltipTrigger asChild>
               <NavLink
                 to={link.to}
+                data-onboarding={`nav-${link.to.replace('/', '')}`}
                 onMouseEnter={() => setHoveredLink(link.to)}
                 onMouseLeave={() => setHoveredLink(null)}
                 onClick={handleLinkClick}

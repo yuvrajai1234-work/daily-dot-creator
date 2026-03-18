@@ -30,6 +30,7 @@ import {
 import { SortableHabitCard } from "@/components/dashboard/SortableHabitCard";
 
 
+
 const Dashboard = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
@@ -205,6 +206,7 @@ const Dashboard = () => {
 
   return (
     <div className="space-y-6">
+
       {/* Join Request Alert for admins */}
       {totalPendingRequests > 0 && (
         <div
@@ -262,7 +264,9 @@ const Dashboard = () => {
         <div className="lg:col-span-2 space-y-4">
           <div className="flex items-center justify-between">
             <h2 className="text-xl font-bold">Today's Habits</h2>
-            <AddHabitDialog />
+            <div className={!profile?.has_seen_onboarding ? "animate-button-glow rounded-full" : ""}>
+              <AddHabitDialog />
+            </div>
           </div>
 
           {localHabits.length === 0 ? (
@@ -270,7 +274,9 @@ const Dashboard = () => {
               <p className="text-4xl mb-4">🎯</p>
               <p className="text-lg font-medium mb-2">No habits yet!</p>
               <p className="text-muted-foreground mb-4">Create your first habit to start tracking.</p>
-              <AddHabitDialog />
+              <div className={!profile?.has_seen_onboarding ? "animate-button-glow rounded-full mx-auto w-fit" : "mx-auto w-fit"}>
+                <AddHabitDialog />
+              </div>
             </div>
           ) : (
             <DndContext
@@ -282,7 +288,7 @@ const Dashboard = () => {
                 items={localHabits.map((h) => h.id)}
                 strategy={rectSortingStrategy}
               >
-                <div className="grid sm:grid-cols-2 gap-4">
+                <div data-onboarding="habits-grid" className="grid sm:grid-cols-2 gap-4">
                   {localHabits.map((habit) => {
                     const todayCompletion = todayCompletions.find((c) => c.habit_id === habit.id);
                     return (

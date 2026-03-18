@@ -7,6 +7,7 @@ import { useLevelInfo, useProfileRealtimeSync } from "@/hooks/useXP";
 import { AnimatePresence } from "framer-motion";
 import AIAssistant from "@/components/AIAssistant";
 import { NotificationWatcher } from "@/components/NotificationWatcher";
+import { Onboarding } from "@/components/Onboarding";
 
 const MainLayout = () => {
   const [isCollapsed, setIsCollapsed] = useState(false);
@@ -80,6 +81,8 @@ const MainLayout = () => {
 
       {/* ── AI Assistant floating button ── */}
       <AIAssistant />
+      {/* ── Onboarding tour ── */}
+      <Onboarding />
     </div>
   );
 };

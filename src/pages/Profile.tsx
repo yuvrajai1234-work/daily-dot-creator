@@ -88,6 +88,19 @@ const ProfilePage = () => {
   const userInitials = name
     ? name.split(" ").map((n: string) => n[0]).join("").toUpperCase()
     : user?.email?.slice(0, 2).toUpperCase() || "U";
+ 
+  const isSaveDisabled = useMemo(() => {
+    return (
+      !name?.trim() ||
+      !designation?.trim() ||
+      !bio?.trim() ||
+      !gender ||
+      !location?.trim() ||
+      !archetype ||
+      selectedTraits.length === 0 ||
+      (!age && !weight && !height)
+    );
+  }, [name, designation, bio, gender, location, archetype, selectedTraits, age, weight, height]);
 
   const handleSave = async () => {
     const updates = {
@@ -271,18 +284,26 @@ const ProfilePage = () => {
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Left Column - Profile Card */}
-        <div className="space-y-6">
+        <div data-onboarding="profile-left-col" className="space-y-6">
           <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}>
-            <Card className="glass border-border/50">
+            <Card data-onboarding="profile-card" className="glass border-border/50">
               <CardHeader className="flex flex-row items-center justify-between">
                 <CardTitle>Profile</CardTitle>
                 {isEditing ? (
                   <div className="flex gap-2">
-                    <Button size="sm" onClick={handleSave}>Save</Button>
+                    <Button 
+                      data-onboarding="profile-save-btn" 
+                      size="sm" 
+                      onClick={handleSave}
+                      disabled={isSaveDisabled}
+                      title={isSaveDisabled ? "Please fill in all details and select at least one personality trait" : ""}
+                    >
+                      Save
+                    </Button>
                     <Button size="sm" variant="outline" onClick={handleCancel}>Cancel</Button>
                   </div>
                 ) : (
-                  <Button size="sm" onClick={() => setIsEditing(true)}>Edit</Button>
+                  <Button data-onboarding="profile-edit-btn" size="sm" onClick={() => setIsEditing(true)}>Edit</Button>
                 )}
               </CardHeader>
               <CardContent className="flex flex-col items-center text-center space-y-4">
@@ -367,7 +388,7 @@ const ProfilePage = () => {
 
           {/* Details Card */}
           <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }}>
-            <Card className="glass border-border/50">
+            <Card data-onboarding="profile-details" className="glass border-border/50">
               <CardHeader>
                 <CardTitle className="text-lg">Details</CardTitle>
               </CardHeader>

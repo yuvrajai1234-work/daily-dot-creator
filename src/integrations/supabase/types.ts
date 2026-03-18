@@ -228,6 +228,7 @@ export type Database = {
           total_xp: number
           updated_at: string
           user_id: string
+          has_seen_onboarding: boolean
         }
         Insert: {
           a_coin_balance?: number
@@ -246,6 +247,7 @@ export type Database = {
           total_xp?: number
           updated_at?: string
           user_id: string
+          has_seen_onboarding?: boolean
         }
         Update: {
           a_coin_balance?: number
@@ -264,6 +266,7 @@ export type Database = {
           total_xp?: number
           updated_at?: string
           user_id?: string
+          has_seen_onboarding?: boolean
         }
         Relationships: []
       }

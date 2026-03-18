@@ -33,7 +33,7 @@ const TopBar = ({ onMenuClick }: TopBarProps) => {
   const tier = getLevelTier(userLevel);
 
   return (
-    <div className="flex items-center justify-between gap-1 px-2 md:px-4 py-2 border-b border-border/30 bg-background/80 backdrop-blur-sm w-full overflow-hidden">
+    <div className="relative z-[102] flex items-center justify-between gap-1 px-2 md:px-4 py-2 border-b border-border/30 bg-background/80 backdrop-blur-sm w-full overflow-hidden">
       
       {/* ── Mobile: Hamburger Menu ── */}
       <button 
