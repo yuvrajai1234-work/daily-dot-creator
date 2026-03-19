@@ -44,14 +44,12 @@ const Spotlight = ({ selector, padding = 12 }: { selector: string | null; paddin
   }, [selector, padding]);
 
   return (
-    /* Start at (50%,50%) size 0 — box-shadow 9999px covers full screen immediately */
     <div
       ref={ref}
       className="fixed pointer-events-none z-[100]"
       style={{ borderRadius: 14, left: "50%", top: "50%", width: 0, height: 0,
                boxShadow: "0 0 0 9999px rgba(0,0,0,0.65)" }}
     >
-      {/* glow ring — only visible when a real element is spotlighted */}
       {selector && (
         <div className="absolute inset-[-4px] rounded-[18px] border-2 border-violet-400
                         shadow-[0_0_28px_8px_rgba(139,92,246,0.55)] animate-pulse" />
@@ -59,7 +57,6 @@ const Spotlight = ({ selector, padding = 12 }: { selector: string | null; paddin
     </div>
   );
 };
-
 
 const AdonisBubble = ({ text, delay = 0 }: { text: string; delay?: number }) => {
   const [display, setDisplay] = useState("");
@@ -90,8 +87,6 @@ const AdonisBubble = ({ text, delay = 0 }: { text: string; delay?: number }) => 
   );
 };
 
-
-
 /* ── Adonis floating panel (used in tour) ── */
 const AdonisPanel = ({
   title, adonisText, cta, ctaVariant = "primary", onCta, onSkip,
@@ -118,27 +113,19 @@ const AdonisPanel = ({
           const panelH = ref.current.offsetHeight;
           const panelW = Math.min(384, winW - 24); // max-w-sm
 
-          // Calculate center of element
           const elCenterX = r.left + r.width / 2;
           let left = elCenterX - panelW / 2;
-          
-          // Clamp horizontally to screen
           left = Math.max(12, Math.min(left, winW - panelW - 12));
 
-          // Decide: Above or Below?
           const spaceBelow = winH - r.bottom;
           const spaceAbove = r.top;
           
           let top;
           if (spaceBelow > panelH + 40 || spaceBelow > spaceAbove) {
-            // Place below
             top = r.bottom + 20;
           } else {
-            // Place above
             top = r.top - panelH - 20;
           }
-
-          // Clamp vertically if it still doesn't fit
           top = Math.max(12, Math.min(top, winH - panelH - 12));
 
           ref.current.style.left = `${left}px`;
@@ -146,7 +133,6 @@ const AdonisPanel = ({
           ref.current.style.transform = "none";
           ref.current.style.bottom = "auto";
         } else {
-          // Fallback to bottom if no selector
           ref.current.style.left = "50%";
           ref.current.style.top = "auto";
           ref.current.style.bottom = "16px";
@@ -199,7 +185,6 @@ const AdonisPanel = ({
           </motion.div>
         )}
 
-        {/* Disabled warning — shown when profile fields not filled */}
         {disabled && disabledMsg && (
           <motion.div initial={{ opacity: 0, y: 4 }} animate={{ opacity: 1, y: 0 }}
             className="flex items-start gap-2 bg-amber-500/10 border border-amber-500/30 rounded-xl px-3 py-2">
@@ -233,12 +218,10 @@ const AdonisPanel = ({
       </div>
     </div>
   </motion.div>
-);
+  );
 };
 
-/* ══════════════════════════════════════════════
-   DATA — INFO SLIDES
-══════════════════════════════════════════════ */
+/* ── DATA ── */
 const INFO_SLIDES = [
   {
     icon: <Target className="w-10 h-10 text-white" />,
@@ -298,19 +281,10 @@ const INFO_SLIDES = [
   },
 ];
 
-/* ══════════════════════════════════════════════
-   DATA — TOUR STEPS
-══════════════════════════════════════════════ */
 interface TourStep {
-  page: string;
-  selector: string | null;
-  title: string;
-  adonis: string;
-  cta: string;
-  ctaVariant?: "primary" | "success";
-  hint?: string;
-  autoOnBtnClick?: boolean;  // advance when add-habit-btn is clicked
-  autoOnHabits?: boolean;    // advance when habits.length > 0
+  page: string; selector: string | null; title: string; adonis: string;
+  cta: string; ctaVariant?: "primary" | "success"; hint?: string;
+  autoOnBtnClick?: boolean; autoOnHabits?: boolean;
 }
 
 const TOUR: TourStep[] = [
@@ -318,16 +292,14 @@ const TOUR: TourStep[] = [
     page: "/dashboard", selector: "[data-onboarding='add-habit-btn']",
     title: "Add Your First Habit",
     adonis: "This glowing button is your gateway! Go ahead and click Add New Habit — choose a preset from the list or create a custom one. I'll update my message the moment you click!",
-    cta: "I clicked it!",
-    hint: "👆 Click the glowing button above to open the creator",
+    cta: "I clicked it!", hint: "👆 Click the glowing button above to open the creator",
     autoOnBtnClick: true,
   },
   {
     page: "/dashboard", selector: null,
     title: "Choose a Habit",
     adonis: "Now pick a habit from the presets — I'd suggest something simple like 🏃 Morning Run or 💧 Drink Water. Select it and hit Create Habit. I'll celebrate the moment you do! 🎉",
-    cta: "Done — I made one! 🎉",
-    autoOnHabits: true,
+    cta: "Done — I made one! 🎉", autoOnHabits: true,
   },
   {
     page: "/dashboard", selector: "[data-onboarding='habits-grid']",
@@ -351,8 +323,7 @@ const TOUR: TourStep[] = [
     page: "/profile", selector: "[data-onboarding='profile-left-col']",
     title: "Fill Your Profile & Details",
     adonis: "Click Edit ☝️ then fill in BOTH cards: the Profile card (Name, Designation, Bio, Location) AND the Details card below it (Age, Gender, Weight, Height, Archetype). Hit Save when done — all fields are required!",
-    cta: "All done! ✅",
-    hint: "Fill Profile card + Details card below → then hit Save",
+    cta: "All done! ✅", hint: "Fill Profile card + Details card below → then hit Save",
     ctaVariant: "success",
   },
   {
@@ -419,14 +390,10 @@ const TOUR: TourStep[] = [
     page: "/settings", selector: null,
     title: "Settings",
     adonis: "Last stop on the tour — Settings! Customize your theme, toggle dark mode, configure notifications, manage privacy, and make DailyDots feel entirely like home. ⚙️",
-    cta: "That's a wrap! 🎉",
-    ctaVariant: "success",
+    cta: "That's a wrap! 🎉", ctaVariant: "success",
   },
 ];
 
-/* ══════════════════════════════════════════════
-   MAIN COMPONENT
-══════════════════════════════════════════════ */
 type Phase = "slides" | "terms" | "adonis-entry" | "tour" | "goodbye";
 
 export const Onboarding = () => {
@@ -446,30 +413,25 @@ export const Onboarding = () => {
   const { data: levelInfo } = useLevelInfo();
   const prevHabitsLen = useRef(0);
 
-  /* show if not seen onboarding OR if user is level 1 (testing override) */
   useEffect(() => {
     if (!user) return;
-    // Level 1 override: always show for testing
     if (levelInfo?.level === 1) { setVisible(true); return; }
     supabase.from("profiles").select("has_seen_onboarding").eq("user_id", user.id).single()
       .then(({ data, error }) => { if (!error && data && !data.has_seen_onboarding) setVisible(true); });
   }, [user, levelInfo?.level]);
 
-  /* show terms accept button after 2s */
   useEffect(() => {
     if (phase !== "terms") return;
     const t = setTimeout(() => setShowTermsBtn(true), 1500);
     return () => clearTimeout(t);
   }, [phase]);
 
-  /* auto-navigate if tour page doesn't match location */
   useEffect(() => {
     if (phase !== "tour") return;
     const expected = TOUR[tourStep]?.page;
     if (expected && location.pathname !== expected) navigate(expected);
   }, [phase, tourStep, location.pathname, navigate]);
 
-  /* click listener for add-habit-btn (step 0) */
   useEffect(() => {
     if (phase !== "tour" || tourStep !== 0) return;
     const btn = document.querySelector("[data-onboarding='add-habit-btn']");
@@ -479,7 +441,6 @@ export const Onboarding = () => {
     return () => btn.removeEventListener("click", handler);
   }, [phase, tourStep]);
 
-  /* auto-advance for habit creation (step 1) */
   useEffect(() => {
     if (phase !== "tour" || tourStep !== 1) return;
     if (habits.length > 0 && prevHabitsLen.current === 0) {
@@ -489,18 +450,14 @@ export const Onboarding = () => {
   }, [habits.length, phase, tourStep]);
 
   const [isIntroMinimized, setIsIntroMinimized] = useState(false);
-
-  /* reset save-btn tracking, auto-scroll, and start DOM watcher when tour step changes */
   const [domTick, setDomTick] = useState(0);
+
   const saveBtnWasShownRef = useRef(false);
   useEffect(() => { 
     saveBtnWasShownRef.current = false; 
     setIsIntroMinimized(false);
-    
-    // Start interval to watch for DOM changes (like save-btn being removed)
     const iv = setInterval(() => setDomTick(t => t + 1), 500);
 
-    // Auto-scroll to current element
     if (phase === "tour") {
       const cur = TOUR[tourStep];
       if (cur?.selector) {
@@ -508,7 +465,6 @@ export const Onboarding = () => {
         if (el) el.scrollIntoView({ behavior: "smooth", block: "center" });
       }
     }
-
     return () => clearInterval(iv);
   }, [tourStep, phase]);
 
@@ -527,18 +483,11 @@ export const Onboarding = () => {
   };
 
   if (!visible) return null;
-
   const cur = TOUR[tourStep];
-
-  /* ── render inline-bold helper ── */
-  const rb = (t: string) => t.split(/(\*\*[^*]+\*\*)/).map((p, i) =>
-    p.startsWith("**") && p.endsWith("**") ? <strong key={i}>{p.slice(2, -2)}</strong> : p
-  );
 
   return (
     <AnimatePresence mode="wait">
 
-      {/* ══ INFO SLIDES ══ */}
       {phase === "slides" && (
         <motion.div key="slides" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
           className="fixed inset-0 z-[100] flex items-center justify-center p-3 bg-background/85 backdrop-blur-md">
@@ -548,7 +497,6 @@ export const Onboarding = () => {
               style={{ background: `linear-gradient(90deg,${INFO_SLIDES[slideIdx].from},${INFO_SLIDES[slideIdx].to})` }} />
 
             <div className="p-5 md:p-6 space-y-4 flex flex-col overflow-hidden">
-              {/* header */}
               <div className="flex items-center gap-3">
                 <div className="w-12 h-12 rounded-2xl flex items-center justify-center shadow-lg flex-shrink-0"
                   style={{ background: `linear-gradient(135deg,${INFO_SLIDES[slideIdx].from},${INFO_SLIDES[slideIdx].to})` }}>
@@ -564,7 +512,6 @@ export const Onboarding = () => {
                 <span className="ml-auto text-xs text-muted-foreground bg-secondary/40 px-2 py-1 rounded-full">{slideIdx + 1}/{INFO_SLIDES.length}</span>
               </div>
 
-              {/* body content - scrollable on mobile */}
               <AnimatePresence mode="wait">
                 <motion.div key={`body-${slideIdx}`} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} 
                   className="space-y-3 flex-1 overflow-y-auto pr-1 custom-scrollbar">
@@ -580,7 +527,6 @@ export const Onboarding = () => {
                 </motion.div>
               </AnimatePresence>
 
-              {/* nav - stays fixed at bottom */}
               <div className="flex items-center justify-between pt-1 flex-shrink-0">
                 <div className="flex gap-1.5">
                   {INFO_SLIDES.map((_, i) => (
@@ -606,7 +552,6 @@ export const Onboarding = () => {
         </motion.div>
       )}
 
-      {/* ══ TERMS ══ */}
       {phase === "terms" && (
         <motion.div key="terms" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
           className="fixed inset-0 z-[100] flex items-center justify-center p-3 bg-background/90 backdrop-blur-md">
@@ -617,13 +562,11 @@ export const Onboarding = () => {
               <div className="text-center">
                 <span className="text-3xl">📜</span>
                 <h2 className="text-xl font-bold mt-2">Terms & Privacy</h2>
-                <p className="text-xs text-muted-foreground mt-1">Please read before continuing</p>
               </div>
               <div className="flex-1 overflow-y-auto rounded-2xl bg-secondary/20 border border-border/40 p-4 space-y-3 text-xs text-muted-foreground leading-relaxed custom-scrollbar">
                 {[
                   ["Who We Are", "DailyDots is a personal habit-tracking and self-improvement platform designed to help you build lasting positive routines."],
                   ["What We Collect", "We collect your account information (email, display name), habit completion data, XP & coin balances, and any profile details you voluntarily provide."],
-                  ["How We Use It", "Your data powers your personalized dashboard, AI reflections, community features, and progress analytics. We do not use it for advertising profiling."],
                   ["Your Privacy", "Your data is never sold to third parties. Community features only display your chosen display name and public profile. Journal entries are private by default."],
                   ["B Coins & Virtual Currency", "B Coins are virtual points with no monetary value and cannot be exchanged for cash. They reset weekly every Monday as part of the game design."],
                   ["Age Requirement", "You must be at least 13 years old to create an account and use DailyDots."],
@@ -653,7 +596,6 @@ export const Onboarding = () => {
         </motion.div>
       )}
 
-      {/* ══ ADONIS ENTRY ══ */}
       {phase === "adonis-entry" && (
         <motion.div key="adonis-entry" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
           className="fixed inset-0 z-[100] flex items-center justify-center bg-black/90 backdrop-blur-md">
@@ -689,60 +631,31 @@ export const Onboarding = () => {
         </motion.div>
       )}
 
-      {/* ══ TOUR ══ */}
       {phase === "tour" && (() => {
-        // Profile step validation (step 5 = fill profile + details)
-        const meta = user?.user_metadata || {};
-        const basicInfoFilled = !!(
-          (meta.full_name || "").trim() &&
-          (meta.designation || "").trim() &&
-          (meta.bio || "").trim() &&
-          (meta.location || "").trim()
-        );
-        const detailsFilled = !!(
-          (meta.age || meta.weight || meta.height) && // at least one body stat
-          (meta.gender || "").trim() &&
-          (meta.archetype || "").trim() &&
-          (meta.location || "").trim() &&
-          ((meta.personality_traits as string[])?.length > 0)
-        );
+        const meta = profileData || {};
+        const basicInfoFilled = !!(meta.nickname && meta.designation && meta.bio && meta.location);
+        const detailsFilled = !!((meta.age || meta.weight || meta.height) && meta.gender && meta.archetype && (meta.personality_traits as string[])?.length > 0);
         const allProfileFilled = basicInfoFilled && detailsFilled;
         const isProfileFillStep = tourStep === 5;
-        // Track when save-btn was shown then hidden (= user just saved)
         const saveBtnExists = !!document.querySelector("[data-onboarding='profile-save-btn']");
         if (saveBtnExists) saveBtnWasShownRef.current = true;
         const profileSaved = saveBtnWasShownRef.current && !saveBtnExists;
-        const isProfileEditStep = isProfileFillStep;
 
-        // Spotlight: left-col → save-btn while editing → null after save
         const spotlightSel = isProfileFillStep
-          ? profileSaved
-            ? null  // saved — remove the box so user can check their profile
-            : saveBtnExists
-              ? "[data-onboarding='profile-save-btn']"
-              : cur?.selector ?? null
+          ? profileSaved ? null : saveBtnExists ? "[data-onboarding='profile-save-btn']" : cur?.selector ?? null
           : cur?.selector ?? null;
 
         const isDisabled = isProfileFillStep && !profileSaved && !allProfileFilled;
-        const disabledMsg = isDisabled
-          ? "Please fill in Name, Designation, Bio, Location, Gender, Archetype + a body stat (Age/Weight/Height) before continuing!"
-          : undefined;
-        const hintText = isProfileFillStep && profileSaved
-          ? "Looking good! Click \"All done!\" when you're happy with your profile 🎉"
-          : isProfileFillStep && saveBtnExists
-          ? "Now hit Save ☝️ to lock in your profile & details!"
-          : cur?.hint;
-
+        const disabledMsg = isDisabled ? "Please fill in all profile fields before continuing!" : undefined;
+        const hintText = isProfileFillStep && profileSaved ? "Looking good! Click \"All done!\" 🎉" : isProfileFillStep && saveBtnExists ? "Now hit Save ☝️" : cur?.hint;
         const showMinimized = isIntroMinimized && !profileSaved;
 
         return (
           <motion.div key={`tour-${tourStep}`} initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
-            <Spotlight selector={spotlightSel} padding={isProfileEditStep ? 12 : 14} />
-            
+            <Spotlight selector={spotlightSel} padding={isProfileFillStep ? 12 : 14} />
             {showMinimized ? (
               <motion.button
-                initial={{ opacity: 0, scale: 0.8 }}
-                animate={{ opacity: 1, scale: 1 }}
+                initial={{ opacity: 0, scale: 0.8 }} animate={{ opacity: 1, scale: 1 }}
                 onClick={() => setIsIntroMinimized(false)}
                 className="fixed bottom-6 right-6 z-[120] flex items-center gap-2 bg-gradient-to-br from-violet-500 to-indigo-600 text-white rounded-full px-5 py-3 shadow-2xl border-2 border-white/20 hover:scale-105 transition-all">
                 <Sparkles className="w-5 h-5" />
@@ -750,32 +663,18 @@ export const Onboarding = () => {
               </motion.button>
             ) : (
               <AdonisPanel
-                title={cur?.title ?? ""}
-                adonisText={cur?.adonis ?? ""}
+                title={cur?.title ?? ""} adonisText={cur?.adonis ?? ""}
                 cta={isProfileFillStep && !profileSaved ? "Let's Edit ✏️" : (cur?.cta ?? "Next →")}
-                ctaVariant={cur?.ctaVariant ?? "primary"}
-                selector={spotlightSel}
-                onCta={() => {
-                  if (isProfileFillStep && !profileSaved) {
-                    setIsIntroMinimized(true);
-                  } else {
-                    advanceTour();
-                  }
-                }}
-                onSkip={() => setPhase("goodbye")}
-                stepNum={tourStep + 1}
-                totalSteps={TOUR.length}
-                hint={hintText}
-                disabled={isDisabled}
-                disabledMsg={disabledMsg}
+                ctaVariant={cur?.ctaVariant ?? "primary"} selector={spotlightSel}
+                onCta={() => { if (isProfileFillStep && !profileSaved) setIsIntroMinimized(true); else advanceTour(); }}
+                onSkip={() => setPhase("goodbye")} stepNum={tourStep + 1} totalSteps={TOUR.length}
+                hint={hintText} disabled={isDisabled} disabledMsg={disabledMsg}
               />
             )}
           </motion.div>
         );
       })()}
 
-
-      {/* ══ GOODBYE ══ */}
       {phase === "goodbye" && (
         <motion.div key="goodbye" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
           className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-background/90 backdrop-blur-md">
@@ -783,7 +682,6 @@ export const Onboarding = () => {
           <Spotlight selector="#ai-assistant-button" padding={16} />
           <motion.div initial={{ scale: 0.88, y: 20 }} animate={{ scale: 1, y: 0 }}
             transition={{ type: "spring", stiffness: 260, damping: 26 }}
-            id="onboarding-completion-card"
             className="w-[calc(100vw-24px)] max-w-sm bg-card border-2 border-violet-400 shadow-[0_0_40px_rgba(139,92,246,0.4)] rounded-3xl overflow-hidden flex flex-col max-h-[90vh] relative z-[101] animate-pulse-subtle">
             <div className="h-1.5 w-full bg-gradient-to-r from-amber-400 via-orange-500 to-rose-500 flex-shrink-0" />
             <div className="p-6 flex flex-col overflow-hidden">
@@ -797,50 +695,22 @@ export const Onboarding = () => {
                   <p className="text-xs text-violet-400">Your DailyDots Guide</p>
                 </div>
               </div>
-
               <div className="flex-1 overflow-y-auto pr-2 space-y-4 custom-scrollbar">
-
-              <AdonisBubble delay={300}
-                text="You've completed the full tour! 🎉 You're officially ready to build amazing habits. Remember — every extraordinary result starts with ordinary actions done consistently. I'm rooting for you every single day!" />
-
-              <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.7 }}
-                className="rounded-2xl bg-gradient-to-br from-amber-500/10 to-orange-500/10 border border-amber-500/20 p-4 text-center">
-                <Star className="w-5 h-5 text-amber-400 mx-auto mb-2" />
-                <p className="text-sm font-medium italic text-foreground/80">"We are what we repeatedly do. Excellence, then, is not an act but a habit."</p>
-                <p className="text-xs text-muted-foreground mt-1">— Aristotle</p>
-              </motion.div>
-
-              {/* Where to find Adonis */}
-              <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 1 }}
-                className="rounded-xl border border-violet-500/30 bg-violet-500/10 p-3 space-y-2">
-                <p className="text-xs font-semibold text-violet-400 flex items-center gap-1.5">
-                  <MessageCircle className="w-3.5 h-3.5" /> Where to find me again
-                </p>
-                <p className="text-xs text-muted-foreground">
-                  I live in the <strong className="text-foreground">✦ sparkle button</strong> in the <strong className="text-foreground">bottom-right corner</strong> of every screen. Tap it anytime to chat with me!
-                </p>
-                <div className="flex items-center gap-3 mt-1">
-                  <div className="relative flex-shrink-0">
-                    <div className="w-9 h-9 rounded-full bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center shadow-md">
-                      <Sparkles className="w-4 h-4 text-white" />
-                    </div>
-                    {/* arrow indicating bottom-right */}
-                    <motion.div
-                      animate={{ x: [0, 3, 0], y: [0, 3, 0] }}
-                      transition={{ duration: 1.2, repeat: Infinity }}
-                      className="absolute -bottom-1 -right-1 text-[10px]">↘️</motion.div>
-                  </div>
-                  <p className="text-xs text-muted-foreground">That's me — always in the <strong className="text-foreground">bottom-right</strong> corner!</p>
-                </div>
-              </motion.div>
-
+                <AdonisBubble delay={300} text="You've completed the full tour! 🎉 You're officially ready to build amazing habits. I'm rooting for you every single day!" />
+                <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.7 }}
+                  className="rounded-2xl bg-gradient-to-br from-amber-500/10 to-orange-500/10 border border-amber-500/20 p-4 text-center">
+                  <Star className="w-5 h-5 text-amber-400 mx-auto mb-2" />
+                  <p className="text-sm font-medium italic text-foreground/80">"Excellence is not an act but a habit."</p>
+                  <p className="text-xs text-muted-foreground mt-1">— Aristotle</p>
+                </motion.div>
+                <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 1 }}
+                  className="rounded-xl border border-violet-500/30 bg-violet-500/10 p-3 space-y-2">
+                  <p className="text-xs font-semibold text-violet-400 flex items-center gap-1.5"><MessageCircle className="w-3.5 h-3.5" /> Where to find me</p>
+                  <p className="text-xs text-muted-foreground">I live in the sparkle button in the bottom-right corner!</p>
+                </motion.div>
               </div>
-
               <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 1.3 }} className="pt-4 flex-shrink-0">
-                <Button onClick={complete}
-                  className="w-full rounded-full py-5 font-bold text-base shadow-lg bg-gradient-to-r from-amber-500 via-orange-500 to-rose-500 hover:opacity-90 text-white border-0 animate-orange-glow">
-                  Start My Journey! 🚀
-                </Button>
+                <Button onClick={complete} className="w-full rounded-full py-5 font-bold text-base shadow-lg bg-gradient-to-r from-amber-500 via-orange-500 to-rose-500 text-white border-0">Start My Journey! 🚀</Button>
               </motion.div>
             </div>
           </motion.div>
