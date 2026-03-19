@@ -1,0 +1,5 @@
+{
+  "nodeModulesDir": "none",
+  "vendor": false,
+  "importMap": "import_map.json"
+}

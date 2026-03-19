@@ -338,6 +338,7 @@ const AIAssistant = () => {
         <>
             {/* ── Floating button ── */}
             <motion.button
+                id="ai-assistant-button"
                 onClick={() => setOpen(o => !o)}
                 className="fixed bottom-20 md:bottom-6 right-4 md:right-6 z-50 w-12 h-12 md:w-14 md:h-14 rounded-full gradient-primary shadow-2xl shadow-primary/40 flex items-center justify-center text-white hover:scale-110 active:scale-95 transition-transform"
                 whileHover={{ scale: 1.1 }}

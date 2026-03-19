@@ -22,12 +22,20 @@ const Spotlight = ({ selector, padding = 12 }: { selector: string | null; paddin
   useEffect(() => {
     const tick = () => {
       const el = selector ? document.querySelector<HTMLElement>(selector) : null;
-      if (ref.current && el) {
-        const r = el.getBoundingClientRect();
-        ref.current.style.left   = `${r.left   - padding}px`;
-        ref.current.style.top    = `${r.top    - padding}px`;
-        ref.current.style.width  = `${r.width  + padding * 2}px`;
-        ref.current.style.height = `${r.height + padding * 2}px`;
+      if (ref.current) {
+        if (el) {
+          const r = el.getBoundingClientRect();
+          ref.current.style.left   = `${r.left   - padding}px`;
+          ref.current.style.top    = `${r.top    - padding}px`;
+          ref.current.style.width  = `${r.width  + padding * 2}px`;
+          ref.current.style.height = `${r.height + padding * 2}px`;
+          ref.current.style.opacity = "1";
+        } else {
+          // Hide if element is missing but selector was provided (e.g. just removed from DOM)
+          ref.current.style.width = "0px";
+          ref.current.style.height = "0px";
+          ref.current.style.opacity = "0";
+        }
       }
       rafRef.current = requestAnimationFrame(tick);
     };
@@ -669,12 +677,15 @@ export const Onboarding = () => {
       {phase === "goodbye" && (
         <motion.div key="goodbye" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
           className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-background/90 backdrop-blur-md">
+          <style>{`#ai-assistant-button { z-index: 101 !important; transition: z-index 0.3s ease; }`}</style>
+          <Spotlight selector="#ai-assistant-button" padding={16} />
           <motion.div initial={{ scale: 0.88, y: 20 }} animate={{ scale: 1, y: 0 }}
             transition={{ type: "spring", stiffness: 260, damping: 26 }}
-            className="w-full max-w-sm bg-card border border-border/50 rounded-3xl shadow-2xl overflow-hidden">
-            <div className="h-1.5 w-full bg-gradient-to-r from-amber-400 via-orange-500 to-rose-500" />
-            <div className="p-6 space-y-4">
-              <div className="flex flex-col items-center gap-3 pt-1">
+            id="onboarding-completion-card"
+            className="w-full max-w-sm bg-card border-2 border-violet-400 shadow-[0_0_40px_rgba(139,92,246,0.4)] rounded-3xl overflow-hidden flex flex-col max-h-[90vh] relative z-[101] animate-pulse-subtle">
+            <div className="h-1.5 w-full bg-gradient-to-r from-amber-400 via-orange-500 to-rose-500 flex-shrink-0" />
+            <div className="p-6 flex flex-col overflow-hidden">
+              <div className="flex flex-col items-center gap-3 pt-1 mb-4 flex-shrink-0">
                 <motion.div animate={{ scale: [1, 1.07, 1] }} transition={{ duration: 2.5, repeat: Infinity }}
                   className="w-20 h-20 rounded-full bg-gradient-to-br from-violet-500 via-purple-600 to-indigo-600 flex items-center justify-center shadow-2xl shadow-purple-500/40 border-4 border-purple-400/30">
                   <span className="text-3xl font-black text-white">A</span>
@@ -684,6 +695,8 @@ export const Onboarding = () => {
                   <p className="text-xs text-violet-400">Your DailyDots Guide</p>
                 </div>
               </div>
+
+              <div className="flex-1 overflow-y-auto pr-2 space-y-4 custom-scrollbar">
 
               <AdonisBubble delay={300}
                 text="You've completed the full tour! 🎉 You're officially ready to build amazing habits. Remember — every extraordinary result starts with ordinary actions done consistently. I'm rooting for you every single day!" />
@@ -697,7 +710,7 @@ export const Onboarding = () => {
 
               {/* Where to find Adonis */}
               <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 1 }}
-                className="rounded-xl border border-violet-500/25 bg-violet-500/10 p-3 space-y-2">
+                className="rounded-xl border border-violet-500/30 bg-violet-500/10 p-3 space-y-2">
                 <p className="text-xs font-semibold text-violet-400 flex items-center gap-1.5">
                   <MessageCircle className="w-3.5 h-3.5" /> Where to find me again
                 </p>
@@ -719,9 +732,11 @@ export const Onboarding = () => {
                 </div>
               </motion.div>
 
-              <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 1.3 }}>
+              </div>
+
+              <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 1.3 }} className="pt-4 flex-shrink-0">
                 <Button onClick={complete}
-                  className="w-full rounded-full py-5 font-bold text-base shadow-lg bg-gradient-to-r from-amber-500 via-orange-500 to-rose-500 hover:opacity-90 text-white border-0">
+                  className="w-full rounded-full py-5 font-bold text-base shadow-lg bg-gradient-to-r from-amber-500 via-orange-500 to-rose-500 hover:opacity-90 text-white border-0 animate-orange-glow">
                   Start My Journey! 🚀
                 </Button>
               </motion.div>
