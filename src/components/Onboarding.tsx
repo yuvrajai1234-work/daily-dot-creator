@@ -95,41 +95,99 @@ const AdonisBubble = ({ text, delay = 0 }: { text: string; delay?: number }) => 
 /* ── Adonis floating panel (used in tour) ── */
 const AdonisPanel = ({
   title, adonisText, cta, ctaVariant = "primary", onCta, onSkip,
-  stepNum, totalSteps, hint, disabled, disabledMsg,
+  stepNum, totalSteps, hint, disabled, disabledMsg, selector
 }: {
   title: string; adonisText: string; cta: string;
   ctaVariant?: "primary" | "success";
   onCta: () => void; onSkip: () => void;
   stepNum: number; totalSteps: number;
   hint?: string; disabled?: boolean; disabledMsg?: string;
-}) => (
-  <motion.div
-    key={adonisText.slice(0, 20)}
-    initial={{ opacity: 0, y: 50 }}
-    animate={{ opacity: 1, y: 0 }}
-    exit={{ opacity: 0, y: 50 }}
-    className="fixed bottom-4 left-1/2 -translate-x-1/2 z-[110] w-full max-w-sm px-3"
-  >
-    <div className="bg-card border border-border/60 rounded-3xl shadow-2xl overflow-hidden">
-      <div className="h-1 w-full bg-gradient-to-r from-violet-500 via-purple-500 to-indigo-500" />
-      <div className="p-4 space-y-3">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <motion.div animate={{ scale: [1, 1.05, 1] }} transition={{ duration: 2.5, repeat: Infinity }}
-              className="w-8 h-8 rounded-full bg-gradient-to-br from-violet-500 to-indigo-600 flex items-center justify-center shadow-md shadow-purple-500/40">
-              <span className="text-white font-black text-xs">A</span>
-            </motion.div>
-            <div>
-              <p className="text-[10px] font-bold text-violet-400 uppercase tracking-widest">Adonis · {title}</p>
-              <p className="text-[10px] text-muted-foreground">Step {stepNum} of {totalSteps}</p>
-            </div>
-          </div>
-          <button onClick={onSkip} className="p-1.5 rounded-full hover:bg-muted transition-colors">
-            <X className="w-4 h-4 text-muted-foreground" />
-          </button>
-        </div>
+  selector?: string | null;
+}) => {
+  const ref = useRef<HTMLDivElement>(null);
+  const rafRef = useRef<number>();
 
-        <AdonisBubble text={adonisText} delay={250} />
+  useEffect(() => {
+    const tick = () => {
+      const el = selector ? document.querySelector<HTMLElement>(selector) : null;
+      if (ref.current) {
+        if (el) {
+          const r = el.getBoundingClientRect();
+          const winH = window.innerHeight;
+          const winW = window.innerWidth;
+          const panelH = ref.current.offsetHeight;
+          const panelW = Math.min(384, winW - 24); // max-w-sm
+
+          // Calculate center of element
+          const elCenterX = r.left + r.width / 2;
+          let left = elCenterX - panelW / 2;
+          
+          // Clamp horizontally to screen
+          left = Math.max(12, Math.min(left, winW - panelW - 12));
+
+          // Decide: Above or Below?
+          const spaceBelow = winH - r.bottom;
+          const spaceAbove = r.top;
+          
+          let top;
+          if (spaceBelow > panelH + 40 || spaceBelow > spaceAbove) {
+            // Place below
+            top = r.bottom + 20;
+          } else {
+            // Place above
+            top = r.top - panelH - 20;
+          }
+
+          // Clamp vertically if it still doesn't fit
+          top = Math.max(12, Math.min(top, winH - panelH - 12));
+
+          ref.current.style.left = `${left}px`;
+          ref.current.style.top = `${top}px`;
+          ref.current.style.transform = "none";
+          ref.current.style.bottom = "auto";
+        } else {
+          // Fallback to bottom if no selector
+          ref.current.style.left = "50%";
+          ref.current.style.top = "auto";
+          ref.current.style.bottom = "16px";
+          ref.current.style.transform = "translateX(-50%)";
+        }
+      }
+      rafRef.current = requestAnimationFrame(tick);
+    };
+    rafRef.current = requestAnimationFrame(tick);
+    return () => { if (rafRef.current) cancelAnimationFrame(rafRef.current); };
+  }, [selector]);
+
+  return (
+    <motion.div
+      ref={ref}
+      key={adonisText.slice(0, 20)}
+      initial={{ opacity: 0, scale: 0.95 }}
+      animate={{ opacity: 1, scale: 1 }}
+      exit={{ opacity: 0 }}
+      className="fixed z-[110] w-[calc(100vw-24px)] max-w-sm"
+    >
+      <div className="bg-card border border-border/60 rounded-3xl shadow-2xl overflow-hidden">
+        <div className="h-1 w-full bg-gradient-to-r from-violet-500 via-purple-500 to-indigo-500 flex-shrink-0" />
+        <div className="p-4 space-y-3">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <motion.div animate={{ scale: [1, 1.05, 1] }} transition={{ duration: 2.5, repeat: Infinity }}
+                className="w-8 h-8 rounded-full bg-gradient-to-br from-violet-500 to-indigo-600 flex items-center justify-center shadow-md shadow-purple-500/40">
+                <span className="text-white font-black text-xs">A</span>
+              </motion.div>
+              <div>
+                <p className="text-[10px] font-bold text-violet-400 uppercase tracking-widest">Adonis · {title}</p>
+                <p className="text-[10px] text-muted-foreground">Step {stepNum} of {totalSteps}</p>
+              </div>
+            </div>
+            <button onClick={onSkip} className="p-1.5 rounded-full hover:bg-muted transition-colors">
+              <X className="w-4 h-4 text-muted-foreground" />
+            </button>
+          </div>
+
+          <AdonisBubble text={adonisText} delay={250} />
 
         {hint && (
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 1.4 }}
@@ -176,6 +234,7 @@ const AdonisPanel = ({
     </div>
   </motion.div>
 );
+};
 
 /* ══════════════════════════════════════════════
    DATA — INFO SLIDES
@@ -429,9 +488,29 @@ export const Onboarding = () => {
     prevHabitsLen.current = habits.length;
   }, [habits.length, phase, tourStep]);
 
-  /* reset save-btn tracking whenever tour step changes */
+  const [isIntroMinimized, setIsIntroMinimized] = useState(false);
+
+  /* reset save-btn tracking, auto-scroll, and start DOM watcher when tour step changes */
+  const [domTick, setDomTick] = useState(0);
   const saveBtnWasShownRef = useRef(false);
-  useEffect(() => { saveBtnWasShownRef.current = false; }, [tourStep]);
+  useEffect(() => { 
+    saveBtnWasShownRef.current = false; 
+    setIsIntroMinimized(false);
+    
+    // Start interval to watch for DOM changes (like save-btn being removed)
+    const iv = setInterval(() => setDomTick(t => t + 1), 500);
+
+    // Auto-scroll to current element
+    if (phase === "tour") {
+      const cur = TOUR[tourStep];
+      if (cur?.selector) {
+        const el = document.querySelector(cur.selector);
+        if (el) el.scrollIntoView({ behavior: "smooth", block: "center" });
+      }
+    }
+
+    return () => clearInterval(iv);
+  }, [tourStep, phase]);
 
   const complete = async () => {
     if (!user) return;
@@ -464,11 +543,11 @@ export const Onboarding = () => {
         <motion.div key="slides" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
           className="fixed inset-0 z-[100] flex items-center justify-center p-3 bg-background/85 backdrop-blur-md">
           <motion.div initial={{ scale: 0.9, y: 20 }} animate={{ scale: 1, y: 0 }}
-            className="w-full max-w-lg bg-card border border-border/50 rounded-3xl shadow-2xl overflow-hidden">
-            <div className="h-1.5 w-full transition-all duration-500"
+            className="w-[calc(100%)] max-w-lg bg-card border border-border/50 rounded-3xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh]">
+            <div className="h-1.5 w-full transition-all duration-500 flex-shrink-0"
               style={{ background: `linear-gradient(90deg,${INFO_SLIDES[slideIdx].from},${INFO_SLIDES[slideIdx].to})` }} />
 
-            <div className="p-6 space-y-4">
+            <div className="p-5 md:p-6 space-y-4 flex flex-col overflow-hidden">
               {/* header */}
               <div className="flex items-center gap-3">
                 <div className="w-12 h-12 rounded-2xl flex items-center justify-center shadow-lg flex-shrink-0"
@@ -485,11 +564,12 @@ export const Onboarding = () => {
                 <span className="ml-auto text-xs text-muted-foreground bg-secondary/40 px-2 py-1 rounded-full">{slideIdx + 1}/{INFO_SLIDES.length}</span>
               </div>
 
-              {/* body */}
+              {/* body content - scrollable on mobile */}
               <AnimatePresence mode="wait">
-                <motion.div key={`body-${slideIdx}`} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="space-y-3">
+                <motion.div key={`body-${slideIdx}`} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} 
+                  className="space-y-3 flex-1 overflow-y-auto pr-1 custom-scrollbar">
                   <p className="text-sm text-muted-foreground leading-relaxed">{INFO_SLIDES[slideIdx].body}</p>
-                  <div className="grid grid-cols-1 gap-1.5">
+                  <div className="grid grid-cols-1 gap-1.5 pb-2">
                     {INFO_SLIDES[slideIdx].bullets.map((b) => (
                       <div key={b} className="flex items-center gap-2.5 px-3 py-2 rounded-xl bg-primary/5 border border-primary/10">
                         <CheckCircle2 className="w-3.5 h-3.5 text-primary flex-shrink-0" />
@@ -500,8 +580,8 @@ export const Onboarding = () => {
                 </motion.div>
               </AnimatePresence>
 
-              {/* nav */}
-              <div className="flex items-center justify-between pt-1">
+              {/* nav - stays fixed at bottom */}
+              <div className="flex items-center justify-between pt-1 flex-shrink-0">
                 <div className="flex gap-1.5">
                   {INFO_SLIDES.map((_, i) => (
                     <button key={i} onClick={() => setSlideIdx(i)}
@@ -510,12 +590,12 @@ export const Onboarding = () => {
                 </div>
                 <div className="flex gap-2">
                   {slideIdx > 0 && (
-                    <Button variant="ghost" size="sm" onClick={() => setSlideIdx(i => i - 1)} className="rounded-full">
+                    <Button variant="ghost" size="sm" onClick={() => setSlideIdx(i => i - 1)} className="rounded-full h-10 px-4">
                       <ChevronLeft className="w-4 h-4 mr-1" /> Back
                     </Button>
                   )}
-                  <Button size="sm" onClick={() => { if (slideIdx < INFO_SLIDES.length - 1) setSlideIdx(i => i + 1); else setPhase("terms"); }}
-                    className="rounded-full px-5 shadow-md"
+                  <Button onClick={() => { if (slideIdx < INFO_SLIDES.length - 1) setSlideIdx(i => i + 1); else setPhase("terms"); }}
+                    className="rounded-full h-10 px-6 shadow-md font-bold transition-all hover:opacity-90 active:scale-95"
                     style={{ background: `linear-gradient(135deg,${INFO_SLIDES[slideIdx].from},${INFO_SLIDES[slideIdx].to})`, border: 0, color: "#fff" }}>
                     {slideIdx < INFO_SLIDES.length - 1 ? <><span>Next</span><ChevronRight className="w-4 h-4 ml-1" /></> : <><Sparkles className="w-4 h-4 mr-1" />Continue</>}
                   </Button>
@@ -531,15 +611,15 @@ export const Onboarding = () => {
         <motion.div key="terms" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
           className="fixed inset-0 z-[100] flex items-center justify-center p-3 bg-background/90 backdrop-blur-md">
           <motion.div initial={{ scale: 0.9, y: 20 }} animate={{ scale: 1, y: 0 }}
-            className="w-full max-w-md bg-card border border-border/50 rounded-3xl shadow-2xl overflow-hidden">
-            <div className="h-1.5 w-full bg-gradient-to-r from-violet-500 to-indigo-500" />
-            <div className="p-5 space-y-4">
+            className="w-full max-w-md bg-card border border-border/50 rounded-3xl shadow-2xl overflow-hidden flex flex-col max-h-[85vh]">
+            <div className="h-1.5 w-full bg-gradient-to-r from-violet-500 to-indigo-500 flex-shrink-0" />
+            <div className="p-5 space-y-4 flex flex-col overflow-hidden">
               <div className="text-center">
                 <span className="text-3xl">📜</span>
                 <h2 className="text-xl font-bold mt-2">Terms & Privacy</h2>
                 <p className="text-xs text-muted-foreground mt-1">Please read before continuing</p>
               </div>
-              <div className="h-52 overflow-y-auto rounded-2xl bg-secondary/20 border border-border/40 p-4 space-y-3 text-xs text-muted-foreground leading-relaxed">
+              <div className="flex-1 overflow-y-auto rounded-2xl bg-secondary/20 border border-border/40 p-4 space-y-3 text-xs text-muted-foreground leading-relaxed custom-scrollbar">
                 {[
                   ["Who We Are", "DailyDots is a personal habit-tracking and self-improvement platform designed to help you build lasting positive routines."],
                   ["What We Collect", "We collect your account information (email, display name), habit completion data, XP & coin balances, and any profile details you voluntarily provide."],
@@ -577,11 +657,11 @@ export const Onboarding = () => {
       {phase === "adonis-entry" && (
         <motion.div key="adonis-entry" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
           className="fixed inset-0 z-[100] flex items-center justify-center bg-black/90 backdrop-blur-md">
-          <div className="flex flex-col items-center gap-6 p-6 text-center max-w-sm">
+          <div className="flex flex-col items-center gap-6 p-6 text-center w-full max-w-sm">
             <motion.div initial={{ scale: 0, rotate: -180 }} animate={{ scale: 1, rotate: 0 }}
               transition={{ type: "spring", stiffness: 200, damping: 18, delay: 0.3 }}
-              className="w-28 h-28 rounded-full bg-gradient-to-br from-violet-500 via-purple-600 to-indigo-600 flex items-center justify-center shadow-2xl shadow-purple-500/60 border-4 border-purple-400/40">
-              <span className="text-5xl font-black text-white">A</span>
+              className="w-20 h-20 md:w-28 md:h-28 rounded-full bg-gradient-to-br from-violet-500 via-purple-600 to-indigo-600 flex items-center justify-center shadow-2xl shadow-purple-500/60 border-4 border-purple-400/40 flex-shrink-0">
+              <span className="text-4xl md:text-5xl font-black text-white">A</span>
             </motion.div>
 
             <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.9 }} className="space-y-2">
@@ -599,10 +679,11 @@ export const Onboarding = () => {
 
             <motion.button
               initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} transition={{ delay: 2 }}
-              whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}
-              onClick={() => { setPhase("tour"); setTourStep(0); navigate("/dashboard"); }}
-              className="px-10 py-3 rounded-full bg-gradient-to-r from-violet-500 to-indigo-500 text-white font-bold text-lg shadow-lg shadow-violet-500/40 hover:opacity-90">
-              Let's Go! 🚀
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
+              onClick={() => setPhase("tour")}
+              className="w-full h-12 rounded-full bg-white text-violet-600 font-black text-lg shadow-xl shadow-white/10 flex items-center justify-center gap-2 hover:bg-white/90 transition-all">
+              LET'S START! <ChevronRight className="w-5 h-5" />
             </motion.button>
           </div>
         </motion.div>
@@ -652,22 +733,43 @@ export const Onboarding = () => {
           ? "Now hit Save ☝️ to lock in your profile & details!"
           : cur?.hint;
 
+        const showMinimized = isIntroMinimized && !profileSaved;
+
         return (
           <motion.div key={`tour-${tourStep}`} initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
             <Spotlight selector={spotlightSel} padding={isProfileEditStep ? 12 : 14} />
-            <AdonisPanel
-              title={cur?.title ?? ""}
-              adonisText={cur?.adonis ?? ""}
-              cta={cur?.cta ?? "Next →"}
-              ctaVariant={cur?.ctaVariant ?? "primary"}
-              onCta={advanceTour}
-              onSkip={() => setPhase("goodbye")}
-              stepNum={tourStep + 1}
-              totalSteps={TOUR.length}
-              hint={hintText}
-              disabled={isDisabled}
-              disabledMsg={disabledMsg}
-            />
+            
+            {showMinimized ? (
+              <motion.button
+                initial={{ opacity: 0, scale: 0.8 }}
+                animate={{ opacity: 1, scale: 1 }}
+                onClick={() => setIsIntroMinimized(false)}
+                className="fixed bottom-6 right-6 z-[120] flex items-center gap-2 bg-gradient-to-br from-violet-500 to-indigo-600 text-white rounded-full px-5 py-3 shadow-2xl border-2 border-white/20 hover:scale-105 transition-all">
+                <Sparkles className="w-5 h-5" />
+                <span className="font-bold text-sm">Show Guide</span>
+              </motion.button>
+            ) : (
+              <AdonisPanel
+                title={cur?.title ?? ""}
+                adonisText={cur?.adonis ?? ""}
+                cta={isProfileFillStep && !profileSaved ? "Let's Edit ✏️" : (cur?.cta ?? "Next →")}
+                ctaVariant={cur?.ctaVariant ?? "primary"}
+                selector={spotlightSel}
+                onCta={() => {
+                  if (isProfileFillStep && !profileSaved) {
+                    setIsIntroMinimized(true);
+                  } else {
+                    advanceTour();
+                  }
+                }}
+                onSkip={() => setPhase("goodbye")}
+                stepNum={tourStep + 1}
+                totalSteps={TOUR.length}
+                hint={hintText}
+                disabled={isDisabled}
+                disabledMsg={disabledMsg}
+              />
+            )}
           </motion.div>
         );
       })()}
@@ -682,7 +784,7 @@ export const Onboarding = () => {
           <motion.div initial={{ scale: 0.88, y: 20 }} animate={{ scale: 1, y: 0 }}
             transition={{ type: "spring", stiffness: 260, damping: 26 }}
             id="onboarding-completion-card"
-            className="w-full max-w-sm bg-card border-2 border-violet-400 shadow-[0_0_40px_rgba(139,92,246,0.4)] rounded-3xl overflow-hidden flex flex-col max-h-[90vh] relative z-[101] animate-pulse-subtle">
+            className="w-[calc(100vw-24px)] max-w-sm bg-card border-2 border-violet-400 shadow-[0_0_40px_rgba(139,92,246,0.4)] rounded-3xl overflow-hidden flex flex-col max-h-[90vh] relative z-[101] animate-pulse-subtle">
             <div className="h-1.5 w-full bg-gradient-to-r from-amber-400 via-orange-500 to-rose-500 flex-shrink-0" />
             <div className="p-6 flex flex-col overflow-hidden">
               <div className="flex flex-col items-center gap-3 pt-1 mb-4 flex-shrink-0">
