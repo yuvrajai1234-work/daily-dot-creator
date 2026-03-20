@@ -97,17 +97,23 @@ const AdonisBubble = ({ text, delay = 0 }: { text: string; delay?: number }) => 
   }, [text, delay]);
 
   return (
-    <div className="flex items-start gap-3">
+    <div className="flex items-start gap-3 w-full">
       <motion.div animate={{ scale: [1, 1.04, 1] }} transition={{ duration: 3, repeat: Infinity }}
         className="w-9 h-9 flex-shrink-0 rounded-full bg-white flex items-center justify-center shadow-lg border border-border/50 overflow-hidden">
         <img src="/adonis.png" alt="Adonis" className="w-full h-full object-cover" />
       </motion.div>
-      <div className="bg-secondary/60 border border-border/50 rounded-2xl rounded-tl-sm px-4 py-3 shadow max-w-[calc(100%-48px)]">
+      <div className="bg-secondary/60 border border-border/50 rounded-2xl rounded-tl-sm px-4 py-3 shadow w-full max-w-[calc(100%-48px)]">
         <span className="block text-[10px] font-bold text-violet-400 mb-1 uppercase tracking-widest">Adonis</span>
-        <p className="text-sm leading-relaxed">
-          {display}
-          {!done && <span className="inline-block w-0.5 h-4 bg-primary/80 animate-pulse ml-0.5 -mb-0.5" />}
-        </p>
+        <div className="relative text-sm leading-relaxed">
+          {/* Invisible full text block to force parent height and width instantly */}
+          <span className="invisible pointer-events-none select-none block">{text}</span>
+          
+          {/* Absolute typing overlay */}
+          <p className="absolute top-0 left-0 w-full h-full text-foreground/90">
+            {display}
+            {!done && <span className="inline-block w-0.5 h-4 bg-primary/80 animate-pulse ml-0.5 align-middle" />}
+          </p>
+        </div>
       </div>
     </div>
   );
@@ -129,6 +135,21 @@ const AdonisPanel = ({
   const rafRef = useRef<number>();
 
   useEffect(() => {
+    if (selector) {
+      setTimeout(() => {
+        const el = document.querySelector<HTMLElement>(selector);
+        if (el) {
+          try {
+            el.scrollIntoView({ behavior: "smooth", block: "center", inline: "nearest" });
+          } catch (e) {
+            el.scrollIntoView();
+          }
+        }
+      }, 50); // Small delay to let DOM settle if navigating
+    }
+  }, [selector]);
+
+  useEffect(() => {
     const tick = () => {
       const el = selector ? document.querySelector<HTMLElement>(selector) : null;
       if (ref.current) {
@@ -143,15 +164,8 @@ const AdonisPanel = ({
           let left = elCenterX - panelW / 2;
           left = Math.max(12, Math.min(left, winW - panelW - 12));
 
-          const spaceBelow = winH - r.bottom;
-          const spaceAbove = r.top;
-          
-          let top;
-          if (spaceBelow > panelH + 40 || spaceBelow > spaceAbove) {
-            top = r.bottom + 20;
-          } else {
-            top = r.top - panelH - 20;
-          }
+          // Pin strictly below the target selector as requested
+          let top = r.bottom + 20;
           top = Math.max(12, Math.min(top, winH - panelH - 12));
 
           ref.current.style.left = `${left}px`;
