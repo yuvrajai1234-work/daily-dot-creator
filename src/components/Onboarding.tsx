@@ -454,10 +454,9 @@ export const Onboarding = () => {
 
   useEffect(() => {
     if (!user) return;
-    if (levelInfo?.level === 1) { setVisible(true); return; }
     supabase.from("profiles").select("has_seen_onboarding").eq("user_id", user.id).single()
       .then(({ data, error }) => { if (!error && data && !data.has_seen_onboarding) setVisible(true); });
-  }, [user, levelInfo?.level]);
+  }, [user]);
 
   useEffect(() => {
     if (phase !== "terms") return;
