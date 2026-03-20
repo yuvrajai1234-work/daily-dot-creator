@@ -166,7 +166,6 @@ const AdonisPanel = ({
 
           // Pin strictly below the target selector as requested
           let top = r.bottom + 20;
-          top = Math.max(12, Math.min(top, winH - panelH - 12));
 
           ref.current.style.left = `${left}px`;
           ref.current.style.top = `${top}px`;
@@ -192,7 +191,7 @@ const AdonisPanel = ({
       initial={{ opacity: 0, scale: 0.95 }}
       animate={{ opacity: 1, scale: 1 }}
       exit={{ opacity: 0 }}
-      className="fixed z-[110] w-[calc(100vw-24px)] max-w-sm"
+      className="fixed z-[101] w-[calc(100vw-24px)] max-w-sm"
     >
       <div className="bg-card border border-border/60 rounded-3xl shadow-2xl overflow-hidden">
         <div className="h-1 w-full bg-gradient-to-r from-violet-500 via-purple-500 to-indigo-500 flex-shrink-0" />
