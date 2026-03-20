@@ -29,9 +29,9 @@ const AnalyticsPage = () => {
   const unarchiveHabit = useUnarchiveHabit();
   const archiveHabit = useArchiveHabit();
 
-  // Track which archived habit is pending permanent deletion (for AlertDialog)
+  // Track which habit is pending permanent deletion (for AlertDialog)
   const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null);
-  const pendingDeleteHabit = archivedHabits.find(h => h.id === pendingDeleteId);
+  const pendingDeleteHabit = habits.find(h => h.id === pendingDeleteId) || archivedHabits.find(h => h.id === pendingDeleteId);
 
   const habitPointsBreakdown = useMemo(() => {
     return habits.map((habit) => ({
@@ -221,6 +221,13 @@ const AnalyticsPage = () => {
                             <DropdownMenuItem onSelect={() => handleArchiveToggle(habit.id)} disabled={archiveHabit.isPending}>
                               <Archive className="mr-2 h-4 w-4" />
                               <span className="flex-1">Move to Archive (Costs 50 B Coins)</span>
+                            </DropdownMenuItem>
+                            <DropdownMenuItem
+                              onSelect={() => setPendingDeleteId(habit.id)}
+                              className="text-destructive focus:text-destructive focus:bg-destructive/10"
+                            >
+                              <Trash2 className="mr-2 h-4 w-4" />
+                              <span>Delete Permanently</span>
                             </DropdownMenuItem>
                           </DropdownMenuContent>
                         </DropdownMenu>

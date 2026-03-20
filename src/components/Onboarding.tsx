@@ -17,24 +17,44 @@ import { useLevelInfo } from "@/hooks/useXP";
 const Spotlight = ({ selector, padding = 12, round = false }: { selector: string | null; padding?: number; round?: boolean }) => {
   if (!selector) return null;
   const ref = useRef<HTMLDivElement>(null);
+  const backdropRef = useRef<HTMLDivElement>(null);
   const rafRef = useRef<number>();
+  const [isMoving, setIsMoving] = useState(false);
+
+  useEffect(() => {
+    if (selector) {
+      setIsMoving(true);
+      const t = setTimeout(() => setIsMoving(false), 300);
+      return () => clearTimeout(t);
+    }
+  }, [selector]);
 
   useEffect(() => {
     const tick = () => {
       const el = selector ? document.querySelector<HTMLElement>(selector) : null;
-      if (ref.current) {
+      if (ref.current && backdropRef.current) {
         if (el) {
           const r = el.getBoundingClientRect();
-          ref.current.style.left   = `${r.left   - padding}px`;
-          ref.current.style.top    = `${r.top    - padding}px`;
-          ref.current.style.width  = `${r.width  + padding * 2}px`;
-          ref.current.style.height = `${r.height + padding * 2}px`;
+          const l = r.left - padding;
+          const t = r.top - padding;
+          const w = r.width + padding * 2;
+          const h = r.height + padding * 2;
+          const rEdge = l + w;
+          const bEdge = t + h;
+
+          ref.current.style.left   = `${l}px`;
+          ref.current.style.top    = `${t}px`;
+          ref.current.style.width  = `${w}px`;
+          ref.current.style.height = `${h}px`;
           ref.current.style.opacity = "1";
+
+          backdropRef.current.style.clipPath = `polygon(0% 0%, 100% 0%, 100% 100%, 0% 100%, 0% 0%, ${l}px ${t}px, ${l}px ${bEdge}px, ${rEdge}px ${bEdge}px, ${rEdge}px ${t}px, ${l}px ${t}px)`;
+          backdropRef.current.style.opacity = "1";
         } else {
-          // Hide if element is missing but selector was provided (e.g. just removed from DOM)
           ref.current.style.width = "0px";
           ref.current.style.height = "0px";
           ref.current.style.opacity = "0";
+          backdropRef.current.style.opacity = "0";
         }
       }
       rafRef.current = requestAnimationFrame(tick);
@@ -44,17 +64,23 @@ const Spotlight = ({ selector, padding = 12, round = false }: { selector: string
   }, [selector, padding]);
 
   return (
-    <div
-      ref={ref}
-      className={`fixed pointer-events-none z-[100] transition-all duration-300`}
-      style={{ borderRadius: round ? "9999px" : 14, left: "50%", top: "50%", width: 0, height: 0,
-               boxShadow: "0 0 0 9999px rgba(0,0,0,0.65)" }}
-    >
-      {selector && (
-        <div className={`absolute inset-[-4px] ${round ? "rounded-full" : "rounded-[18px]"} border-2 border-violet-400
-                        shadow-[0_0_28px_8px_rgba(139,92,246,0.55)] animate-pulse`} />
-      )}
-    </div>
+    <>
+      <div 
+        ref={backdropRef}
+        className={`fixed inset-0 z-[90] pointer-events-none bg-black/65 backdrop-blur-sm ${isMoving ? "transition-all duration-300" : "transition-opacity duration-300"}`}
+        style={{ opacity: 0 }}
+      />
+      <div
+        ref={ref}
+        className={`fixed pointer-events-none z-[100] ${isMoving ? "transition-all duration-300" : ""}`}
+        style={{ borderRadius: round ? "9999px" : 14, left: "50%", top: "50%", width: 0, height: 0, opacity: 0 }}
+      >
+        {selector && (
+          <div className={`absolute inset-[-4px] ${round ? "rounded-full" : "rounded-[18px]"} border-2 border-violet-400
+                          shadow-[0_0_28px_8px_rgba(139,92,246,0.65)] animate-pulse`} />
+        )}
+      </div>
+    </>
   );
 };
 
@@ -302,7 +328,7 @@ const TOUR: TourStep[] = [
     cta: "Done — I made one! 🎉", autoOnHabits: true,
   },
   {
-    page: "/dashboard", selector: "[data-onboarding='habits-grid']",
+    page: "/dashboard", selector: "[data-onboarding='habits-grid'] > :first-child",
     title: "Your Habit Card",
     adonis: "Your first habit card! 🎊 Those 1 · 2 · 3 · 4 buttons are your daily effort levels. 1 = barely there, 4 = absolutely crushed it! Logging costs 15 B Coins but earns you XP.",
     cta: "Got it! →",
@@ -652,6 +678,8 @@ export const Onboarding = () => {
 
         return (
           <motion.div key={`tour-${tourStep}`} initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
+            
+            <Spotlight selector={spotlightSel} />
 
             {showMinimized ? (
               <motion.button
