@@ -2,7 +2,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/components/AuthProvider";
 import { toast } from "sonner";
-import { getAppDate, getAppDateOffset } from "@/lib/dateUtils";
+import { getAppDate, getAppDateOffset, getCycleStartDate } from "@/lib/dateUtils";
 import { optimisticXPUpdate } from "@/hooks/useXP";
 
 export interface Habit {
@@ -282,7 +282,51 @@ export const useLogEffort = () => {
   const today = getAppDate(); // Current date in IST (resets at midnight)
 
   return useMutation({
-    mutationFn: async ({ habitId, effortLevel, isNew }: { habitId: string; effortLevel: number; isNew?: boolean }) => {
+    onMutate: async ({ habitId, effortLevel, isNew }) => {
+      let calculatedXP = 10;
+      let currentStreak = 1;
+      let effectiveStreak = 1;
+      let xpMultiplier = 1;
+
+      if (isNew) {
+        // Calculate streak and XP multiplier immediately based on cache
+        const allComps: any[] = queryClient.getQueryData(["all-completions", user!.id]) || [];
+        const prof: any = queryClient.getQueryData(["profile", user?.id]);
+        
+        let prevStreak = 0;
+        for (let i = 1; i <= 28; i++) {
+          const expectedStr = getAppDateOffset(-i);
+          const hasCompletion = allComps.some(
+            (c: any) => c.habit_id === habitId && c.completion_date === expectedStr
+          );
+          if (hasCompletion) prevStreak++;
+          else break;
+        }
+        currentStreak = prevStreak + 1;
+        
+        if (prof?.created_at) {
+          const cycleStart = getCycleStartDate(prof.created_at);
+          const todayDate = new Date(today + "T00:00:00");
+          const diffDays = Math.floor((todayDate.getTime() - cycleStart.getTime()) / (1000 * 60 * 60 * 24));
+          const dayOfCycle = Math.max(1, diffDays + 1); // 1 to 28
+          
+          effectiveStreak = Math.min(currentStreak, dayOfCycle);
+          
+          if (effectiveStreak <= 7) xpMultiplier = 1;
+          else if (effectiveStreak <= 14) xpMultiplier = 1.5;
+          else if (effectiveStreak <= 21) xpMultiplier = 2;
+          else xpMultiplier = 3;
+          
+          calculatedXP = Math.floor(10 * xpMultiplier);
+        }
+
+        // Optimistically update XP immediately for 0ms delay
+        optimisticXPUpdate(queryClient, user!.id, calculatedXP);
+        return { xpAdded: true, calculatedXP, xpMultiplier, effectiveStreak };
+      }
+      return { xpAdded: false, calculatedXP: 0, xpMultiplier: 1, effectiveStreak: 0 };
+    },
+    mutationFn: async ({ habitId, effortLevel }: { habitId: string; effortLevel: number; isNew?: boolean }) => {
       // Check if already logged today (update doesn't cost B coins)
       const { data: existing } = await supabase
         .from("habit_completions")
@@ -299,7 +343,7 @@ export const useLogEffort = () => {
         if (error) throw error;
         return { isUpdate: true };
       } else {
-        // New log costs 10 B coins
+        // New log costs 10 B coins (formerly 15)
         const { data: profile } = await supabase
           .from("profiles")
           .select("b_coin_balance")
@@ -321,31 +365,22 @@ export const useLogEffort = () => {
           .from("habit_completions")
           .insert({ habit_id: habitId, user_id: user!.id, completion_date: today, effort_level: effortLevel });
         if (error) throw error;
+        
         return { isUpdate: false };
       }
     },
-    onMutate: async ({ isNew }) => {
-      if (isNew) {
-        // Optimistically update XP immediately for 0ms delay
-        optimisticXPUpdate(queryClient, user!.id, 10);
-        return { xpAdded: true };
-      }
-      return { xpAdded: false };
-    },
-    onSuccess: async (result, variables) => {
+    onSuccess: async (result, variables, context) => {
       // Award XP for new habit log (not for updates)
-      if (!result.isUpdate) {
+      if (!result.isUpdate && context?.xpAdded) {
         try {
           // Add XP first so invalidation fetches updated data
           await (supabase as any).rpc("add_xp_to_user", {
             p_user_id: user!.id,
-            p_xp_amount: 10,
+            p_xp_amount: context.calculatedXP,
             p_activity_type: "habit_log",
             p_activity_id: variables.habitId,
-            p_description: "Logged a habit"
+            p_description: `Logged habit (${context.xpMultiplier}x multiplier)`
           });
-
-          // Note: XP was already optimistically updated in onMutate
         } catch (error) {
           console.error("Failed to award XP:", error);
         }
@@ -361,13 +396,14 @@ export const useLogEffort = () => {
       if (result.isUpdate) {
         toast.success("Effort level updated!");
       } else {
-        toast.success("Effort logged! (-15 B Coins, +10 XP)");
+        const m = context?.xpMultiplier || 1;
+        toast.success(`Effort logged! (-15 B Coins, +${context?.calculatedXP} XP ${m > 1 ? `[${m}x Multiplier!]` : ''})`);
       }
     },
     onError: (error: any, variables, context) => {
       // Rollback optimistic XP update if it failed
-      if (context?.xpAdded) {
-        optimisticXPUpdate(queryClient, user!.id, -10);
+      if (context?.xpAdded && context?.calculatedXP) {
+        optimisticXPUpdate(queryClient, user!.id, -context.calculatedXP);
       }
       toast.error(error.message || "Failed to log effort");
     },

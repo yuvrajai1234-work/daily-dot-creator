@@ -12,7 +12,7 @@ import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/components/AuthProvider";
 import { useQueryClient } from "@tanstack/react-query";
-import { getAppDate } from "@/lib/dateUtils";
+import { getAppDate, getCycleStartDate } from "@/lib/dateUtils";
 import { useRewardedAd } from "@/hooks/useRewardedAd";
 import { useSearchParams } from "react-router-dom";
 
@@ -181,7 +181,19 @@ const EarnCoinsPage = () => {
   );
 
   const bCoins = (profile as any)?.b_coin_balance || 0;
-  const daysUntilReset = differenceInDays(endOfWeek(new Date(), { weekStartsOn: 1 }), new Date());
+
+  // Calculate days until current cycle week resets
+  let daysUntilReset = 0;
+  if ((profile as any)?.created_at) {
+    const cycleStart = getCycleStartDate((profile as any).created_at);
+    const todayStr = getAppDate();
+    const today = new Date(todayStr + "T00:00:00");
+    const diffDays = Math.floor((today.getTime() - cycleStart.getTime()) / (1000 * 60 * 60 * 24));
+    const currentWeekIndex = Math.min(Math.floor(Math.max(0, diffDays) / 7), 3);
+    const dayInWeek = diffDays - currentWeekIndex * 7;
+    // Week is 7 days long (0 to 6)
+    daysUntilReset = Math.max(0, 6 - dayInWeek);
+  }
 
   const xpLimitReached = adViews >= MAX_XP_ADS;
   const xpAdsLeft = Math.max(0, MAX_XP_ADS - adViews);
@@ -216,7 +228,7 @@ const EarnCoinsPage = () => {
                   B Coins
                 </h2>
                 <p className="text-sm text-muted-foreground mt-1">
-                  Resets weekly (in {daysUntilReset} days)
+                  Resets in {daysUntilReset} days (End of Week)
                 </p>
               </div>
               <div className="text-right">

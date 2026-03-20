@@ -236,7 +236,7 @@ const AIAssistant = () => {
                 // Welcome message
                 setMessages([{
                     role: "assistant",
-                    content: `Hey ${userName}! 👋 I'm **Adonis**. I have full access to your habits, stats, achievements and progress.\n\nI can:\n- 📊 Analyze your habit patterns\n- 🎯 Recommend what to focus on\n- 💡 Answer any questions about the app\nWhat would you like to explore today?`,
+                    content: `Hey ${userName}! 👋 I'm **Adonis**.\nI can:\n- 📊 Analyze your habit patterns\n- 🎯 Recommend what to focus on\n- 💡 Answer any questions about the app\nWhat would you like to explore today?`,
                     timestamp: new Date(),
                 }]);
             }
@@ -355,7 +355,7 @@ const AIAssistant = () => {
                         </motion.span>
                     ) : (
                         <motion.span key="bot" initial={{ rotate: 90, opacity: 0 }} animate={{ rotate: 0, opacity: 1 }} exit={{ rotate: -90, opacity: 0 }} transition={{ duration: 0.15 }}>
-                            <Sparkles className="w-6 h-6" />
+                            <img src="/adonis.png" alt="Adonis" className="w-full h-full object-cover rounded-full" />
                         </motion.span>
                     )}
                 </AnimatePresence>
@@ -369,12 +369,12 @@ const AIAssistant = () => {
                         animate={{ opacity: 1, scale: 1, y: 0 }}
                         exit={{ opacity: 0, scale: 0.92, y: 20 }}
                         transition={{ type: "spring", stiffness: 300, damping: 28 }}
-                        className="fixed bottom-36 md:bottom-24 right-3 md:right-6 z-50 w-[min(420px,calc(100vw-24px))] h-[min(600px,calc(100vh-180px))] md:h-[min(600px,calc(100vh-120px))] rounded-2xl border border-border/60 bg-[hsl(var(--card))] shadow-2xl shadow-black/50 flex flex-col overflow-hidden"
+                        className="fixed bottom-32 md:bottom-20 right-3 md:right-6 z-[130] w-[min(380px,calc(100vw-24px))] h-[min(520px,calc(100vh-150px))] md:h-[520px] rounded-2xl border border-border/60 bg-[hsl(var(--card))] shadow-2xl shadow-black/50 flex flex-col overflow-hidden"
                     >
                         {/* Header */}
                         <div className="flex items-center gap-3 px-4 py-3 border-b border-border/40 bg-gradient-to-r from-primary/20 to-transparent flex-shrink-0">
-                            <div className="w-9 h-9 rounded-xl gradient-primary flex items-center justify-center shadow-lg shadow-primary/30">
-                                <Sparkles className="w-4 h-4 text-white" />
+                            <div className="w-9 h-9 rounded-xl bg-white flex items-center justify-center shadow-lg shadow-primary/30 overflow-hidden border border-border/50">
+                                <img src="/adonis.png" alt="Adonis" className="w-full h-full object-cover" />
                             </div>
                             <div className="flex-1 min-w-0">
                                 <p className="font-bold text-sm">Adonis</p>
@@ -411,8 +411,8 @@ const AIAssistant = () => {
                                     className={`flex gap-2.5 ${msg.role === "user" ? "justify-end" : "justify-start"}`}
                                 >
                                     {msg.role === "assistant" && (
-                                        <div className="w-7 h-7 rounded-lg gradient-primary flex items-center justify-center flex-shrink-0 mt-0.5">
-                                            <Bot className="w-3.5 h-3.5 text-white" />
+                                        <div className="w-7 h-7 rounded-lg bg-white flex items-center justify-center flex-shrink-0 mt-0.5 overflow-hidden border border-border/50">
+                                            <img src="/adonis.png" alt="Adonis" className="w-full h-full object-cover" />
                                         </div>
                                     )}
                                     <div className={`max-w-[85%] rounded-2xl px-3.5 py-2.5 text-sm leading-relaxed ${msg.role === "user"
@@ -442,8 +442,8 @@ const AIAssistant = () => {
                             {/* Loading indicator */}
                             {loading && (
                                 <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="flex gap-2.5 justify-start">
-                                    <div className="w-7 h-7 rounded-lg gradient-primary flex items-center justify-center flex-shrink-0">
-                                        <Bot className="w-3.5 h-3.5 text-white" />
+                                    <div className="w-7 h-7 rounded-lg bg-white flex items-center justify-center flex-shrink-0 overflow-hidden border border-border/50">
+                                        <img src="/adonis.png" alt="Adonis" className="w-full h-full object-cover" />
                                     </div>
                                     <div className="bg-secondary/60 border border-border/30 rounded-2xl rounded-bl-sm px-4 py-3 flex items-center gap-1.5">
                                         {[0, 1, 2].map(i => (

@@ -9,6 +9,7 @@ import { Separator } from "@/components/ui/separator";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useAuth } from "@/components/AuthProvider";
 import { useState, useMemo } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { motion, AnimatePresence } from "framer-motion";
@@ -33,6 +34,7 @@ const personalityTraits = [
 
 const ProfilePage = () => {
   const { user } = useAuth();
+  const queryClient = useQueryClient();
   const { data: stats } = useUserStats();
   const { data: levelInfo } = useLevelInfo();
   const { data: profileData } = useProfile();
@@ -158,6 +160,7 @@ const ProfilePage = () => {
       toast.error("Failed to update profile");
     } else {
       toast.success("Profile updated!");
+      queryClient.invalidateQueries({ queryKey: ["profile", user?.id] });
       setIsEditing(false);
     }
   };

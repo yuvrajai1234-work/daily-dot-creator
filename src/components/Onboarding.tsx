@@ -14,7 +14,7 @@ import { useProfile } from "@/hooks/useProfile";
 import { useLevelInfo } from "@/hooks/useXP";
 
 /* ── Spotlight — direct DOM update via RAF (no React state, no batching lag) ── */
-const Spotlight = ({ selector, padding = 12 }: { selector: string | null; padding?: number }) => {
+const Spotlight = ({ selector, padding = 12, round = false }: { selector: string | null; padding?: number; round?: boolean }) => {
   if (!selector) return null;
   const ref = useRef<HTMLDivElement>(null);
   const rafRef = useRef<number>();
@@ -46,13 +46,13 @@ const Spotlight = ({ selector, padding = 12 }: { selector: string | null; paddin
   return (
     <div
       ref={ref}
-      className="fixed pointer-events-none z-[100]"
-      style={{ borderRadius: 14, left: "50%", top: "50%", width: 0, height: 0,
+      className={`fixed pointer-events-none z-[100] transition-all duration-300`}
+      style={{ borderRadius: round ? "9999px" : 14, left: "50%", top: "50%", width: 0, height: 0,
                boxShadow: "0 0 0 9999px rgba(0,0,0,0.65)" }}
     >
       {selector && (
-        <div className="absolute inset-[-4px] rounded-[18px] border-2 border-violet-400
-                        shadow-[0_0_28px_8px_rgba(139,92,246,0.55)] animate-pulse" />
+        <div className={`absolute inset-[-4px] ${round ? "rounded-full" : "rounded-[18px]"} border-2 border-violet-400
+                        shadow-[0_0_28px_8px_rgba(139,92,246,0.55)] animate-pulse`} />
       )}
     </div>
   );
@@ -73,8 +73,8 @@ const AdonisBubble = ({ text, delay = 0 }: { text: string; delay?: number }) => 
   return (
     <div className="flex items-start gap-3">
       <motion.div animate={{ scale: [1, 1.04, 1] }} transition={{ duration: 3, repeat: Infinity }}
-        className="w-9 h-9 flex-shrink-0 rounded-full bg-gradient-to-br from-violet-500 via-purple-600 to-indigo-600 flex items-center justify-center shadow-lg border-2 border-purple-400/40">
-        <span className="text-white font-black text-xs">A</span>
+        className="w-9 h-9 flex-shrink-0 rounded-full bg-white flex items-center justify-center shadow-lg border border-border/50 overflow-hidden">
+        <img src="/adonis.png" alt="Adonis" className="w-full h-full object-cover" />
       </motion.div>
       <div className="bg-secondary/60 border border-border/50 rounded-2xl rounded-tl-sm px-4 py-3 shadow max-w-[calc(100%-48px)]">
         <span className="block text-[10px] font-bold text-violet-400 mb-1 uppercase tracking-widest">Adonis</span>
@@ -160,8 +160,8 @@ const AdonisPanel = ({
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
               <motion.div animate={{ scale: [1, 1.05, 1] }} transition={{ duration: 2.5, repeat: Infinity }}
-                className="w-8 h-8 rounded-full bg-gradient-to-br from-violet-500 to-indigo-600 flex items-center justify-center shadow-md shadow-purple-500/40">
-                <span className="text-white font-black text-xs">A</span>
+                className="w-8 h-8 rounded-full bg-white flex items-center justify-center shadow-md shadow-purple-500/40 overflow-hidden border border-border/50">
+                <img src="/adonis.png" alt="Adonis" className="w-full h-full object-cover" />
               </motion.div>
               <div>
                 <p className="text-[10px] font-bold text-violet-400 uppercase tracking-widest">Adonis · {title}</p>
@@ -242,26 +242,26 @@ const INFO_SLIDES = [
   {
     icon: <Coins className="w-10 h-10 text-white" />,
     from: "#d97706", to: "#dc2626",
-    title: "Earn Coins (Part 1) 🪙",
+    title: "Earn Coins (Part 1)",
     sub: "Consistency is Multiplied",
-    body: "Every habit log earns you A-Coins and B-Coins. Streak multipliers scale rewards over the 4-week cycle. Max 28 points per habit per cycle week.",
+    body: "Every habit log earns you B-Coins and XP. Streak multipliers scale rewards over the 4-week cycle. Max 28 points per habit per cycle week.",
     bullets: ["Week 1: 1× multiplier", "Week 2: 1.5× multiplier", "Week 3: 2× multiplier", "Week 4: 3× — Mastery tier!"],
   },
   {
     icon: <RotateCcw className="w-10 h-10 text-white" />,
     from: "#059669", to: "#0d9488",
     title: "B Coins Reset Weekly 🔄",
-    sub: "Spend Smart — They Reset Mondays",
-    body: "B Coins are your weekly currency. They reset every Monday so you must use them within the week. Watch ads for coins but XP only applies to the first 5 ads per day.",
-    bullets: ["🔄 B Coins reset every Monday", "📺 Watch ads: +10 B Coins each", "⚡ XP only from first 5 ads/day", "📺 After 5 ads: coins only, no XP"],
+    sub: "Spend Smart — They Reset Every 7 Days",
+    body: "B Coins are your weekly currency. They reset every 7 days based on your personal cycle start date, so you must use them within the week before they expire.",
+    bullets: ["🔄 B Coins reset every cycle week", "📺 Watch ads: +10 B Coins each", "⚡ XP only from first 5 ads/day", "📺 After 5 ads: coins only, no XP"],
   },
   {
     icon: <Archive className="w-10 h-10 text-white" />,
     from: "#7c3aed", to: "#9333ea",
     title: "Archive vs Delete 📦",
     sub: "Know the Difference!",
-    body: "You can archive a habit (costs 50 B Coins, history preserved) or delete it (free, but permanent — all data gone forever). Choose carefully!",
-    bullets: ["📦 Archive: 50 B Coins, history saved", "🗑️ Delete: free, permanent, no recovery", "⋯ Access both from habit card menu", "Archiving protects your streak history"],
+    body: "Archiving (costs 50 B Coins) pauses the habit safely—removing it from your dashboard without penalizing your daily score or breaking its streak. Deleting (free) is permanent and securely wipes all history forever.",
+    bullets: ["📦 Archive: 50 B Coins, streak is protected", "🗑️ Delete: Free, but permanent data wipe", "⋯ Archive via the Habit Card menu", "📈 Delete ONLY via your Analytics page"],
   },
   {
     icon: <BookOpen className="w-10 h-10 text-white" />,
@@ -602,8 +602,8 @@ export const Onboarding = () => {
           <div className="flex flex-col items-center gap-6 p-6 text-center w-full max-w-sm">
             <motion.div initial={{ scale: 0, rotate: -180 }} animate={{ scale: 1, rotate: 0 }}
               transition={{ type: "spring", stiffness: 200, damping: 18, delay: 0.3 }}
-              className="w-20 h-20 md:w-28 md:h-28 rounded-full bg-gradient-to-br from-violet-500 via-purple-600 to-indigo-600 flex items-center justify-center shadow-2xl shadow-purple-500/60 border-4 border-purple-400/40 flex-shrink-0">
-              <span className="text-4xl md:text-5xl font-black text-white">A</span>
+              className="w-20 h-20 md:w-28 md:h-28 rounded-full bg-white flex items-center justify-center shadow-2xl shadow-purple-500/60 border-4 border-white overflow-hidden flex-shrink-0">
+              <img src="/adonis.png" alt="Adonis" className="w-full h-full object-cover" />
             </motion.div>
 
             <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.9 }} className="space-y-2">
@@ -632,8 +632,8 @@ export const Onboarding = () => {
       )}
 
       {phase === "tour" && (() => {
-        const meta = profileData || {};
-        const basicInfoFilled = !!(meta.nickname && meta.designation && meta.bio && meta.location);
+        const meta: any = profileData || {};
+        const basicInfoFilled = !!(meta.full_name && meta.designation && meta.bio && meta.location);
         const detailsFilled = !!((meta.age || meta.weight || meta.height) && meta.gender && meta.archetype && (meta.personality_traits as string[])?.length > 0);
         const allProfileFilled = basicInfoFilled && detailsFilled;
         const isProfileFillStep = tourStep === 5;
@@ -645,14 +645,14 @@ export const Onboarding = () => {
           ? profileSaved ? null : saveBtnExists ? "[data-onboarding='profile-save-btn']" : cur?.selector ?? null
           : cur?.selector ?? null;
 
-        const isDisabled = isProfileFillStep && !profileSaved && !allProfileFilled;
+        const isDisabled = isProfileFillStep && profileSaved && !allProfileFilled;
         const disabledMsg = isDisabled ? "Please fill in all profile fields before continuing!" : undefined;
         const hintText = isProfileFillStep && profileSaved ? "Looking good! Click \"All done!\" 🎉" : isProfileFillStep && saveBtnExists ? "Now hit Save ☝️" : cur?.hint;
         const showMinimized = isIntroMinimized && !profileSaved;
 
         return (
           <motion.div key={`tour-${tourStep}`} initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
-            <Spotlight selector={spotlightSel} padding={isProfileFillStep ? 12 : 14} />
+
             {showMinimized ? (
               <motion.button
                 initial={{ opacity: 0, scale: 0.8 }} animate={{ opacity: 1, scale: 1 }}
@@ -679,7 +679,7 @@ export const Onboarding = () => {
         <motion.div key="goodbye" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
           className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-background/90 backdrop-blur-md">
           <style>{`#ai-assistant-button { z-index: 101 !important; transition: z-index 0.3s ease; }`}</style>
-          <Spotlight selector="#ai-assistant-button" padding={16} />
+
           <motion.div initial={{ scale: 0.88, y: 20 }} animate={{ scale: 1, y: 0 }}
             transition={{ type: "spring", stiffness: 260, damping: 26 }}
             className="w-[calc(100vw-24px)] max-w-sm bg-card border-2 border-violet-400 shadow-[0_0_40px_rgba(139,92,246,0.4)] rounded-3xl overflow-hidden flex flex-col max-h-[90vh] relative z-[101] animate-pulse-subtle">
@@ -687,8 +687,8 @@ export const Onboarding = () => {
             <div className="p-6 flex flex-col overflow-hidden">
               <div className="flex flex-col items-center gap-3 pt-1 mb-4 flex-shrink-0">
                 <motion.div animate={{ scale: [1, 1.07, 1] }} transition={{ duration: 2.5, repeat: Infinity }}
-                  className="w-20 h-20 rounded-full bg-gradient-to-br from-violet-500 via-purple-600 to-indigo-600 flex items-center justify-center shadow-2xl shadow-purple-500/40 border-4 border-purple-400/30">
-                  <span className="text-3xl font-black text-white">A</span>
+                  className="w-20 h-20 rounded-full bg-white flex items-center justify-center shadow-2xl shadow-purple-500/40 border-4 border-white overflow-hidden flex-shrink-0">
+                  <img src="/adonis.png" alt="Adonis" className="w-full h-full object-cover" />
                 </motion.div>
                 <div className="text-center">
                   <p className="font-bold text-lg">Adonis</p>
