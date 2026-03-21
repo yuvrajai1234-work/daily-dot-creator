@@ -187,11 +187,12 @@ const AdonisPanel = ({
   return (
     <motion.div
       ref={ref}
+      data-onboarding-control="true"
       key={adonisText.slice(0, 20)}
       initial={{ opacity: 0, scale: 0.95 }}
       animate={{ opacity: 1, scale: 1 }}
       exit={{ opacity: 0 }}
-      className="fixed z-[101] w-[calc(100vw-24px)] max-w-sm"
+      className="fixed z-[101] w-[calc(100vw-24px)] max-w-sm pointer-events-auto"
     >
       <div className="bg-card border border-border/60 rounded-3xl shadow-2xl overflow-hidden">
         <div className="h-1 w-full bg-gradient-to-r from-violet-500 via-purple-500 to-indigo-500 flex-shrink-0" />
@@ -338,7 +339,7 @@ const TOUR: TourStep[] = [
     page: "/dashboard", selector: null,
     title: "Choose a Habit",
     adonis: "Now pick a habit from the presets — I'd suggest something simple like 🏃 Morning Run or 💧 Drink Water. Select it and hit Create Habit. I'll celebrate the moment you do! 🎉",
-    cta: "Done — I made one! 🎉", autoOnHabits: true,
+    cta: "Let's do it 🚀", autoOnHabits: true,
   },
   {
     page: "/dashboard", selector: "[data-onboarding='habits-grid'] > :first-child",
@@ -359,7 +360,7 @@ const TOUR: TourStep[] = [
     cta: "Let's fill it in ✏️",
   },
   {
-    page: "/profile", selector: "[data-onboarding='profile-left-col']",
+    page: "/profile", selector: "[data-onboarding='profile-edit-btn']",
     title: "Fill Your Profile & Details",
     adonis: "Click Edit ☝️ then fill in BOTH cards: the Profile card (Name, Designation, Bio, Location) AND the Details card below it (Age, Gender, Weight, Height, Archetype). Hit Save when done — all fields are required!",
     cta: "All done! ✅", hint: "Fill Profile card + Details card below → then hit Save",
@@ -505,6 +506,19 @@ export const Onboarding = () => {
     }
     return () => clearInterval(iv);
   }, [tourStep, phase]);
+
+  // Observer to auto-advance step 5 when the save button disappears
+  useEffect(() => {
+    if (phase === "tour" && tourStep === 5) {
+      const saveBtnExists = !!document.querySelector("[data-onboarding='profile-save-btn']");
+      if (saveBtnExists) {
+        saveBtnWasShownRef.current = true;
+      } else if (saveBtnWasShownRef.current) {
+        saveBtnWasShownRef.current = false;
+        advanceTour(); // Auto advance when saved
+      }
+    }
+  }, [domTick, phase, tourStep]);
 
   const complete = async () => {
     if (!user) return;
@@ -680,7 +694,7 @@ export const Onboarding = () => {
         const profileSaved = saveBtnWasShownRef.current && !saveBtnExists;
 
         const spotlightSel = isProfileFillStep
-          ? profileSaved ? null : saveBtnExists ? "[data-onboarding='profile-save-btn']" : cur?.selector ?? null
+          ? profileSaved ? null : saveBtnExists ? "[data-onboarding='profile-left-col']" : cur?.selector ?? null
           : cur?.selector ?? null;
 
         const isDisabled = isProfileFillStep && profileSaved && !allProfileFilled;
@@ -695,9 +709,10 @@ export const Onboarding = () => {
 
             {showMinimized ? (
               <motion.button
+                data-onboarding-control="true"
                 initial={{ opacity: 0, scale: 0.8 }} animate={{ opacity: 1, scale: 1 }}
                 onClick={() => setIsIntroMinimized(false)}
-                className="fixed bottom-6 right-6 z-[120] flex items-center gap-2 bg-gradient-to-br from-violet-500 to-indigo-600 text-white rounded-full px-5 py-3 shadow-2xl border-2 border-white/20 hover:scale-105 transition-all">
+                className="fixed bottom-6 right-6 z-[120] flex items-center gap-2 bg-gradient-to-br from-violet-500 to-indigo-600 text-white rounded-full px-5 py-3 shadow-2xl border-2 border-white/20 hover:scale-105 transition-all pointer-events-auto">
                 <Sparkles className="w-5 h-5" />
                 <span className="font-bold text-sm">Show Guide</span>
               </motion.button>
@@ -706,7 +721,11 @@ export const Onboarding = () => {
                 title={cur?.title ?? ""} adonisText={cur?.adonis ?? ""}
                 cta={isProfileFillStep && !profileSaved ? "Let's Edit ✏️" : (cur?.cta ?? "Next →")}
                 ctaVariant={cur?.ctaVariant ?? "primary"} selector={spotlightSel}
-                onCta={() => { if (isProfileFillStep && !profileSaved) setIsIntroMinimized(true); else advanceTour(); }}
+                onCta={() => { 
+                  if (tourStep === 1) setIsIntroMinimized(true);
+                  else if (isProfileFillStep && !profileSaved) setIsIntroMinimized(true); 
+                  else advanceTour(); 
+                }}
                 onSkip={() => setPhase("goodbye")} stepNum={tourStep + 1} totalSteps={TOUR.length}
                 hint={hintText} disabled={isDisabled} disabledMsg={disabledMsg}
               />

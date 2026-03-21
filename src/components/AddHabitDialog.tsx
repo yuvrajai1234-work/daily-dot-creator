@@ -137,7 +137,25 @@ const AddHabitDialog = () => {
           <Plus className="w-4 h-4 mr-1" /> Add New Habit
         </Button>
       </DialogTrigger>
-      <DialogContent className="glass border-primary/20 max-w-lg max-h-[85vh]">
+      <DialogContent 
+        className="glass border-primary/20 max-w-lg max-h-[85vh]"
+        onPointerDownOutside={(e) => {
+          let node = e.target as Node;
+          if (node.nodeType === 3) node = node.parentNode!;
+          const el = node as Element;
+          if (el?.closest?.('[data-onboarding-control="true"]')) {
+            e.preventDefault();
+          }
+        }}
+        onInteractOutside={(e) => {
+          let node = e.target as Node;
+          if (node.nodeType === 3) node = node.parentNode!;
+          const el = node as Element;
+          if (el?.closest?.('[data-onboarding-control="true"]')) {
+            e.preventDefault();
+          }
+        }}
+      >
         <DialogHeader>
           <DialogTitle>Create New Habit</DialogTitle>
         </DialogHeader>
