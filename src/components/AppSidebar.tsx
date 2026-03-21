@@ -1,7 +1,6 @@
 import { NavLink, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { useAuth } from "@/components/AuthProvider";
 import { useTheme } from "@/contexts/ThemeContext";
 import { useState } from "react";
@@ -148,39 +147,31 @@ const AppSidebar = ({ isCollapsed, setIsCollapsed, isMobileOpen, setIsMobileOpen
       {/* ── Nav ── */}
       <nav className="flex-1 overflow-y-auto px-2 py-3 space-y-0.5">
         {navLinks.map((link) => (
-          <Tooltip key={link.to} delayDuration={0}>
-            <TooltipTrigger asChild>
-              <NavLink
-                to={link.to}
-                data-onboarding={`nav-${link.to.replace('/', '')}`}
-                onMouseEnter={() => setHoveredLink(link.to)}
-                onMouseLeave={() => setHoveredLink(null)}
-                onClick={handleLinkClick}
+          <NavLink
+            key={link.to}
+            to={link.to}
+            data-onboarding={`nav-${link.to.replace('/', '')}`}
+            onMouseEnter={() => setHoveredLink(link.to)}
+            onMouseLeave={() => setHoveredLink(null)}
+            onClick={handleLinkClick}
+          >
+            {({ isActive }) => (
+              <span
+                style={{
+                  background: isActive
+                    ? "hsl(var(--primary))"
+                    : hoveredLink === link.to
+                      ? hoverBg
+                      : "transparent",
+                  color: isActive ? "#ffffff" : textPrimary,
+                }}
+                className="flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-all duration-150 cursor-pointer"
               >
-                {({ isActive }) => (
-                  <span
-                    style={{
-                      background: isActive
-                        ? "hsl(var(--primary))"
-                        : hoveredLink === link.to
-                          ? hoverBg
-                          : "transparent",
-                      color: isActive ? "#ffffff" : textPrimary,
-                    }}
-                    className="flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-all duration-150 cursor-pointer"
-                  >
-                    <link.icon className="h-5 w-5 flex-shrink-0" />
-                    {!isCollapsed && <span>{link.label}</span>}
-                  </span>
-                )}
-              </NavLink>
-            </TooltipTrigger>
-            {isCollapsed && (
-              <TooltipContent side="right" className="bg-popover border-border">
-                {link.label}
-              </TooltipContent>
+                <link.icon className="h-5 w-5 flex-shrink-0" />
+                {!isCollapsed && <span>{link.label}</span>}
+              </span>
             )}
-          </Tooltip>
+          </NavLink>
         ))}
       </nav>
 
