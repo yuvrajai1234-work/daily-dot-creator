@@ -283,7 +283,7 @@ const SettingsPage = () => {
   const isSoundOwned = (id: SoundPackId) => !SOUND_PACKS[id].rewardId || purchased.has(SOUND_PACKS[id].rewardId!);
 
   return (
-    <div className="space-y-5 max-w-3xl pb-12">
+    <div className="space-y-5 pb-12">
 
       {/* ── Page Header ── */}
       <div className="flex items-start justify-between flex-wrap gap-3">
@@ -360,7 +360,7 @@ const SettingsPage = () => {
           <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3">
             Dashboard Theme <span className="text-primary ml-1 font-normal normal-case">— click to apply instantly</span>
           </p>
-          <div className="grid grid-cols-3 sm:grid-cols-5 gap-2">
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 2xl:grid-cols-8 gap-3">
             {(Object.keys(THEMES) as ThemeId[]).map((id) => (
               <ThemeCard
                 key={id}
@@ -384,10 +384,9 @@ const SettingsPage = () => {
 
         <Separator className="bg-border/30 my-1" />
 
-        {/* Avatar Frames */}
         <div className="py-3">
           <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3">Avatar Frame</p>
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 2xl:grid-cols-8 gap-3">
             {(Object.keys(AVATAR_FRAMES) as AvatarFrameId[]).map((id) => (
               <FrameCard
                 key={id}

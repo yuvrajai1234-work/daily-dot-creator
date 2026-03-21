@@ -288,7 +288,7 @@ const Dashboard = () => {
                 items={localHabits.map((h) => h.id)}
                 strategy={rectSortingStrategy}
               >
-                <div data-onboarding="habits-grid" className="grid sm:grid-cols-2 gap-4">
+                <div data-onboarding="habits-grid" className="grid sm:grid-cols-2 2xl:grid-cols-3 gap-4">
                   {localHabits.map((habit) => {
                     const todayCompletion = todayCompletions.find((c) => c.habit_id === habit.id);
                     return (

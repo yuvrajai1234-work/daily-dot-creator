@@ -71,7 +71,7 @@ const MainLayout = () => {
           className={`flex-1 w-full
             ${isCommunity
               ? 'h-full overflow-hidden p-0'
-              : 'overflow-y-auto p-3 md:p-6 max-w-7xl mx-auto'
+              : 'overflow-y-auto p-3 md:p-6'
             }
           `}
         >
