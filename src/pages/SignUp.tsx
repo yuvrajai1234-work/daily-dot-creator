@@ -30,7 +30,7 @@ const SignUp = () => {
     e.preventDefault();
     setLoading(true);
     try {
-      const { error } = await supabase.auth.signUp({
+      const { data, error } = await supabase.auth.signUp({
         email,
         password,
         options: {
@@ -39,9 +39,18 @@ const SignUp = () => {
         },
       });
       if (error) throw error;
-      toast.success("Account created! Please check your email to verify your account.");
+      
+      if (data?.user?.identities && data.user.identities.length === 0) {
+        toast.error("Account already created, Please sign in.");
+      } else {
+        toast.success("Account created! Please check your email to verify your account.");
+      }
     } catch (error: any) {
-      toast.error(error.message || "Failed to create account");
+      if (error.message?.toLowerCase().includes("user already registered") || error.message?.toLowerCase().includes("already registered")) {
+        toast.error("Account already created, Please sign in.");
+      } else {
+        toast.error(error.message || "Failed to create account");
+      }
     } finally {
       setLoading(false);
     }
