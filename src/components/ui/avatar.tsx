@@ -18,9 +18,24 @@ Avatar.displayName = AvatarPrimitive.Root.displayName;
 const AvatarImage = React.forwardRef<
   React.ElementRef<typeof AvatarPrimitive.Image>,
   React.ComponentPropsWithoutRef<typeof AvatarPrimitive.Image>
->(({ className, ...props }, ref) => (
-  <AvatarPrimitive.Image ref={ref} className={cn("aspect-square h-full w-full", className)} {...props} />
-));
+>(({ className, src, ...props }, ref) => {
+  const isEmoji = src && !src.startsWith("http") && !src.startsWith("data:") && !src.startsWith("/");
+
+  if (isEmoji) {
+    return (
+      <div 
+        className={cn("absolute inset-0 z-50 flex h-full w-full items-center justify-center bg-primary/20", className)} 
+        style={{ fontSize: "1.2em" }}
+      >
+        {src}
+      </div>
+    );
+  }
+
+  return (
+    <AvatarPrimitive.Image ref={ref} src={src} className={cn("aspect-square h-full w-full object-cover", className)} {...props} />
+  );
+});
 AvatarImage.displayName = AvatarPrimitive.Image.displayName;
 
 const AvatarFallback = React.forwardRef<

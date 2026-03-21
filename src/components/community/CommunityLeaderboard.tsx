@@ -5,6 +5,7 @@ import { Community } from "@/hooks/useCommunities";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Trophy, Zap, Users, Loader2, User } from "lucide-react";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useLevelLeaderboard } from "@/hooks/useXP";
@@ -195,13 +196,12 @@ export const CommunityLeaderboard = ({ communities }: CommunityLeaderboardProps)
                                         </TableCell>
                                         <TableCell>
                                             <div className="flex items-center gap-2">
-                                                <div className="w-7 h-7 rounded-full bg-primary/20 flex items-center justify-center overflow-hidden">
-                                                    {entry.avatar_url ? (
-                                                        <img src={entry.avatar_url} alt={entry.full_name} className="w-full h-full object-cover" />
-                                                    ) : (
+                                                <Avatar className="w-7 h-7 ring-2 ring-primary/20">
+                                                    <AvatarImage src={entry.avatar_url} />
+                                                    <AvatarFallback className="bg-primary/20">
                                                         <User className="w-4 h-4 text-primary" />
-                                                    )}
-                                                </div>
+                                                    </AvatarFallback>
+                                                </Avatar>
                                                 <p className="font-medium truncate max-w-[140px]">{entry.full_name || "Unknown"}</p>
                                             </div>
                                         </TableCell>
