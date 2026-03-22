@@ -10,9 +10,14 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Trash2, Archive } from "lucide-react";
+import { Trash2, Archive, Edit2, Settings2 } from "lucide-react";
 import { getAppDate } from "@/lib/dateUtils";
 import { ImprovementDialog } from "./ImprovementDialog";
+import { EditHabitDialog } from "./EditHabitDialog";
+import { LevelCustomizationDialog } from "./LevelCustomizationDialog";
+import { useState } from "react";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { ChevronDown, ChevronUp } from "lucide-react";
 
 interface HabitCardProps {
   habit: Habit;
@@ -31,6 +36,9 @@ const HabitCard = ({
   cycleWeekDates, prevCycleWeekDates, daysElapsedInWeek,
   onLogEffort, onArchive, onImprovementCalculated
 }: HabitCardProps) => {
+  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
+  const [isLevelDialogOpen, setIsLevelDialogOpen] = useState(false);
+  const [showLevels, setShowLevels] = useState(false);
 
   // Mini chart: current cycle week (7 fixed dates passed from parent)
   // Future dates in the week show as 0 so the whole week slot is visible
@@ -122,6 +130,20 @@ const HabitCard = ({
                 <DropdownMenuContent align="end" className="glass border-border/50">
                   <DropdownMenuItem
                     className="cursor-pointer"
+                    onClick={() => setIsEditDialogOpen(true)}
+                  >
+                    <Edit2 className="w-4 h-4 mr-2" />
+                    Edit Habit
+                  </DropdownMenuItem>
+                  <DropdownMenuItem
+                    className="cursor-pointer"
+                    onClick={() => setIsLevelDialogOpen(true)}
+                  >
+                    <Settings2 className="w-4 h-4 mr-2" />
+                    Customize Levels
+                  </DropdownMenuItem>
+                  <DropdownMenuItem
+                    className="cursor-pointer"
                     onClick={() => onArchive(habit.id)}
                   >
                     <Archive className="w-4 h-4 mr-2" />
@@ -129,6 +151,17 @@ const HabitCard = ({
                   </DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
+
+              <EditHabitDialog 
+                habit={habit} 
+                open={isEditDialogOpen} 
+                onOpenChange={setIsEditDialogOpen} 
+              />
+              <LevelCustomizationDialog 
+                habit={habit} 
+                open={isLevelDialogOpen} 
+                onOpenChange={setIsLevelDialogOpen} 
+              />
             </div>
           </div>
 
@@ -164,21 +197,65 @@ const HabitCard = ({
               <span>{improvement >= 0 ? "+" : ""}{improvement}%</span>
             </div>
           </div>
+          {/* Effort Buttons & Levels */}
+          <div className="relative z-10 pointer-events-auto">
+            <TooltipProvider>
+              <div className="flex gap-2">
+                {[1, 2, 3, 4].map((level) => {
+                  const desc = (habit as any)[`level${level}_description`];
+                  return (
+                    <Tooltip key={level}>
+                      <TooltipTrigger asChild>
+                        <button
+                          onClick={() => onLogEffort(habit.id, level)}
+                          className={`flex-1 h-9 rounded-full text-sm font-bold transition-smooth ${currentEffort === level
+                            ? "bg-white text-black shadow-lg"
+                            : "bg-black/20 text-white hover:bg-black/30 bg-opacity-30 backdrop-blur-sm hover:backdrop-blur-md"
+                            }`}
+                        >
+                          {level}
+                        </button>
+                      </TooltipTrigger>
+                      {desc && (
+                        <TooltipContent className="glass border-border/50 bg-black/80 text-white text-[10px] max-w-[150px] text-center">
+                          {desc}
+                        </TooltipContent>
+                      )}
+                    </Tooltip>
+                  );
+                })}
+              </div>
+            </TooltipProvider>
 
-          {/* Effort Buttons */}
-          <div className="flex gap-2 relative z-10 pointer-events-auto">
-            {[1, 2, 3, 4].map((level) => (
-              <button
-                key={level}
-                onClick={() => onLogEffort(habit.id, level)}
-                className={`flex-1 h-9 rounded-full text-sm font-bold transition-smooth ${currentEffort === level
-                  ? "bg-white text-black shadow-lg"
-                  : "bg-black/20 text-white hover:bg-black/30 bg-opacity-30 backdrop-blur-sm hover:backdrop-blur-md"
-                  }`}
+            <motion.div 
+              initial={false}
+              animate={{ height: showLevels ? "auto" : 0, opacity: showLevels ? 1 : 0 }}
+              className="overflow-hidden"
+            >
+              <div className="grid grid-cols-4 gap-2 mt-2 pt-1 border-t border-white/10">
+                {[1, 2, 3, 4].map((level) => {
+                  const desc = (habit as any)[`level${level}_description`];
+                  return (
+                    <div key={level} className="text-[9px] text-white/60 leading-tight text-center px-1 break-words">
+                      {desc || "—"}
+                    </div>
+                  );
+                })}
+              </div>
+            </motion.div>
+
+            <div className="flex justify-end mt-1.5">
+              <button 
+                onClick={() => setShowLevels(!showLevels)}
+                className="text-[10px] text-white/40 hover:text-white/80 transition-colors flex items-center gap-0.5 font-medium px-2 py-0.5 rounded-md hover:bg-white/5"
               >
-                {level}
+                {showLevels ? (
+                  <>See Less <ChevronUp className="w-3 h-3" /></>
+                ) : (
+                  <>See More <ChevronDown className="w-3 h-3" /></>
+                )}
               </button>
-            ))}
+            </div>
           </div>
         </CardContent>
       </Card>

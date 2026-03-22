@@ -16,6 +16,10 @@ export interface Habit {
   is_archived: boolean;
   created_at: string;
   updated_at: string;
+  level1_description?: string;
+  level2_description?: string;
+  level3_description?: string;
+  level4_description?: string;
 }
 
 export interface HabitCompletion {
@@ -207,6 +211,30 @@ export const useDeleteHabit = () => {
     },
     onError: (error: any) => {
       toast.error(error.message || "Failed to delete habit");
+    },
+  });
+};
+
+export const useUpdateHabit = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (habit: Partial<Habit> & { id: string }) => {
+      const { data, error } = await supabase
+        .from("habits")
+        .update(habit)
+        .eq("id", habit.id)
+        .select()
+        .single();
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["habits"] });
+      toast.success("Habit updated!");
+    },
+    onError: (error: any) => {
+      toast.error(error.message || "Failed to update habit");
     },
   });
 };
