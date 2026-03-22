@@ -37,12 +37,20 @@ const CalendarPage = () => {
     return completions.filter((c) => c.completion_date === dateStr);
   }, [completions, selectedDate]);
 
-  // Dates that have completions for calendar highlighting
+  // Dates that have completions for calendar highlighting (modal value)
   const completionDates = useMemo(() => {
-    const dateMap = new Map<string, number>();
+    const dateEfforts = new Map<string, number[]>();
     completions.forEach((c) => {
-      const current = dateMap.get(c.completion_date) || 0;
-      dateMap.set(c.completion_date, Math.max(current, c.effort_level));
+      const current = dateEfforts.get(c.completion_date) || [];
+      current.push(c.effort_level);
+      dateEfforts.set(c.completion_date, current);
+    });
+
+    const dateMap = new Map<string, number>();
+    dateEfforts.forEach((efforts, dateStr) => {
+      const sum = efforts.reduce((acc, curr) => acc + curr, 0);
+      const mean = sum / efforts.length;
+      dateMap.set(dateStr, Math.round(mean));
     });
     return dateMap;
   }, [completions]);
@@ -105,7 +113,7 @@ const CalendarPage = () => {
           <CardHeader>
             <CardTitle>Your Habit Calendar</CardTitle>
             <CardDescription>
-              Days are highlighted based on the highest intensity habit completed.
+              Days are highlighted based on your average habit intensity for the day.
             </CardDescription>
           </CardHeader>
           <CardContent className="flex flex-col md:flex-row gap-6">

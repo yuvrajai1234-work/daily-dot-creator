@@ -40,7 +40,7 @@ interface CommunityDetailViewProps {
 }
 
 export const CommunityDetailView = ({ community, onBack }: CommunityDetailViewProps) => {
-    const { user } = useAuth();
+    const { user, onlineUsers } = useAuth();
     const { data: members = [], isLoading: membersLoading } = useCommunityMembers(community.id);
     const { friends, sendRequest, isLoading: friendsLoading } = useFriendships();
     const { leaveCommunity } = useCommunities();
@@ -589,7 +589,7 @@ export const CommunityDetailView = ({ community, onBack }: CommunityDetailViewPr
                                                                         <AvatarImage src={member.avatarUrl} />
                                                                         <AvatarFallback>{member.username?.charAt(0).toUpperCase()}</AvatarFallback>
                                                                     </Avatar>
-                                                                    <div className={`absolute bottom-0 right-0 w-2.5 h-2.5 rounded-full border-2 border-card ${isMe ? "bg-green-500" : "bg-muted-foreground"
+                                                                    <div className={`absolute bottom-0 right-0 w-2.5 h-2.5 rounded-full border-2 border-card ${isMe || onlineUsers.includes(member.userId) ? "bg-green-500" : "bg-muted-foreground"
                                                                         }`}></div>
                                                                 </div>
                                                                 <div className="flex-1 min-w-0">

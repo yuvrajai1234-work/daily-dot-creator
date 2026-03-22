@@ -16,6 +16,7 @@ import {
 import { Check, X, UserPlus, Search, Loader2, UserCheck, Clock, MoreHorizontal, User, UserMinus, ShieldBan, Flag } from "lucide-react";
 import { FullUserProfileDialog } from "@/components/community/FullUserProfileDialog";
 import { toast } from "sonner";
+import { useAuth } from "@/components/AuthProvider";
 
 
 
@@ -91,6 +92,7 @@ const FriendContextMenu = ({
 // ── Main FriendList Component ─────────────────────────────────────────────────
 export const FriendList = () => {
     const { friends, sendRequest, acceptRequest, rejectRequest, isLoading } = useFriendships();
+    const { onlineUsers } = useAuth();
     const [searchQuery, setSearchQuery] = useState("");
     const [globalSearchQuery, setGlobalSearchQuery] = useState("");
 
@@ -164,7 +166,8 @@ export const FriendList = () => {
                                             <div className="flex-1 overflow-hidden min-w-0">
                                                 <p className="text-sm font-medium truncate">{friend.username}</p>
                                                 <p className="text-[10px] text-muted-foreground truncate flex items-center gap-1">
-                                                    <span className="w-1.5 h-1.5 rounded-full bg-success inline-block shrink-0"></span> Online
+                                                    <span className={`w-1.5 h-1.5 rounded-full inline-block shrink-0 ${onlineUsers.includes(friend.id) ? 'bg-success' : 'bg-muted'}`}></span> 
+                                                    {onlineUsers.includes(friend.id) ? 'Online' : 'Offline'}
                                                 </p>
                                             </div>
                                             {/* Context menu — visible on row hover */}

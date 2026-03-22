@@ -39,7 +39,7 @@ interface MemberProfileCardProps {
 }
 
 export const MemberProfileCard = ({ userId, communityId, role, onClose }: MemberProfileCardProps) => {
-    const { user: currentUser } = useAuth();
+    const { user: currentUser, onlineUsers } = useAuth();
     const { friends, sendRequest, acceptRequest, rejectRequest, isLoading: isFriendsLoading } = useFriendships();
     const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
     const { data: allAchievements = [] } = useAchievements();
@@ -119,6 +119,8 @@ export const MemberProfileCard = ({ userId, communityId, role, onClose }: Member
         sendRequest.mutate(userId);
     };
 
+    const isOnline = onlineUsers.includes(userId);
+
     return (
         <>
             <div className="w-80 bg-popover rounded-lg overflow-hidden shadow-xl border border-border">
@@ -164,8 +166,8 @@ export const MemberProfileCard = ({ userId, communityId, role, onClose }: Member
                                 frameId={(profile.avatar_frame as AvatarFrameId) || "none"}
                                 size="lg"
                             />
-                            {/* Online Status Indicator (Mock) */}
-                            <div className="absolute bottom-0 right-0 w-5 h-5 bg-green-500 border-4 border-popover rounded-full" title="Online"></div>
+                            {/* Online Status Indicator */}
+                            <div className={`absolute bottom-0 right-0 w-5 h-5 ${isOnline ? 'bg-green-500' : 'bg-gray-500'} border-4 border-popover rounded-full transition-colors duration-300`} title={isOnline ? "Online" : "Offline"}></div>
                         </div>
                     </div>
 

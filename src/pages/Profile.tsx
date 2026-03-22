@@ -397,9 +397,9 @@ const ProfilePage = () => {
               </CardHeader>
               <CardContent className="space-y-4">
                 {/* Age */}
-                <div className="flex items-center justify-between">
+                <div className="flex items-center justify-between p-3 rounded-xl bg-blue-500/5 border border-blue-500/10">
                   <div className="flex items-center gap-2">
-                    <Calendar className="w-4 h-4 text-muted-foreground" />
+                    <Calendar className="w-4 h-4 text-blue-400" />
                     <span className="font-medium text-sm">Age</span>
                   </div>
                   {isEditing ? (
@@ -416,9 +416,9 @@ const ProfilePage = () => {
                 </div>
 
                 {/* Gender */}
-                <div className="flex items-center justify-between">
+                <div className="flex items-center justify-between p-3 rounded-xl bg-pink-500/5 border border-pink-500/10">
                   <div className="flex items-center gap-2">
-                    <Users className="w-4 h-4 text-muted-foreground" />
+                    <Users className="w-4 h-4 text-pink-400" />
                     <span className="font-medium text-sm">Gender</span>
                   </div>
                   {isEditing ? (
@@ -438,9 +438,9 @@ const ProfilePage = () => {
                 </div>
 
                 {/* Weight */}
-                <div className="flex items-center justify-between">
+                <div className="flex items-center justify-between p-3 rounded-xl bg-emerald-500/5 border border-emerald-500/10">
                   <div className="flex items-center gap-2">
-                    <Weight className="w-4 h-4 text-muted-foreground" />
+                    <Weight className="w-4 h-4 text-emerald-400" />
                     <span className="font-medium text-sm">Weight (kg)</span>
                   </div>
                   {isEditing ? (
@@ -457,9 +457,9 @@ const ProfilePage = () => {
                 </div>
 
                 {/* Height */}
-                <div className="flex items-center justify-between">
+                <div className="flex items-center justify-between p-3 rounded-xl bg-amber-500/5 border border-amber-500/10">
                   <div className="flex items-center gap-2">
-                    <Ruler className="w-4 h-4 text-muted-foreground" />
+                    <Ruler className="w-4 h-4 text-amber-500" />
                     <span className="font-medium text-sm">Height (cm)</span>
                   </div>
                   {isEditing ? (
@@ -477,9 +477,9 @@ const ProfilePage = () => {
 
                 {/* BMI - Auto-calculated */}
                 {(bmi || (weight && height)) && (
-                  <div className="flex items-center justify-between">
+                  <div className="flex items-center justify-between p-3 rounded-xl bg-rose-500/5 border border-rose-500/10">
                     <div className="flex items-center gap-2">
-                      <Heart className="w-4 h-4 text-muted-foreground" />
+                      <Heart className="w-4 h-4 text-rose-500" />
                       <span className="font-medium text-sm">BMI</span>
                     </div>
                     <span className="text-sm text-primary font-medium">{bmi || "—"}</span>
@@ -487,9 +487,9 @@ const ProfilePage = () => {
                 )}
 
                 {/* Body Type */}
-                <div className="flex items-center justify-between">
+                <div className="flex items-center justify-between p-3 rounded-xl bg-indigo-500/5 border border-indigo-500/10">
                   <div className="flex items-center gap-2">
-                    <User className="w-4 h-4 text-muted-foreground" />
+                    <User className="w-4 h-4 text-indigo-400" />
                     <span className="font-medium text-sm">Body Type</span>
                   </div>
                   {isEditing ? (
@@ -509,9 +509,9 @@ const ProfilePage = () => {
                 </div>
 
                 {/* Status */}
-                <div className="flex items-center justify-between">
+                <div className="flex items-center justify-between p-3 rounded-xl bg-red-500/5 border border-red-500/10">
                   <div className="flex items-center gap-2">
-                    <Heart className="w-4 h-4 text-muted-foreground" />
+                    <Heart className="w-4 h-4 text-red-400" />
                     <span className="font-medium text-sm">Status</span>
                   </div>
                   {isEditing ? (
@@ -532,9 +532,9 @@ const ProfilePage = () => {
                 </div>
 
                 {/* Location */}
-                <div className="flex items-center justify-between">
+                <div className="flex items-center justify-between p-3 rounded-xl bg-teal-500/5 border border-teal-500/10">
                   <div className="flex items-center gap-2">
-                    <MapPin className="w-4 h-4 text-muted-foreground" />
+                    <MapPin className="w-4 h-4 text-teal-400" />
                     <span className="font-medium text-sm">Location</span>
                   </div>
                   {isEditing ? (
@@ -551,9 +551,9 @@ const ProfilePage = () => {
                 </div>
 
                 {/* Archetype */}
-                <div className="flex items-center justify-between">
+                <div className="flex items-center justify-between p-3 rounded-xl bg-violet-500/5 border border-violet-500/10">
                   <div className="flex items-center gap-2">
-                    <Crown className="w-4 h-4 text-muted-foreground" />
+                    <Crown className="w-4 h-4 text-violet-400" />
                     <span className="font-medium text-sm">Archetype</span>
                   </div>
                   {isEditing ? (

@@ -7,6 +7,7 @@ interface AuthContextType {
   session: Session | null;
   user: User | null;
   loading: boolean;
+  onlineUsers: string[];
   signOut: () => Promise<void>;
 }
 
@@ -14,6 +15,7 @@ const AuthContext = createContext<AuthContextType>({
   session: null,
   user: null,
   loading: true,
+  onlineUsers: [],
   signOut: async () => {},
 });
 
@@ -39,6 +41,39 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     return () => subscription.unsubscribe();
   }, []);
 
+  const [onlineUsers, setOnlineUsers] = useState<string[]>([]);
+  
+  useEffect(() => {
+    if (!session?.user?.id) {
+      setOnlineUsers([]);
+      return;
+    }
+
+    const channel = supabase.channel('global_presence', {
+      config: {
+        presence: {
+          key: session.user.id,
+        },
+      },
+    });
+
+    channel
+      .on('presence', { event: 'sync' }, () => {
+        const state = channel.presenceState();
+        setOnlineUsers(Object.keys(state));
+      })
+      .subscribe(async (status) => {
+        if (status === 'SUBSCRIBED') {
+          await channel.track({ online_at: new Date().toISOString() });
+        }
+      });
+
+    return () => {
+      supabase.removeChannel(channel);
+      setOnlineUsers([]);
+    };
+  }, [session?.user?.id]);
+
   const signOut = async () => {
     await supabase.auth.signOut();
     setSession(null);
@@ -50,6 +85,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         session,
         user: session?.user ?? null,
         loading,
+        onlineUsers,
         signOut,
       }}
     >

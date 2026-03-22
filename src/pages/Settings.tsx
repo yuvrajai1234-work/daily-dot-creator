@@ -128,9 +128,9 @@ const ThemeCard = ({
 
 // ─── Avatar Frame Card ─────────────────────────────────────────────────────────
 const FrameCard = ({
-  frameId, active, owned, userName, onSelect,
+  frameId, active, owned, userName, avatarUrl, onSelect,
 }: {
-  frameId: AvatarFrameId; active: boolean; owned: boolean; userName: string; onSelect: () => void;
+  frameId: AvatarFrameId; active: boolean; owned: boolean; userName: string; avatarUrl: string; onSelect: () => void;
 }) => {
   const frame = AVATAR_FRAMES[frameId];
   return (
@@ -148,7 +148,7 @@ const FrameCard = ({
     >
       {/* Avatar preview */}
       <AvatarWithFrame
-        avatarUrl=""
+        avatarUrl={avatarUrl}
         fallback={userName.slice(0, 1).toUpperCase()}
         frameId={frameId}
         size="md"
@@ -179,6 +179,7 @@ const SettingsPage = () => {
 
   const userName = (profile as any)?.full_name || user?.user_metadata?.full_name || user?.email?.split("@")[0] || "User";
   const userEmail = user?.email || "";
+  const avatarUrl = (profile as any)?.avatar_url || user?.user_metadata?.avatar_url || "";
 
   const handleSave = () => {
     setSaved(true);
@@ -306,7 +307,7 @@ const SettingsPage = () => {
           <CardContent className="p-4 sm:p-5 flex flex-col sm:flex-row items-center sm:items-start gap-4 sm:gap-6">
             <div className="flex-shrink-0">
               <AvatarWithFrame
-                avatarUrl=""
+                avatarUrl={avatarUrl}
                 fallback={userName.slice(0, 1).toUpperCase()}
                 frameId={settings.avatarFrame}
                 size="xl"
@@ -394,6 +395,7 @@ const SettingsPage = () => {
                 active={settings.avatarFrame === id}
                 owned={isFrameOwned(id)}
                 userName={userName}
+                avatarUrl={avatarUrl}
                 onSelect={async () => {
                   updateSetting("avatarFrame", id);
                   if (user) {

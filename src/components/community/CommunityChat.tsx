@@ -1,10 +1,10 @@
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useMemo } from "react";
 import { useCommunityMessages } from "@/hooks/useSocial";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { PlusCircle, Smile, Reply, Pin, X, Trash2, ChevronDown } from "lucide-react";
+import { PlusCircle, Smile, Reply, Pin, X, Trash2, ChevronDown, ChevronLeft, ChevronRight } from "lucide-react";
 import { format } from "date-fns";
 import { useAuth } from "@/components/AuthProvider";
 import { Loader2 } from "lucide-react";
@@ -12,6 +12,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { toast } from "sonner";
 import { MemberProfileCard } from "./MemberProfileCard";
 import { Textarea } from "@/components/ui/textarea";
+import { supabase } from "@/integrations/supabase/client";
 import {
     Dialog,
     DialogContent,
@@ -41,6 +42,7 @@ export const CommunityChat = ({ communityId, channelId, channelName = "general",
     const { user } = useAuth();
     const { data: messages = [], isLoading, sendMessage, pinMessage, addReaction, deleteMessage } = useCommunityMessages(channelId);
     const [newMessage, setNewMessage] = useState("");
+    const [attachmentUrl, setAttachmentUrl] = useState<string | null>(null);
     const [replyingTo, setReplyingTo] = useState<any | null>(null);
     const scrollRef = useRef<HTMLDivElement>(null);
     const fileInputRef = useRef<HTMLInputElement>(null);
@@ -49,6 +51,60 @@ export const CommunityChat = ({ communityId, channelId, channelName = "general",
 
     const [reactionModalData, setReactionModalData] = useState<{ messageId: string, reactions: any[] } | null>(null);
     const [activeReactionTab, setActiveReactionTab] = useState<string>("all");
+
+    const chatImages = useMemo(() => {
+        const urls: string[] = [];
+        const urlRegex = /(https?:\/\/[^\s]+)/g;
+        messages.forEach(msg => {
+            const matches = msg.content.match(urlRegex);
+            if (matches) {
+                matches.forEach(url => {
+                    if (/\.(jpeg|jpg|gif|png|webp|bmp)($|\?)/i.test(url)) {
+                        urls.push(url);
+                    }
+                });
+            }
+        });
+        return urls;
+    }, [messages]);
+
+    const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
+    const [touchStart, setTouchStart] = useState<number | null>(null);
+
+    useEffect(() => {
+        if (lightboxIndex === null) return;
+        
+        const handleKeyDown = (e: KeyboardEvent) => {
+            if (e.key === "Escape") setLightboxIndex(null);
+            if (e.key === "ArrowLeft") {
+                setLightboxIndex(prev => prev !== null && prev > 0 ? prev - 1 : prev);
+            }
+            if (e.key === "ArrowRight") {
+                setLightboxIndex(prev => prev !== null && prev < chatImages.length - 1 ? prev + 1 : prev);
+            }
+        };
+        
+        window.addEventListener("keydown", handleKeyDown);
+        return () => window.removeEventListener("keydown", handleKeyDown);
+    }, [lightboxIndex, chatImages.length]);
+
+    const handleTouchStart = (e: React.TouchEvent) => setTouchStart(e.touches[0].clientX);
+    const handleTouchEnd = (e: React.TouchEvent) => {
+        if (touchStart === null) return;
+        const touchEnd = e.changedTouches[0].clientX;
+        const diff = touchStart - touchEnd;
+        if (diff > 50 && lightboxIndex !== null && lightboxIndex < chatImages.length - 1) {
+            setLightboxIndex(lightboxIndex + 1);
+        } else if (diff < -50 && lightboxIndex !== null && lightboxIndex > 0) {
+            setLightboxIndex(lightboxIndex - 1);
+        }
+        setTouchStart(null);
+    };
+
+    const openLightbox = (url: string) => {
+        const idx = chatImages.indexOf(url);
+        if (idx !== -1) setLightboxIndex(idx);
+    };
 
     // Use passed pinned messages or fallback (though parent passes them now)
     const latestPinned = pinnedMessages.length > 0 ? pinnedMessages[pinnedMessages.length - 1] : null;
@@ -86,13 +142,17 @@ export const CommunityChat = ({ communityId, channelId, channelName = "general",
     };
 
     const handleSend = () => {
-        if (!newMessage.trim()) return;
+        if (!newMessage.trim() && !attachmentUrl) return;
+        
+        const finalContent = (newMessage + (attachmentUrl ? `\n${attachmentUrl}` : '')).trim();
+        
         sendMessage.mutate({
-            content: newMessage,
+            content: finalContent,
             communityId,
             replyToId: replyingTo?.id
         });
         setNewMessage("");
+        setAttachmentUrl(null);
         setReplyingTo(null);
         if (textareaRef.current) {
             textareaRef.current.style.height = '40px';
@@ -120,11 +180,75 @@ export const CommunityChat = ({ communityId, channelId, channelName = "general",
         }
     };
 
-    const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
-        if (file) {
-            toast.info("File upload feature coming soon!");
+        if (!file) return;
+
+        // Validating size (e.g. 5MB)
+        if (file.size > 5 * 1024 * 1024) {
+            toast.error("File size should be less than 5MB");
+            return;
         }
+
+        try {
+            toast.loading("Uploading file...", { id: "upload-toast" });
+
+            const fileExt = file.name.split(".").pop();
+            const fileName = `${Math.random().toString(36).substring(2)}_${Date.now()}.${fileExt}`;
+            const filePath = `chat_attachments/${fileName}`;
+
+            // Try to upload to "avatars" bucket since it exists
+            const { error: uploadError } = await supabase.storage
+                .from("avatars")
+                .upload(filePath, file);
+
+            if (uploadError) throw uploadError;
+
+            const { data } = supabase.storage
+                .from("avatars")
+                .getPublicUrl(filePath);
+
+            toast.success("File uploaded successfully!", { id: "upload-toast" });
+            
+            // Set the attachment preview
+            setAttachmentUrl(data.publicUrl);
+            
+            // Reset the input so the exact same file can be uploaded again if needed
+            if (fileInputRef.current) {
+                fileInputRef.current.value = "";
+            }
+
+            if (textareaRef.current) {
+                textareaRef.current.focus();
+            }
+
+        } catch (error) {
+            console.error("Upload error:", error);
+            toast.error("Failed to upload file. Maybe bucket access is restricted?", { id: "upload-toast" });
+        }
+    };
+
+    const renderMessageContent = (content: string) => {
+        const urlRegex = /(https?:\/\/[^\s]+)/g;
+        const parts = content.split(urlRegex);
+        return parts.map((part, i) => {
+            if (part.match(urlRegex)) {
+                const isImage = /\.(jpeg|jpg|gif|png|webp|bmp)($|\?)/i.test(part);
+                if (isImage) {
+                    return (
+                        <div key={i} className="my-2" onClick={() => openLightbox(part)}>
+                            <img src={part} alt="attachment" className="max-w-[250px] md:max-w-sm max-h-[300px] object-cover rounded-md border border-border cursor-pointer hover:opacity-90 transition-opacity" />
+                        </div>
+                    );
+                }
+                return (
+                    <a key={i} href={part} target="_blank" rel="noopener noreferrer" className="text-blue-400 hover:underline break-all">
+                        {part}
+                    </a>
+                );
+            }
+            return <span key={i}>{part}</span>;
+        });
     };
 
     const insertEmoji = (emoji: string) => {
@@ -297,7 +421,7 @@ export const CommunityChat = ({ communityId, channelId, channelName = "general",
                                                 </div>
                                             );
                                         })()}
-                                        {msg.content}
+                                        {renderMessageContent(msg.content)}
                                     </div>
                                     {/* Reactions */}
                                     {msg.reactions && msg.reactions.length > 0 && (
@@ -443,6 +567,27 @@ export const CommunityChat = ({ communityId, channelId, channelName = "general",
                         </Button>
                     </div>
                 )}
+                
+                {attachmentUrl && (
+                    <div className="relative inline-block m-2 animate-in fade-in zoom-in slide-in-from-bottom-2 duration-300">
+                        {/\.(jpeg|jpg|gif|png|webp|bmp)($|\?)/i.test(attachmentUrl) ? (
+                            <img src={attachmentUrl} alt="preview" className="h-24 w-auto rounded-md border border-border shadow-md object-cover" />
+                        ) : (
+                            <div className="flex items-center gap-2 p-3 bg-secondary/50 rounded-md border border-border shadow-sm">
+                                <span className="text-sm font-medium">Document attached for sending</span>
+                            </div>
+                        )}
+                        <Button 
+                            variant="destructive" 
+                            size="icon" 
+                            className="absolute -top-2 -right-2 h-5 w-5 rounded-full shadow-lg"
+                            onClick={() => setAttachmentUrl(null)}
+                        >
+                            <X className="w-3 h-3" />
+                        </Button>
+                    </div>
+                )}
+
                 <div className={`bg-secondary/50 rounded-lg p-2 flex items-end gap-2 ${replyingTo ? 'rounded-t-none' : ''}`}>
                     <input
                         type="file"
@@ -495,6 +640,61 @@ export const CommunityChat = ({ communityId, channelId, channelName = "general",
                     </div>
                 </div>
             </div>
+
+            {/* Lightbox Overlay */}
+            {lightboxIndex !== null && (
+                <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/95 backdrop-blur-sm animate-in fade-in duration-200">
+                    <Button 
+                        variant="ghost" 
+                        size="icon" 
+                        className="absolute top-4 right-4 text-white hover:bg-white/20 z-50 h-10 w-10 flex items-center justify-center rounded-full" 
+                        onClick={() => setLightboxIndex(null)}
+                    >
+                        <X className="w-6 h-6" />
+                    </Button>
+                    
+                    {lightboxIndex > 0 && (
+                        <Button
+                            variant="ghost"
+                            size="icon"
+                            className="absolute left-2 md:left-8 text-white hover:bg-white/20 z-50 h-12 w-12 items-center justify-center rounded-full hidden md:flex"
+                            onClick={(e) => { e.stopPropagation(); setLightboxIndex(lightboxIndex - 1); }}
+                        >
+                            <ChevronLeft className="w-8 h-8" />
+                        </Button>
+                    )}
+                    
+                    <div 
+                        className="w-full h-full flex items-center justify-center" 
+                        onTouchStart={handleTouchStart} 
+                        onTouchEnd={handleTouchEnd} 
+                        onClick={() => setLightboxIndex(null)}
+                    >
+                        <img 
+                            src={chatImages[lightboxIndex]} 
+                            alt="lightbox preview" 
+                            className="max-h-[90vh] max-w-[95vw] object-contain select-none cursor-default shadow-2xl"
+                            onClick={(e) => e.stopPropagation()}
+                            draggable={false}
+                        />
+                    </div>
+                    
+                    {lightboxIndex < chatImages.length - 1 && (
+                        <Button
+                            variant="ghost"
+                            size="icon"
+                            className="absolute right-2 md:right-8 text-white hover:bg-white/20 z-50 h-12 w-12 items-center justify-center rounded-full hidden md:flex"
+                            onClick={(e) => { e.stopPropagation(); setLightboxIndex(lightboxIndex + 1); }}
+                        >
+                            <ChevronRight className="w-8 h-8" />
+                        </Button>
+                    )}
+                    
+                    <div className="absolute bottom-4 left-1/2 -translate-x-1/2 text-white/80 text-sm bg-black/60 px-4 py-1.5 rounded-full font-medium tracking-wide">
+                        {lightboxIndex + 1} / {chatImages.length}
+                    </div>
+                </div>
+            )}
         </div>
     );
 };
