@@ -236,7 +236,7 @@ const HabitCard = ({
                 {[1, 2, 3, 4].map((level) => {
                   const desc = (habit as any)[`level${level}_description`];
                   return (
-                    <div key={level} className="text-[9px] text-white/60 leading-tight text-center px-1 break-words">
+                    <div key={level} className="text-[12px] text-white/90 font-bold leading-tight text-center px-1 break-words">
                       {desc || "—"}
                     </div>
                   );
@@ -247,7 +247,7 @@ const HabitCard = ({
             <div className="flex justify-end mt-1.5">
               <button 
                 onClick={() => setShowLevels(!showLevels)}
-                className="text-[10px] text-white/40 hover:text-white/80 transition-colors flex items-center gap-0.5 font-medium px-2 py-0.5 rounded-md hover:bg-white/5"
+                className="text-[11px] text-white/50 hover:text-white/90 transition-colors flex items-center gap-0.5 font-bold px-2 py-0.5 rounded-md hover:bg-white/5"
               >
                 {showLevels ? (
                   <>See Less <ChevronUp className="w-3 h-3" /></>
