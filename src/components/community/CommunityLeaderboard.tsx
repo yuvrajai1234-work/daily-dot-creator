@@ -9,6 +9,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Trophy, Zap, Users, Loader2, User } from "lucide-react";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useLevelLeaderboard } from "@/hooks/useXP";
+import { useAuth } from "@/components/AuthProvider";
 
 interface CommunityLeaderboardProps {
     communities: Community[];
@@ -83,12 +84,13 @@ const useCommunitiesXP = (communities: Community[]) => {
 };
 
 export const CommunityLeaderboard = ({ communities }: CommunityLeaderboardProps) => {
+    const { user } = useAuth();
     const [type, setType] = useState<"community" | "individual">("community");
     const { data: communityXP, isLoading: isCommunityLoading } = useCommunitiesXP(communities);
     const { data: individualXP, isLoading: isIndividualLoading } = useLevelLeaderboard();
 
-    const sortedCommunities = [...(communityXP || [])].sort((a, b) => b.totalXP - a.totalXP).slice(0, 10);
-    const sortedIndividuals = (individualXP || []).slice(0, 10);
+    const sortedCommunities = [...(communityXP || [])].sort((a, b) => b.totalXP - a.totalXP).slice(0, 100);
+    const sortedIndividuals = (individualXP || []); // Already capped to 100 + current user
 
     const isLoading = type === "community" ? isCommunityLoading : isIndividualLoading;
 
@@ -183,41 +185,54 @@ export const CommunityLeaderboard = ({ communities }: CommunityLeaderboardProps)
                                     </TableRow>
                                 ))
                             ) : (
-                                sortedIndividuals.map((entry: any, index: number) => (
-                                    <TableRow key={entry.user_id} className="border-border/50 hover:bg-secondary/10 transition-colors">
-                                        <TableCell className="font-bold">
-                                            {index < 3 ? (
-                                                <Badge variant="outline" className={medalColors[index]}>
-                                                    #{index + 1}
+                                sortedIndividuals.map((entry: any, index: number) => {
+                                    const isMe = entry.user_id === user?.id;
+                                    const rankNum = entry.isCurrentUserOutsideTop100 ? entry.computedRank : index + 1;
+                                    return (
+                                        <TableRow 
+                                            key={entry.user_id} 
+                                            className={`border-border/50 transition-colors ${
+                                                isMe ? "bg-primary/20 hover:bg-primary/30" : "hover:bg-secondary/10"
+                                            }`}
+                                        >
+                                            <TableCell className="font-bold">
+                                                {rankNum <= 3 ? (
+                                                    <Badge variant="outline" className={medalColors[rankNum - 1]}>
+                                                        #{rankNum}
+                                                    </Badge>
+                                                ) : (
+                                                    <span className={isMe ? "text-primary/90 ml-2" : "text-muted-foreground ml-2"}>
+                                                        #{rankNum}
+                                                    </span>
+                                                )}
+                                            </TableCell>
+                                            <TableCell>
+                                                <div className="flex items-center gap-2">
+                                                    <Avatar className="w-7 h-7 ring-2 ring-primary/20">
+                                                        <AvatarImage src={entry.avatar_url} />
+                                                        <AvatarFallback className="bg-primary/20">
+                                                            <User className="w-4 h-4 text-primary" />
+                                                        </AvatarFallback>
+                                                    </Avatar>
+                                                    <p className={`font-medium truncate max-w-[140px] ${isMe ? "text-primary font-bold" : ""}`}>
+                                                        {entry.full_name || "Unknown"} {isMe && "(You)"}
+                                                    </p>
+                                                </div>
+                                            </TableCell>
+                                            <TableCell className="text-right">
+                                                <Badge variant={isMe ? "default" : "secondary"} className="font-mono">
+                                                    Lvl {entry.level}
                                                 </Badge>
-                                            ) : (
-                                                <span className="text-muted-foreground ml-2">#{index + 1}</span>
-                                            )}
-                                        </TableCell>
-                                        <TableCell>
-                                            <div className="flex items-center gap-2">
-                                                <Avatar className="w-7 h-7 ring-2 ring-primary/20">
-                                                    <AvatarImage src={entry.avatar_url} />
-                                                    <AvatarFallback className="bg-primary/20">
-                                                        <User className="w-4 h-4 text-primary" />
-                                                    </AvatarFallback>
-                                                </Avatar>
-                                                <p className="font-medium truncate max-w-[140px]">{entry.full_name || "Unknown"}</p>
-                                            </div>
-                                        </TableCell>
-                                        <TableCell className="text-right">
-                                            <Badge variant="secondary" className="font-mono">
-                                                Lvl {entry.level}
-                                            </Badge>
-                                        </TableCell>
-                                        <TableCell className="text-right">
-                                            <span className="font-bold text-primary font-mono">
-                                                {entry.total_xp.toLocaleString()}
-                                            </span>
-                                            <span className="text-xs text-muted-foreground ml-1">XP</span>
-                                        </TableCell>
-                                    </TableRow>
-                                ))
+                                            </TableCell>
+                                            <TableCell className="text-right">
+                                                <span className={`font-bold font-mono ${isMe ? "text-white" : "text-primary"}`}>
+                                                    {entry.total_xp.toLocaleString()}
+                                                </span>
+                                                <span className={`text-xs ml-1 ${isMe ? "text-primary-foreground/70" : "text-muted-foreground"}`}>XP</span>
+                                            </TableCell>
+                                        </TableRow>
+                                    );
+                                })
                             )}
                         </TableBody>
                     </Table>

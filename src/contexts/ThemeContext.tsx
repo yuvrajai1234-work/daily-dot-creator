@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useEffect, useState, useCallback } from "react";
+import React, { createContext, useContext, useEffect, useState, useCallback, useRef } from "react";
 import { useAuth } from "@/components/AuthProvider";
 import { supabase } from "@/integrations/supabase/client";
 
@@ -278,19 +278,16 @@ export const SOUND_PACKS: Record<SoundPackId, { name: string; icon: string; rewa
 };
 
 // ─── Context ───────────────────────────────────────────────────────────────────
-const SETTINGS_KEY = "dd_settings_v2";
+const getSettingsKey = (userId?: string | null) => userId ? `dd_settings_v2_${userId}` : "dd_settings_v2_guest";
 
-const loadSettings = (): AppSettings => {
+const loadSettings = (userId?: string | null): AppSettings => {
+    // If not logged in, we strictly enforce default appearance!
+    if (!userId) return DEFAULT_SETTINGS;
+    
     try {
-        const raw = localStorage.getItem(SETTINGS_KEY);
+        const raw = localStorage.getItem(getSettingsKey(userId));
         if (!raw) return DEFAULT_SETTINGS;
-        const parsed = JSON.parse(raw);
-        // Always reset avatarFrame to "none" on cold load.
-        // The ThemeContext will sync the correct frame from the DB
-        // after auth, preventing locked frames from bleeding over
-        // when users share a device or switch accounts.
-        parsed.avatarFrame = "none";
-        return { ...DEFAULT_SETTINGS, ...parsed };
+        return { ...DEFAULT_SETTINGS, ...JSON.parse(raw) };
     } catch {
         return DEFAULT_SETTINGS;
     }
@@ -393,23 +390,29 @@ const applyThemeToDom = (themeId: ThemeId, darkMode: boolean, reducedMotion: boo
     }
 };
 
-// ─── Provider ─────────────────────────────────────────────────────────────────
 export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-    const [settings, setSettings] = useState<AppSettings>(loadSettings);
+    const { user } = useAuth();
+    const [settings, setSettings] = useState<AppSettings>(() => loadSettings(user?.id));
+
+    // When the user logs in or out, instantly load their heavily segregated local settings
+    // ensuring zero crossover between accounts passing the same browser.
+    useEffect(() => {
+        setSettings(loadSettings(user?.id));
+    }, [user?.id]);
 
     // Apply theme on mount and whenever relevant settings change
     useEffect(() => {
         applyThemeToDom(settings.theme, settings.darkMode, settings.reducedMotion, settings.compactMode, settings.highContrast, settings.fontSize);
     }, [settings.theme, settings.darkMode, settings.reducedMotion, settings.compactMode, settings.highContrast, settings.fontSize]);
-
-    // Sync remote profile settings to local state on initial load
-    const { user } = useAuth();
     useEffect(() => {
         if (!user) return;
         const fetchRemoteSettings = async () => {
-            const { data, error } = await supabase.from('profiles').select('*').eq('user_id', user.id).single();
-            if (data) {
-                const remoteSettings: Partial<AppSettings> = {
+            try {
+                const { data, error } = await supabase.from('profiles').select('*').eq('user_id', user.id).single();
+                if (error) throw error;
+                
+                if (data) {
+                    const remoteSettings: Partial<AppSettings> = {
                     profileVisibility: (data as any).profile_visibility || 'public',
                     showOnLeaderboard: (data as any).show_on_leaderboard ?? true,
                     groupDiscovery: (data as any).group_discovery ?? true,
@@ -417,52 +420,89 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
                     showLevel: (data as any).show_level ?? true,
                 };
 
-                // Sync avatar frame from DB — prevents a locked frame from
-                // bleeding over via localStorage when users switch accounts
-                const dbFrame = (data as any).avatar_frame as AvatarFrameId | null;
-                if (dbFrame && dbFrame in AVATAR_FRAMES) {
-                    // Check the user actually owns that frame (reward check)
-                    const purchasedArray: number[] = (data as any).unlocked_rewards || [];
-                    const purchased = new Set(purchasedArray);
-                    const frameEntry = AVATAR_FRAMES[dbFrame];
-                    const ownsFrame = !frameEntry.rewardId || purchased.has(frameEntry.rewardId);
-                    remoteSettings.avatarFrame = ownsFrame ? dbFrame : "none";
-                } else {
-                    // No frame in DB yet — clear any leftover from localStorage
-                    remoteSettings.avatarFrame = "none";
-                }
+                // Prevent unpurchased rewards from bleeding over via localStorage 
+                // when users switch accounts on the same device.
+                // We map everything to Strings to prevent Type mismatches (e.g. "1" !== 1)
+                const purchasedArray: any[] = (data as any).unlocked_rewards || [];
+                const purchased = new Set(purchasedArray.map(String));
 
-                updateSettings(remoteSettings);
+                setSettings((prev) => {
+                    const next = { ...prev, ...remoteSettings };
+
+                    // 1. Check local Avatar Frame
+                    const currentFrame = next.avatarFrame as AvatarFrameId;
+                    const frameEntry = AVATAR_FRAMES[currentFrame];
+                    if (frameEntry && frameEntry.rewardId && !purchased.has(String(frameEntry.rewardId))) {
+                        // User doesn't own this frame! Reset to 'none'
+                        next.avatarFrame = "none";
+                    }
+
+                    // 2. Check local Theme
+                    const currentTheme = next.theme as ThemeId;
+                    const themeEntry = THEMES[currentTheme];
+                    if (themeEntry && themeEntry.rewardId && !purchased.has(String(themeEntry.rewardId))) {
+                        // User doesn't own this theme! Reset to 'default'
+                        next.theme = "default";
+                    }
+
+                    // 3. Fallback: If DB already dictates a frame, respect it if valid
+                    const dbFrame = (data as any).avatar_frame as AvatarFrameId | null;
+                    if (dbFrame && dbFrame in AVATAR_FRAMES) {
+                        const dbFrameEntry = AVATAR_FRAMES[dbFrame];
+                        if (!dbFrameEntry.rewardId || purchased.has(String(dbFrameEntry.rewardId))) {
+                            // Only override if the user owns what the DB says
+                            next.avatarFrame = dbFrame;
+                        }
+                    }
+
+                    localStorage.setItem(getSettingsKey(user?.id), JSON.stringify(next));
+                    return next;
+                });
+            } // <-- Missing closing brace for if (data)
+            } catch (err) {
+                console.error("Failed to fetch remote settings, enforcing default theme rules:", err);
+                // If profile generation hits a race condition (e.g. brand new user) 
+                // or fails entirely, we must strictly lock the theme so it doesn't bleed.
+                setSettings((prev) => {
+                    const next = { ...prev, theme: "default" as ThemeId, avatarFrame: "none" as AvatarFrameId };
+                    localStorage.setItem(getSettingsKey(user?.id), JSON.stringify(next));
+                    return next;
+                });
             }
         };
         fetchRemoteSettings();
     }, [user?.id]);
 
+    // Settings are securely shifted upon layout swap by the other useEffect
+    // so we can dispense with the tracking ref wipe entirely!
+
     const updateSetting = useCallback(<K extends keyof AppSettings>(key: K, value: AppSettings[K]) => {
         setSettings((prev) => {
             const next = { ...prev, [key]: value };
-            localStorage.setItem(SETTINGS_KEY, JSON.stringify(next));
+            localStorage.setItem(getSettingsKey(user?.id), JSON.stringify(next));
             return next;
         });
 
-        // Persist specific privacy settings to database if user is logged in
+        // Persist specific settings to database if user is logged in
         if (user) {
-            const privacyKeys: (keyof AppSettings)[] = [
+            const syncKeys: (keyof AppSettings)[] = [
                 'profileVisibility',
                 'showOnLeaderboard',
                 'groupDiscovery',
                 'showStreak',
-                'showLevel'
+                'showLevel',
+                'avatarFrame' // Explicitly sync the frame!
             ];
 
-            if (privacyKeys.includes(key)) {
+            if (syncKeys.includes(key)) {
                 // Map frontend keys to backend columns
                 const columnMap: Record<string, string> = {
                     profileVisibility: 'profile_visibility',
                     showOnLeaderboard: 'show_on_leaderboard',
                     groupDiscovery: 'group_discovery',
                     showStreak: 'show_streak',
-                    showLevel: 'show_level'
+                    showLevel: 'show_level',
+                    avatarFrame: 'avatar_frame'
                 };
 
                 const column = columnMap[key as string];
@@ -480,19 +520,19 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     const updateSettings = useCallback((partial: Partial<AppSettings>) => {
         setSettings((prev) => {
             const next = { ...prev, ...partial };
-            localStorage.setItem(SETTINGS_KEY, JSON.stringify(next));
+            localStorage.setItem(getSettingsKey(user?.id), JSON.stringify(next));
             return next;
         });
-    }, []);
+    }, [user?.id]);
 
     const saveSettings = useCallback(() => {
-        localStorage.setItem(SETTINGS_KEY, JSON.stringify(settings));
-    }, [settings]);
+        localStorage.setItem(getSettingsKey(user?.id), JSON.stringify(settings));
+    }, [settings, user?.id]);
 
     const resetSettings = useCallback(() => {
         setSettings(DEFAULT_SETTINGS);
-        localStorage.setItem(SETTINGS_KEY, JSON.stringify(DEFAULT_SETTINGS));
-    }, []);
+        localStorage.setItem(getSettingsKey(user?.id), JSON.stringify(DEFAULT_SETTINGS));
+    }, [user?.id]);
 
     const applyTheme = useCallback((id: ThemeId) => {
         updateSetting("theme", id);

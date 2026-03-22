@@ -284,8 +284,10 @@ export const useAddXP = () => {
 
 // Hook to get level leaderboard
 export const useLevelLeaderboard = () => {
+    const { user } = useAuth();
+    
     return useQuery({
-        queryKey: ["level-leaderboard"],
+        queryKey: ["level-leaderboard", user?.id],
         queryFn: async () => {
             const { data, error } = await (supabase as any)
                 .from("level_leaderboard")
@@ -293,7 +295,37 @@ export const useLevelLeaderboard = () => {
                 .limit(100);
 
             if (error) throw error;
-            return data;
+            
+            let result = [...(data || [])];
+            
+            // If the user is logged in, check if they are in the top 100
+            if (user && result.length === 100 && !result.some(r => r.user_id === user.id)) {
+                // Fetch the user's XP
+                const { data: myProfile } = await supabase
+                    .from("profiles")
+                    .select("user_id, full_name, avatar_url, level, total_xp")
+                    .eq("user_id", user.id)
+                    .single();
+                    
+                if (myProfile) {
+                    // Count how many people have MORE total_xp than the user
+                    const { count } = await supabase
+                        .from("profiles")
+                        .select("*", { count: "exact", head: true })
+                        .gt("total_xp", myProfile.total_xp || 0);
+                        
+                    const rank = (count || 0) + 1;
+                    
+                    // Append the current user to the result with their computed rank string
+                    result.push({
+                        ...myProfile,
+                        isCurrentUserOutsideTop100: true,
+                        computedRank: rank
+                    });
+                }
+            }
+            
+            return result;
         },
     });
 };
