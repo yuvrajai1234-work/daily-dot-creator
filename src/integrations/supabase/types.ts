@@ -229,6 +229,7 @@ export type Database = {
           updated_at: string
           user_id: string
           has_seen_onboarding: boolean
+          pinned_badges: string[] | null
         }
         Insert: {
           a_coin_balance?: number
@@ -248,6 +249,7 @@ export type Database = {
           updated_at?: string
           user_id: string
           has_seen_onboarding?: boolean
+          pinned_badges?: string[] | null
         }
         Update: {
           a_coin_balance?: number
@@ -267,6 +269,7 @@ export type Database = {
           updated_at?: string
           user_id?: string
           has_seen_onboarding?: boolean
+          pinned_badges?: string[] | null
         }
         Relationships: []
       }

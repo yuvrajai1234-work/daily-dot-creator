@@ -8,10 +8,12 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import AvatarWithFrame, { AvatarFrameId } from "@/components/AvatarWithFrame";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
-import { Flame, Brain, Dumbbell, Zap, Clock, MapPin, User, Activity, Calendar, Users, Weight as WeightIcon, Ruler, Heart, Crown } from "lucide-react";
+import { Flame, Brain, Dumbbell, Zap, Clock, MapPin, User, Activity, Calendar, Users, Weight as WeightIcon, Ruler, Heart, Crown, Award } from "lucide-react";
 import { Radar, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, ResponsiveContainer } from "recharts";
 import { getLevelInfo, getLevelTier } from "@/hooks/useXP";
 import { useUserStats, useAchievements } from "@/hooks/useAchievements";
+
+import { RARITY_CONFIG } from "@/hooks/achievementConstants";
 
 interface FullUserProfileDialogProps {
     userId: string;
@@ -140,28 +142,67 @@ export const FullUserProfileDialog = ({ userId, open, onOpenChange }: FullUserPr
                             {/* Earned Badges */}
                             {earnedBadges.length > 0 && (
                                 <div>
-                                    <h3 className="text-base font-bold mb-3 flex items-center gap-1.5">🏅 Earned Badges <span className="text-xs text-muted-foreground font-normal">({earnedBadges.length})</span></h3>
+                                    <h3 className="text-base font-bold mb-3 flex items-center gap-1.5">
+                                        🏅 Achievements & Badges 
+                                        <span className="text-xs text-muted-foreground font-normal ml-auto">({earnedBadges.length})</span>
+                                        {p?.pinned_badges?.length > 0 && <span className="text-[10px] lowercase text-primary/60 font-normal">(Pinned first)</span>}
+                                    </h3>
                                     <div className="flex flex-wrap gap-2">
-                                        {earnedBadges.map((badge) => {
-                                            const rarityColors: Record<string, string> = {
-                                                common: "border-slate-500/40 bg-slate-500/5",
-                                                rare: "border-blue-500/50 bg-blue-500/5",
-                                                epic: "border-purple-500/60 bg-purple-500/10",
-                                                legendary: "border-amber-500/70 bg-amber-500/10 shadow-amber-500/20 shadow-sm",
-                                            };
-                                            const colorClass = rarityColors[badge.rarity || "common"] || rarityColors.common;
+                                        {(() => {
+                                            const pinnedIds = p?.pinned_badges || [];
+                                            const pinned = allAchievements.filter(a => pinnedIds.includes(a.id));
+                                            const others = earnedBadges.filter(a => !pinnedIds.includes(a.id));
+                                            const combined = [...pinned, ...others];
+                                            
+                                            return combined.map((badge) => {
+                                                const rarityColors: Record<string, string> = {
+                                                    common: "border-slate-500/40 bg-slate-500/5",
+                                                    rare: "border-blue-500/50 bg-blue-500/5",
+                                                    epic: "border-purple-500/60 bg-purple-500/10",
+                                                    legendary: "border-amber-500/70 bg-amber-500/10 shadow-amber-500/20 shadow-sm",
+                                                };
+                                                const isPinned = pinnedIds.includes(badge.id);
+                                                const colorClass = rarityColors[badge.rarity || "common"] || rarityColors.common;
+                                                return (
+                                                    <div
+                                                        key={badge.id}
+                                                        className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border text-xs font-medium ${colorClass} ${isPinned ? 'ring-2 ring-primary/20 border-primary/40 shadow-sm' : ''}`}
+                                                        title={`${badge.description}${isPinned ? ' (Pinned)' : ''}`}
+                                                    >
+                                                        <span className="text-base leading-none">{badge.icon}</span>
+                                                        <span className="truncate max-w-[80px]">{badge.name}</span>
+                                                    </div>
+                                                );
+                                            });
+                                        })()}
+                                    </div>
+                                </div>
+                            )}
+
+                            {/* Featured Badges (Pinned) */}
+                            {p?.pinned_badges && p.pinned_badges.length > 0 && (
+                                <div className="space-y-4">
+                                    <h3 className="text-base font-bold flex items-center gap-1.5">
+                                        <Award className="w-4 h-4 text-primary" /> Top Badges
+                                    </h3>
+                                    <div className="flex flex-wrap gap-3 justify-start">
+                                        {p.pinned_badges.map((id: string) => {
+                                            const achievement = allAchievements.find(a => a.id === id);
+                                            if (!achievement) return null;
+                                            const rc = RARITY_CONFIG[achievement.rarity || "common"] || RARITY_CONFIG.common;
+
                                             return (
-                                                <div
-                                                    key={badge.id}
-                                                    className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border text-xs font-medium ${colorClass}`}
-                                                    title={badge.description}
+                                                <div 
+                                                    key={id}
+                                                    className={`w-14 h-14 rounded-2xl border-2 flex flex-col items-center justify-center transition-all ${rc.border} bg-secondary/10 shadow-sm`}
+                                                    title={`${achievement.name}: ${achievement.description}`}
                                                 >
-                                                    <span className="text-base leading-none">{badge.icon}</span>
-                                                    <span className="truncate max-w-[80px]">{badge.name}</span>
+                                                    <span className="text-2xl">{achievement.icon}</span>
                                                 </div>
                                             );
                                         })}
                                     </div>
+                                    <Separator className="bg-border/30" />
                                 </div>
                             )}
 

@@ -9,125 +9,9 @@ import { useClaimACoins } from "@/hooks/useCoins";
 import { useProfile } from "@/hooks/useProfile";
 import { useMemo, useState, useRef, useEffect } from "react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { RARITY_CONFIG, CATEGORY_CONFIG, YEAR_OPTIONS, getStatValue, getAchievementProgress } from "@/hooks/achievementConstants";
+import { YearDropdown } from "@/components/YearDropdown";
 
-const YEAR_OPTIONS = [
-  { value: "all", label: "All Years", emoji: "🗓️" },
-  { value: "1", label: "Year 1 — The Beginning", emoji: "🌱" },
-  { value: "2", label: "Year 2 — Building Momentum", emoji: "💪" },
-  { value: "3", label: "Year 3 — Rising Power", emoji: "⚡" },
-  { value: "4", label: "Year 4 — Elite Territory", emoji: "👑" },
-  { value: "5", label: "Year 5 — Legendary Status", emoji: "🌌" },
-];
-
-const YearDropdown = ({ value, onChange }: { value: string; onChange: (v: string) => void }) => {
-  const [open, setOpen] = useState(false);
-  const ref = useRef<HTMLDivElement>(null);
-  const selected = YEAR_OPTIONS.find((o) => o.value === value) || YEAR_OPTIONS[0];
-
-  useEffect(() => {
-    const handler = (e: MouseEvent) => {
-      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
-    };
-    document.addEventListener("mousedown", handler);
-    return () => document.removeEventListener("mousedown", handler);
-  }, []);
-
-  return (
-    <div ref={ref} className="relative">
-      <button
-        onClick={() => setOpen((o) => !o)}
-        className="flex items-center gap-2 text-xs bg-secondary/60 border border-border/50 rounded-lg px-3 py-1.5 text-foreground hover:border-primary/50 hover:bg-secondary/80 transition-all focus:outline-none"
-      >
-        <span>{selected.emoji}</span>
-        <span className="font-medium">{selected.label}</span>
-        <svg className={`w-3 h-3 text-muted-foreground transition-transform ${open ? "rotate-180" : ""}`} fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" /></svg>
-      </button>
-
-      <AnimatePresence>
-        {open && (
-          <motion.div
-            initial={{ opacity: 0, y: -6, scale: 0.96 }}
-            animate={{ opacity: 1, y: 0, scale: 1 }}
-            exit={{ opacity: 0, y: -6, scale: 0.96 }}
-            transition={{ duration: 0.15 }}
-            className="absolute right-0 top-full mt-1.5 z-50 min-w-[220px] rounded-xl border border-border/60 bg-[hsl(var(--card))] shadow-2xl shadow-black/40 backdrop-blur-xl overflow-hidden"
-          >
-            {YEAR_OPTIONS.map((opt) => (
-              <button
-                key={opt.value}
-                onClick={() => { onChange(opt.value); setOpen(false); }}
-                className={`w-full flex items-center gap-2.5 px-4 py-2.5 text-xs text-left transition-colors ${value === opt.value
-                  ? "bg-primary/20 text-primary font-semibold"
-                  : "text-foreground hover:bg-secondary/60"
-                  }`}
-              >
-                <span className="text-base">{opt.emoji}</span>
-                <span>{opt.label}</span>
-                {value === opt.value && (
-                  <CheckCircle className="w-3 h-3 ml-auto text-primary" />
-                )}
-              </button>
-            ))}
-          </motion.div>
-        )}
-      </AnimatePresence>
-    </div>
-  );
-};
-
-// ─── Rarity configuration ────────────────────────────────────────────────────
-const RARITY_CONFIG: Record<string, { label: string; color: string; glow: string; gradient: string; border: string; icon: React.FC<any> }> = {
-  common: {
-    label: "Common",
-    color: "text-slate-600 dark:text-slate-300",
-    glow: "",
-    gradient: "from-slate-600 to-slate-700",
-    border: "border-slate-500/40",
-    icon: Shield,
-  },
-  rare: {
-    label: "Rare",
-    color: "text-blue-600 dark:text-blue-400",
-    glow: "shadow-[0_0_15px_rgba(59,130,246,0.3)]",
-    gradient: "from-blue-600 to-blue-800",
-    border: "border-blue-500/50",
-    icon: Star,
-  },
-  epic: {
-    label: "Epic",
-    color: "text-purple-600 dark:text-purple-400",
-    glow: "shadow-[0_0_20px_rgba(168,85,247,0.4)]",
-    gradient: "from-purple-600 to-purple-900",
-    border: "border-purple-500/60",
-    icon: Zap,
-  },
-  legendary: {
-    label: "Legendary",
-    color: "text-amber-600 dark:text-amber-400",
-    glow: "shadow-[0_0_30px_rgba(251,191,36,0.5)]",
-    gradient: "from-amber-500 to-amber-800",
-    border: "border-amber-500/70",
-    icon: Crown,
-  },
-};
-
-// ─── Category config ──────────────────────────────────────────────────────────
-const CATEGORY_CONFIG: Record<string, { label: string; icon: React.FC<any>; color: string }> = {
-  all: { label: "All", icon: Trophy, color: "" },
-  beginner: { label: "🌱 Beginner", icon: Shield, color: "text-green-400" },
-  intermediate: { label: "💪 Intermediate", icon: Target, color: "text-blue-400" },
-  advanced: { label: "⚡ Advanced", icon: Zap, color: "text-purple-400" },
-  streak: { label: "🔥 Streaks", icon: Flame, color: "text-orange-400" },
-  habits: { label: "🎯 Habits", icon: Target, color: "text-cyan-400" },
-  reflection: { label: "✍️ Reflection", icon: BookOpen, color: "text-pink-400" },
-  level: { label: "⭐ Leveling", icon: Star, color: "text-yellow-400" },
-  community: { label: "👥 Community", icon: Users, color: "text-indigo-400" },
-  consistency: { label: "📅 Consistency", icon: Calendar, color: "text-teal-400" },
-  milestone: { label: "🏆 Milestones", icon: Award, color: "text-amber-400" },
-  elite: { label: "👑 Elite", icon: Crown, color: "text-rose-400" },
-};
-
-// ─── Year labels ──────────────────────────────────────────────────────────────
 const YEAR_BADGE: Record<number, { label: string; color: string }> = {
   1: { label: "Year 1", color: "bg-green-500/20 text-green-700 dark:text-green-300 border-green-500/30" },
   2: { label: "Year 2", color: "bg-blue-500/20 text-blue-700 dark:text-blue-300 border-blue-500/30" },
@@ -137,21 +21,6 @@ const YEAR_BADGE: Record<number, { label: string; color: string }> = {
 };
 
 // ─── Progress calculation helper ──────────────────────────────────────────────
-const getStatValue = (stats: any, reqType: string): number => {
-  if (!stats) return 0;
-  switch (reqType) {
-    case "total_completions": return stats.totalCompletions;
-    case "streak": return stats.bestStreak;
-    case "current_streak": return stats.currentStreak;
-    case "total_habits": return stats.totalHabits;
-    case "total_reflections": return stats.totalReflections;
-    case "level": return stats.level;
-    case "total_xp": return stats.totalXP;
-    case "days_active": return stats.daysActive;
-    case "community_posts": return stats.communityPosts;
-    default: return 0;
-  }
-};
 
 // ─── Confetti particle animation ──────────────────────────────────────────────
 const Particle = ({ color }: { color: string }) => (
@@ -339,10 +208,7 @@ const AchievementsPage = () => {
     [userAchievements]
   );
 
-  const getProgress = (achievement: { requirement_type: string; requirement_value: number }) => {
-    const current = getStatValue(stats, achievement.requirement_type);
-    return Math.min(Math.round((current / achievement.requirement_value) * 100), 100);
-  };
+  const getProgress = (achievement: any) => getAchievementProgress(achievement, stats);
 
   const isClaimable = (achievement: { requirement_type: string; requirement_value: number }) =>
     getProgress(achievement) >= 100;

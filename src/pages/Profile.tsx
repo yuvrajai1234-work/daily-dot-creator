@@ -22,6 +22,12 @@ import AvatarWithFrame, { AVATAR_FRAMES, AvatarFrameId } from "@/components/Avat
 import { useLevelInfo } from "@/hooks/useXP";
 import { useProfile } from "@/hooks/useProfile";
 import { useTheme } from "@/contexts/ThemeContext";
+import { RARITY_CONFIG, CATEGORY_CONFIG, YEAR_OPTIONS, getAchievementProgress } from "@/hooks/achievementConstants";
+import { YearDropdown } from "@/components/YearDropdown";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { Pin, Star as StarIcon, Trophy, Award, Flame, Zap, Shield, Target, BookOpen, MoreHorizontal, Plus, Settings } from "lucide-react";
 
 
 const personalityTraits = [
@@ -52,6 +58,7 @@ const ProfilePage = () => {
   const [isEditing, setIsEditing] = useState(false);
   const [isEditingPersonality, setIsEditingPersonality] = useState(false);
   const [isAvatarDialogOpen, setIsAvatarDialogOpen] = useState(false);
+  const [isBadgeSelectionOpen, setIsBadgeSelectionOpen] = useState(false);
 
   // Basic Info
   const [name, setName] = useState(metadata.full_name || "");
@@ -76,6 +83,68 @@ const ProfilePage = () => {
   const [analyticalCreative, setAnalyticalCreative] = useState(metadata.analyticalCreative || 50);
   const [loyalFickle, setLoyalFickle] = useState(metadata.loyalFickle || 50);
   const [passiveActive, setPassiveActive] = useState(metadata.passiveActive || 50);
+
+  // Achievement filters
+  const [achievementActiveTab, setAchievementActiveTab] = useState("all");
+  const [rarityFilter, setRarityFilter] = useState("all");
+  const [yearFilter, setYearFilter] = useState("all");
+  const [statusFilter, setStatusFilter] = useState("all");
+  
+  // Pinned badges (max 5)
+  const [pinnedBadges, setPinnedBadges] = useState<string[]>([]);
+  
+  const togglePinBadge = async (badgeId: string) => {
+    let newPinned = [...pinnedBadges];
+    if (newPinned.includes(badgeId)) {
+      newPinned = newPinned.filter(id => id !== badgeId);
+    } else {
+      if (newPinned.length >= 5) {
+        toast.error("You can only pin up to 5 badges");
+        return;
+      }
+      newPinned.push(badgeId);
+    }
+    
+    setPinnedBadges(newPinned);
+    
+    // Save to database
+    const { error } = await supabase
+      .from("profiles")
+      .update({ pinned_badges: newPinned })
+      .eq("user_id", user!.id);
+      
+    if (error) {
+      toast.error("Failed to update pinned badges");
+    } else {
+      queryClient.invalidateQueries({ queryKey: ["profile", user?.id] });
+    }
+  };
+
+  // Sync pinned badges when profileData loads
+  useState(() => {
+    if (profileData?.pinned_badges) {
+      setPinnedBadges(profileData.pinned_badges);
+    }
+  });
+
+  const filteredBadges = useMemo(() => {
+    let list = allAchievements;
+    if (achievementActiveTab !== "all") list = list.filter(a => a.category === achievementActiveTab);
+    if (rarityFilter !== "all") list = list.filter(a => (a.rarity || "common") === rarityFilter);
+    if (yearFilter !== "all") list = list.filter(a => String(a.year_target || 1) === yearFilter);
+    if (statusFilter !== "all") {
+      if (statusFilter === "completed") list = list.filter(a => earnedIds.has(a.id));
+      else if (statusFilter === "not_completed") list = list.filter(a => !earnedIds.has(a.id));
+    }
+
+    return [...list].sort((a, b) => {
+      const aEarned = earnedIds.has(a.id);
+      const bEarned = earnedIds.has(b.id);
+      if (aEarned && !bEarned) return -1;
+      if (!aEarned && bEarned) return 1;
+      return 0;
+    });
+  }, [allAchievements, achievementActiveTab, rarityFilter, yearFilter, statusFilter, earnedIds]);
 
   // Calculate BMI
   const bmi = useMemo(() => {
@@ -346,48 +415,223 @@ const ProfilePage = () => {
           {/* Earned Badges Card */}
           <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.08 }}>
             <Card className="glass border-border/50">
-              <CardHeader className="pb-3">
+              <CardHeader className="pb-3 px-4 flex flex-row items-center justify-between space-y-0">
                 <CardTitle className="text-lg flex items-center gap-2">
                   🏅 Earned Badges
-                  {earnedAchievements.length > 0 && (
-                    <span className="ml-auto text-xs bg-primary/10 text-primary px-2 py-0.5 rounded-full font-medium">
-                      {earnedAchievements.length}
-                    </span>
-                  )}
+                  <Badge variant="secondary" className="bg-primary/10 text-primary border-none text-[10px] h-5 px-1.5 ml-1">
+                    {userAchievements.length}/{allAchievements.length}
+                  </Badge>
                 </CardTitle>
+                
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button variant="ghost" size="icon" className="h-8 w-8 rounded-full">
+                      <MoreHorizontal className="w-4 h-4" />
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end" className="glass border-border/50">
+                    <DropdownMenuItem 
+                      onClick={() => setIsBadgeSelectionOpen(true)}
+                      className="text-xs cursor-pointer focus:bg-primary/10 flex items-center gap-2"
+                    >
+                      <Plus className="w-4 h-4" /> Add to profile / Edit
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
               </CardHeader>
-              <CardContent>
-                {earnedAchievements.length === 0 ? (
-                  <div className="text-center py-4 text-muted-foreground">
-                    <p className="text-3xl mb-2">🔒</p>
-                    <p className="text-sm">No badges earned yet. Complete achievements to earn badges!</p>
-                  </div>
-                ) : (
-                  <div className="flex flex-wrap gap-2">
-                    {earnedAchievements.map((achievement) => {
-                      const rarityColors: Record<string, string> = {
-                        common: "border-slate-500/40 bg-slate-500/5",
-                        rare: "border-blue-500/50 bg-blue-500/5",
-                        epic: "border-purple-500/60 bg-purple-500/10",
-                        legendary: "border-amber-500/70 bg-amber-500/10 shadow-amber-500/20 shadow-sm",
-                      };
-                      const colorClass = rarityColors[achievement.rarity || "common"] || rarityColors.common;
-                      return (
-                        <div
-                          key={achievement.id}
-                          className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border text-xs font-medium ${colorClass}`}
-                          title={achievement.description}
-                        >
-                          <span className="text-base leading-none">{achievement.icon}</span>
-                          <span className="truncate max-w-[90px]">{achievement.name}</span>
-                        </div>
-                      );
-                    })}
-                  </div>
+              
+              <CardContent className="px-4 pb-4">
+                <div className="flex flex-wrap gap-3 justify-center py-2">
+                  {[0, 1, 2, 3, 4].map((index) => {
+                    const pinnedId = pinnedBadges[index];
+                    const achievement = pinnedId ? allAchievements.find(a => a.id === pinnedId) : null;
+                    const rc = achievement ? (RARITY_CONFIG[achievement.rarity || "common"] || RARITY_CONFIG.common) : null;
+
+                    return (
+                      <div 
+                        key={index}
+                        className={`w-14 h-14 rounded-2xl border-2 border-dashed flex items-center justify-center transition-all ${
+                          achievement 
+                            ? `${rc?.border} border-solid bg-secondary/10 shadow-sm` 
+                            : 'border-muted-foreground/20 bg-secondary/5 hover:border-primary/30 hover:bg-primary/5 cursor-pointer'
+                        }`}
+                        onClick={() => setIsBadgeSelectionOpen(true)}
+                      >
+                        {achievement ? (
+                          <div className="flex flex-col items-center gap-0.5">
+                            <span className="text-2xl">{achievement.icon}</span>
+                          </div>
+                        ) : (
+                          <Plus className="w-4 h-4 text-muted-foreground/40" />
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+                
+                {pinnedBadges.length === 0 && (
+                  <p className="text-[10px] text-center text-muted-foreground mt-2">
+                    Highlight up to 5 badges on your community profile
+                  </p>
                 )}
               </CardContent>
             </Card>
           </motion.div>
+
+          <Dialog open={isBadgeSelectionOpen} onOpenChange={setIsBadgeSelectionOpen}>
+            <DialogContent className="max-w-2xl max-h-[90vh] overflow-hidden glass border-border/50 p-0 flex flex-col bg-popover/95 backdrop-blur-xl">
+              <DialogHeader className="p-6 pb-2 border-b border-border/30">
+                <DialogTitle className="flex items-center gap-2 text-xl">
+                  <Award className="w-6 h-6 text-primary" /> Select Pinned Badges
+                </DialogTitle>
+                <p className="text-sm text-muted-foreground">Select up to 5 badges to display on your community profile.</p>
+              </DialogHeader>
+              
+              <div className="p-6 space-y-6 flex-1 overflow-y-auto no-scrollbar">
+                {/* Selection Slots */}
+                <div className="grid grid-cols-5 gap-3 p-4 rounded-2xl bg-secondary/20 border border-border/30">
+                  {[0, 1, 2, 3, 4].map((index) => {
+                    const pinnedId = pinnedBadges[index];
+                    const achievement = pinnedId ? allAchievements.find(a => a.id === pinnedId) : null;
+                    const rc = achievement ? (RARITY_CONFIG[achievement.rarity || "common"] || RARITY_CONFIG.common) : null;
+
+                    return (
+                      <div 
+                        key={index}
+                        className={`aspect-square rounded-xl border-2 border-dashed flex flex-col items-center justify-center relative transition-all ${
+                          achievement 
+                            ? `${rc?.border} border-solid bg-background shadow-md group` 
+                            : 'border-muted-foreground/30 bg-secondary/10'
+                        }`}
+                      >
+                        {achievement ? (
+                          <>
+                            <span className="text-3xl mb-1">{achievement.icon}</span>
+                            <span className="text-[9px] font-bold text-center px-1 truncate w-full">{achievement.name}</span>
+                            <button 
+                              onClick={(e) => { e.stopPropagation(); togglePinBadge(pinnedId); }}
+                              className="absolute -top-1 -right-1 bg-destructive text-destructive-foreground rounded-full p-0.5 opacity-0 group-hover:opacity-100 transition-opacity shadow-lg"
+                            >
+                              <Plus className="w-3 h-3 rotate-45" />
+                            </button>
+                          </>
+                        ) : (
+                          <span className="text-[10px] font-bold text-muted-foreground/30 uppercase tracking-tighter">Empty</span>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+
+                <div className="space-y-4 pt-2">
+                  <div className="flex flex-col gap-3">
+                    {/* Filters Row 1 */}
+                    <div className="flex items-center gap-2 flex-wrap pb-1">
+                      <span className="text-[10px] font-bold uppercase text-muted-foreground mr-1">Rarity:</span>
+                      {["all", "common", "rare", "epic", "legendary"].map((r) => {
+                        const rc = r !== "all" ? RARITY_CONFIG[r] : null;
+                        return (
+                          <button
+                            key={r}
+                            onClick={() => setRarityFilter(r)}
+                            className={`px-3 py-1 rounded-full text-[10px] font-medium border transition-all ${rarityFilter === r
+                              ? rc
+                                ? `bg-gradient-to-r ${rc.gradient} border-transparent text-white`
+                                : "bg-primary text-primary-foreground border-transparent"
+                              : "border-border/50 text-muted-foreground hover:border-border hover:bg-secondary/50"
+                              }`}
+                          >
+                            {r !== "all" && rc ? rc.label : "All"}
+                          </button>
+                        );
+                      })}
+                      
+                      <div className="ml-auto">
+                         <YearDropdown value={yearFilter} onChange={setYearFilter} />
+                      </div>
+                    </div>
+
+                    {/* Status Filter */}
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <span className="text-[10px] font-bold uppercase text-muted-foreground mr-1">Status:</span>
+                      {[
+                        { id: "all", label: "All Status" },
+                        { id: "completed", label: "Completed" },
+                        { id: "not_completed", label: "Not Completed" }
+                      ].map((s) => (
+                        <button
+                          key={s.id}
+                          onClick={() => setStatusFilter(s.id)}
+                          className={`px-3 py-1 rounded-full text-[10px] font-medium border transition-all ${statusFilter === s.id
+                              ? "bg-primary text-primary-foreground border-transparent"
+                              : "border-border/50 text-muted-foreground hover:border-border hover:bg-secondary/50"
+                            }`}
+                        >
+                          {s.label}
+                        </button>
+                      ))}
+                    </div>
+
+                    {/* Category Pills */}
+                    <div className="flex flex-wrap gap-1.5 py-3 border-y border-border/20 overflow-x-auto no-scrollbar">
+                      {Object.keys(CATEGORY_CONFIG).map((catId) => {
+                        const cfg = CATEGORY_CONFIG[catId];
+                        return (
+                          <button
+                            key={catId}
+                            onClick={() => setAchievementActiveTab(catId)}
+                            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg border text-[10px] font-medium transition-all whitespace-nowrap ${achievementActiveTab === catId
+                              ? "bg-primary/20 border-primary text-primary"
+                              : "bg-secondary/20 border-border/50 text-muted-foreground hover:border-border hover:bg-secondary/40"
+                            }`}
+                          >
+                            <span>{cfg.icon ? <cfg.icon className="w-3 h-3" /> : '🏷️'}</span>
+                            {cfg.label}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+
+                  {/* Badge Grid */}
+                  <div className="grid grid-cols-3 sm:grid-cols-4 gap-2 pt-1 pb-4">
+                    {filteredBadges.map((achievement) => {
+                      const earned = earnedIds.has(achievement.id);
+                      const isPinned = pinnedBadges.includes(achievement.id);
+                      const rc = RARITY_CONFIG[achievement.rarity || "common"] || RARITY_CONFIG.common;
+                      const colorClass = rc.border + " " + (earned ? "opacity-100" : "opacity-40 grayscale");
+                      
+                      return (
+                        <button
+                          key={achievement.id}
+                          disabled={!earned}
+                          onClick={() => togglePinBadge(achievement.id)}
+                          className={`group relative flex flex-col items-center gap-1.5 p-2 rounded-xl border transition-all h-24 ${
+                            isPinned ? 'border-primary ring-2 ring-primary/20 bg-primary/5' : 'bg-secondary/5 border-border/50'
+                          } ${earned ? 'hover:border-primary/50 cursor-pointer active:scale-95' : 'cursor-not-allowed'} ${colorClass}`}
+                          title={achievement.description}
+                        >
+                          <span className="text-3xl leading-none mt-1">{achievement.icon}</span>
+                          <span className="text-[9px] font-bold text-center leading-tight line-clamp-2 w-full">{achievement.name}</span>
+                          
+                          {isPinned && (
+                            <div className="absolute top-1 right-1 bg-primary text-white p-0.5 rounded-md shadow-md">
+                              <CheckCircle className="w-2.5 h-2.5" />
+                            </div>
+                          )}
+                          {!earned && (
+                            <div className="absolute inset-0 flex items-center justify-center bg-background/20 rounded-xl">
+                              <Lock className="w-5 h-5 text-muted-foreground/30" />
+                            </div>
+                          )}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              </div>
+            </DialogContent>
+          </Dialog>
 
           {/* Details Card */}
           <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }}>

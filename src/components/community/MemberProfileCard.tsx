@@ -228,25 +228,36 @@ export const MemberProfileCard = ({ userId, communityId, role, onClose }: Member
                     {/* Earned Badges */}
                     {earnedBadges.length > 0 && (
                         <div className="mb-4">
-                            <p className="text-xs text-muted-foreground font-semibold uppercase tracking-wider mb-2">🏅 Badges</p>
+                            <p className="text-xs text-muted-foreground font-semibold uppercase tracking-wider mb-2 flex items-center gap-1">
+                                🏅 Badges
+                                {profile?.pinned_badges?.length > 0 && <span className="text-[10px] lowercase text-primary/60 font-normal ml-1">(Featured)</span>}
+                            </p>
                             <div className="flex flex-wrap gap-1.5">
-                                {earnedBadges.slice(0, 8).map((badge) => {
-                                    const rarityBorder: Record<string, string> = {
-                                        common: "border-slate-500/40",
-                                        rare: "border-blue-500/50",
-                                        epic: "border-purple-500/60",
-                                        legendary: "border-amber-500/70 shadow-amber-400/30 shadow-sm",
-                                    };
-                                    return (
-                                        <div
-                                            key={badge.id}
-                                            title={badge.name}
-                                            className={`text-sm px-2 py-0.5 rounded-md border bg-secondary/40 ${rarityBorder[badge.rarity || "common"] || ""}`}
-                                        >
-                                            {badge.icon}
-                                        </div>
-                                    );
-                                })}
+                                {(() => {
+                                    const pinnedIds = profile?.pinned_badges || [];
+                                    const pinned = allAchievements.filter(a => pinnedIds.includes(a.id));
+                                    const others = earnedBadges.filter(a => !pinnedIds.includes(a.id));
+                                    const combined = [...pinned, ...others].slice(0, 8);
+                                    
+                                    return combined.map((badge) => {
+                                        const rarityBorder: Record<string, string> = {
+                                            common: "border-slate-500/40",
+                                            rare: "border-blue-500/50",
+                                            epic: "border-purple-500/60",
+                                            legendary: "border-amber-500/70 shadow-amber-400/30 shadow-sm",
+                                        };
+                                        const isPinned = pinnedIds.includes(badge.id);
+                                        return (
+                                            <div
+                                                key={badge.id}
+                                                title={`${badge.name}${isPinned ? ' (Pinned)' : ''}`}
+                                                className={`text-sm px-2 py-0.5 rounded-md border bg-secondary/40 ${rarityBorder[badge.rarity || "common"] || ""} ${isPinned ? 'ring-1 ring-primary/30 border-primary/40 shadow-sm shadow-primary/10' : ''}`}
+                                            >
+                                                {badge.icon}
+                                            </div>
+                                        );
+                                    });
+                                })()}
                                 {earnedBadges.length > 8 && (
                                     <div className="text-xs px-2 py-0.5 rounded-md border border-border bg-secondary/40 text-muted-foreground">
                                         +{earnedBadges.length - 8}
