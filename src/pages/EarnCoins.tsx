@@ -86,8 +86,8 @@ const NativeAdContainer = () => {
   }, []);
 
   return (
-    <div id="ad-wrapper" className="min-h-[250px] w-full flex items-center justify-center">
-      <div className="text-xs text-muted-foreground animate-pulse">Initializing ad stream...</div>
+    <div id="ad-wrapper" className="max-h-[350px] w-full overflow-y-auto overflow-x-hidden p-2 scrollbar-thin">
+      <div className="text-xs text-muted-foreground animate-pulse text-center w-full py-10">Initializing ad stream...</div>
     </div>
   );
 };
