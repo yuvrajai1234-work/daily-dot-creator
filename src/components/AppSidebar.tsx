@@ -89,10 +89,19 @@ const AppSidebar = ({ isCollapsed, setIsCollapsed, isMobileOpen, setIsMobileOpen
       )}
 
       <aside
-        style={{ background: sidebarBg, borderRightColor: borderColor }}
-        className={`fixed left-0 top-0 h-screen z-50 flex flex-col border-r transition-transform duration-300 md:translate-x-0 ${
-          isCollapsed ? "md:w-16" : "md:w-64"
-        } w-64 ${isMobileOpen ? "translate-x-0" : "-translate-x-full"}`}
+        style={{ 
+          background: sidebarBg, 
+          borderRightColor: borderColor,
+          paddingTop: "var(--safe-area-inset-top, 0px)",
+          paddingBottom: "var(--safe-area-inset-bottom, 20px)"
+        }}
+        className={`fixed left-0 z-50 flex flex-col border-r transition-transform duration-300
+          ${isCollapsed ? "md:w-16" : "md:w-64"}
+          w-64 ${isMobileOpen ? "translate-x-0" : "-translate-x-full"}
+          md:translate-x-0
+          md:top-0 md:h-screen
+          top-[52px] h-[calc(100dvh-52px)]
+        `}
       >
       {/* ── Logo ── */}
       <div
@@ -178,7 +187,7 @@ const AppSidebar = ({ isCollapsed, setIsCollapsed, isMobileOpen, setIsMobileOpen
       {/* ── Sign Out ── */}
       <div
         style={{ borderTopColor: borderColor }}
-        className="px-2 py-4 border-t"
+        className="px-2 pt-4 pb-12 md:pb-4 border-t flex-shrink-0"
       >
         <button
           onClick={handleSignOut}

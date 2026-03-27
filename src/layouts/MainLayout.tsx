@@ -64,7 +64,7 @@ const MainLayout = () => {
           ml-0
         `}
       >
-        <TopBar onMenuClick={() => setIsMobileSidebarOpen(true)} />
+        <TopBar onMenuClick={() => setIsMobileSidebarOpen(!isMobileSidebarOpen)} />
 
         {/* Content Area */}
         <div
