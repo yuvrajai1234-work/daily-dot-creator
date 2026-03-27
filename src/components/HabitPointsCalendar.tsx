@@ -11,32 +11,31 @@ const HabitPointsCalendar = () => {
     const { data: completions = [] } = useAllCompletions();
     const { data: habits = [] } = useHabits();
 
-    // Calculate mean effort level for each day
+    // Calculate mean effort level for each day, accounting for all non-archived habits
     const dailyPoints = useMemo(() => {
-        const effortsMap = new Map<string, number[]>();
+        const effortsMap = new Map<string, number>();
 
+        // 1. Group completions by date
+        const dateEffortsSum = new Map<string, number>();
         completions.forEach((completion) => {
             const date = completion.completion_date;
             const effort = completion.effort_level || 0;
-
-            if (!effortsMap.has(date)) {
-                effortsMap.set(date, []);
-            }
-            effortsMap.get(date)!.push(effort);
+            dateEffortsSum.set(date, (dateEffortsSum.get(date) || 0) + effort);
         });
 
-        const meanMap = new Map<string, number>();
-        effortsMap.forEach((efforts, date) => {
-            if (efforts.length === 0) return;
-            const sum = efforts.reduce((a, b) => a + b, 0);
-            const mean = sum / efforts.length;
-            // Rounding logic from user: if 2.5 then 3, if 2.2 then 2
-            const rounded = Math.round(mean);
-            meanMap.set(date, rounded);
+        // 2. Calculate mean based on total active habits (non-archived)
+        // We use the count of current non-archived habits as the baseline
+        const totalActiveHabitsCount = habits.filter(h => !h.is_archived).length || 1;
+
+        dateEffortsSum.forEach((totalEffort, date) => {
+            const meanValue = totalEffort / totalActiveHabitsCount;
+            // Rounding logic: 2.5 becomes 3, 2.2 becomes 2
+            const rounded = Math.round(meanValue);
+            effortsMap.set(date, rounded);
         });
 
-        return meanMap;
-    }, [completions]);
+        return effortsMap;
+    }, [completions, habits]);
 
     const monthStart = startOfMonth(currentDate);
     const monthEnd = endOfMonth(currentDate);
@@ -150,7 +149,7 @@ const HabitPointsCalendar = () => {
                     ${isSelected && !isToday ? "ring-2 ring-accent ring-offset-2 ring-offset-background" : ""}
                     ${!isSameMonth(date, currentDate) ? "opacity-30" : ""}
                   `}
-                                    title={`${format(date, "MMM d")}: Mean Effort ${points}`}
+                                    title={`${format(date, "MMM d")}: Mean Intensity ${points}`}
                                 >
                                     {format(date, "d")}
                                 </button>
@@ -176,7 +175,7 @@ const HabitPointsCalendar = () => {
                     </div>
                     <div className="space-y-3">
                         <div className="flex items-center justify-between">
-                            <span className="text-sm font-medium">Mean Effort Level:</span>
+                            <span className="text-sm font-medium">Mean Intensity Level:</span>
                             <span className="text-2xl font-bold text-primary">{selectedDatePoints || 0}</span>
                         </div>
 
@@ -204,7 +203,7 @@ const HabitPointsCalendar = () => {
 
                 {/* Legend */}
                 <div className="pt-4 border-t border-border/30">
-                    <p className="text-xs font-medium text-muted-foreground mb-2">Effort Map (Mean):</p>
+                    <p className="text-xs font-medium text-muted-foreground mb-2">Intensity Map (Mean):</p>
                     <div className="flex items-center gap-3 flex-wrap">
                         <div className="flex items-center gap-1">
                             <div className="w-4 h-4 rounded bg-secondary/20" />
