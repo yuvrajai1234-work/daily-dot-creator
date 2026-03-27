@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo, memo } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -61,36 +61,38 @@ const incrementTodayAdCount = () => {
   return next;
 };
 
-const NativeAdContainer = () => {
-  useEffect(() => {
-    const container = document.getElementById("ad-wrapper");
-    if (!container) return;
-
-    // Clear previous
-    container.innerHTML = "";
-
-    const adDiv = document.createElement("div");
-    adDiv.id = "container-69dc1314fa49a484cbdcbd9ef807af5b";
-    
-    const script = document.createElement("script");
-    script.async = true;
-    script.setAttribute("data-cfasync", "false");
-    script.src = "https://pl28994651.profitablecpmratenetwork.com/69dc1314fa49a484cbdcbd9ef807af5b/invoke.js";
-
-    container.appendChild(adDiv);
-    container.appendChild(script);
-
-    return () => {
-      container.innerHTML = "";
-    };
-  }, []);
+const NativeAdContainer = memo(() => {
+  const adHtml = useMemo(() => `
+    <!DOCTYPE html>
+    <html>
+      <head>
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <style>
+          body { margin: 0; padding: 0; background: transparent; overflow-x: hidden; font-family: sans-serif; }
+          #container-69dc1314fa49a484cbdcbd9ef807af5b { width: 100% !important; text-align: center; }
+          .ad-loading { color: #888; font-size: 12px; margin-top: 50px; text-align: center; }
+        </style>
+      </head>
+      <body>
+        <div id="container-69dc1314fa49a484cbdcbd9ef807af5b">
+          <div class="ad-loading">Re-initializing ad stream...</div>
+        </div>
+        <script async="async" data-cfasync="false" src="https://pl28994651.profitablecpmratenetwork.com/69dc1314fa49a484cbdcbd9ef807af5b/invoke.js"></script>
+      </body>
+    </html>
+  `, []);
 
   return (
-    <div id="ad-wrapper" className="max-h-[350px] w-full overflow-y-auto overflow-x-hidden p-2 scrollbar-thin">
-      <div className="text-xs text-muted-foreground animate-pulse text-center w-full py-10">Initializing ad stream...</div>
+    <div className="w-full flex items-center justify-center min-h-[300px]">
+      <iframe
+        srcDoc={adHtml}
+        className="w-full border-0 min-h-[350px] overflow-y-auto"
+        sandbox="allow-scripts allow-popups allow-forms allow-same-origin"
+        title="Ad Container"
+      />
     </div>
   );
-};
+});
 
 const EarnCoinsPage = () => {
   const [adViews, setAdViews] = useState(() => getTodayAdCount());
