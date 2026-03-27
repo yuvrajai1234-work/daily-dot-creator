@@ -11,31 +11,19 @@ const HabitPointsCalendar = () => {
     const { data: completions = [] } = useAllCompletions();
     const { data: habits = [] } = useHabits();
 
-    // Calculate mean effort level for each day, accounting for all non-archived habits
+    // Calculate total habit score for each day
     const dailyPoints = useMemo(() => {
         const effortsMap = new Map<string, number>();
 
-        // 1. Group completions by date
-        const dateEffortsSum = new Map<string, number>();
+        // Group completions by date and sum them
         completions.forEach((completion) => {
             const date = completion.completion_date;
             const effort = completion.effort_level || 0;
-            dateEffortsSum.set(date, (dateEffortsSum.get(date) || 0) + effort);
-        });
-
-        // 2. Calculate mean based on total active habits (non-archived)
-        // We use the count of current non-archived habits as the baseline
-        const totalActiveHabitsCount = habits.filter(h => !h.is_archived).length || 1;
-
-        dateEffortsSum.forEach((totalEffort, date) => {
-            const meanValue = totalEffort / totalActiveHabitsCount;
-            // Rounding logic: 2.5 becomes 3, 2.2 becomes 2
-            const rounded = Math.round(meanValue);
-            effortsMap.set(date, rounded);
+            effortsMap.set(date, (effortsMap.get(date) || 0) + effort);
         });
 
         return effortsMap;
-    }, [completions, habits]);
+    }, [completions]);
 
     const monthStart = startOfMonth(currentDate);
     const monthEnd = endOfMonth(currentDate);
@@ -80,10 +68,10 @@ const HabitPointsCalendar = () => {
 
     const getColorForPoints = (points: number) => {
         if (points === 0) return "bg-secondary/20";
-        if (points === 1) return "bg-blue-500/30";
-        if (points === 2) return "bg-blue-500/60 shadow-[0_0_8px_rgba(59,130,246,0.3)]";
-        if (points === 3) return "bg-primary shadow-[0_0_12px_rgba(var(--primary),0.4)]";
-        return "bg-primary ring-1 ring-primary-foreground/30 shadow-[0_0_15px_rgba(var(--primary),0.6)]";
+        if (points < 4) return "bg-blue-500/30";
+        if (points < 8) return "bg-blue-500/60 shadow-[0_0_8px_rgba(59,130,246,0.2)]";
+        if (points < 12) return "bg-primary/80 shadow-[0_0_12px_rgba(var(--primary),0.3)]";
+        return "bg-primary ring-1 ring-primary-foreground/30 shadow-[0_0_15px_rgba(var(--primary),0.5)]";
     };
 
     const handleDateClick = (date: Date) => {
@@ -95,7 +83,7 @@ const HabitPointsCalendar = () => {
             <CardHeader>
                 <CardTitle className="flex items-center gap-2">
                     <CalendarIcon className="w-5 h-5" />
-                    Daily Habit Intensity (Mean)
+                    Daily Habit Score
                 </CardTitle>
             </CardHeader>
             <CardContent className="space-y-6">
@@ -149,7 +137,7 @@ const HabitPointsCalendar = () => {
                     ${isSelected && !isToday ? "ring-2 ring-accent ring-offset-2 ring-offset-background" : ""}
                     ${!isSameMonth(date, currentDate) ? "opacity-30" : ""}
                   `}
-                                    title={`${format(date, "MMM d")}: Mean Intensity ${points}`}
+                                    title={`${format(date, "MMM d")}: Total Score ${points}`}
                                 >
                                     {format(date, "d")}
                                 </button>
@@ -175,7 +163,7 @@ const HabitPointsCalendar = () => {
                     </div>
                     <div className="space-y-3">
                         <div className="flex items-center justify-between">
-                            <span className="text-sm font-medium">Mean Intensity Level:</span>
+                            <span className="text-sm font-medium">Total Daily Score:</span>
                             <span className="text-2xl font-bold text-primary">{selectedDatePoints || 0}</span>
                         </div>
 
@@ -203,27 +191,27 @@ const HabitPointsCalendar = () => {
 
                 {/* Legend */}
                 <div className="pt-4 border-t border-border/30">
-                    <p className="text-xs font-medium text-muted-foreground mb-2">Intensity Map (Mean):</p>
-                    <div className="flex items-center gap-3 flex-wrap">
-                        <div className="flex items-center gap-1">
-                            <div className="w-4 h-4 rounded bg-secondary/20" />
-                            <span className="text-xs">Zero</span>
+                    <p className="text-xs font-medium text-muted-foreground mb-2 text-center">Score Intensity Map</p>
+                    <div className="flex items-center justify-center gap-4 flex-wrap">
+                        <div className="flex flex-col items-center gap-1">
+                            <div className="w-5 h-5 rounded bg-secondary/20" />
+                            <span className="text-[10px]">0</span>
                         </div>
-                        <div className="flex items-center gap-1">
-                            <div className="w-4 h-4 rounded bg-blue-500/40" />
-                            <span className="text-xs text-[10px]">Level 1</span>
+                        <div className="flex flex-col items-center gap-1">
+                            <div className="w-5 h-5 rounded bg-blue-500/30" />
+                            <span className="text-[10px]">1-4</span>
                         </div>
-                        <div className="flex items-center gap-1">
-                            <div className="w-4 h-4 rounded bg-blue-500/70 shadow-sm shadow-blue-500/50" />
-                            <span className="text-xs text-[10px]">Level 2</span>
+                        <div className="flex flex-col items-center gap-1">
+                            <div className="w-5 h-5 rounded bg-blue-500/60" />
+                            <span className="text-[10px]">4-8</span>
                         </div>
-                        <div className="flex items-center gap-1">
-                            <div className="w-4 h-4 rounded bg-primary shadow-sm shadow-primary/50" />
-                            <span className="text-xs text-[10px]">Level 3</span>
+                        <div className="flex flex-col items-center gap-1">
+                            <div className="w-5 h-5 rounded bg-primary/80" />
+                            <span className="text-[10px]">8-12</span>
                         </div>
-                        <div className="flex items-center gap-1">
-                            <div className="w-4 h-4 rounded bg-primary ring-1 ring-primary-foreground/30 shadow-md shadow-primary" />
-                            <span className="text-xs text-[10px]">Level 4+</span>
+                        <div className="flex flex-col items-center gap-1">
+                            <div className="w-5 h-5 rounded bg-primary ring-1 ring-primary-foreground/30 shadow-sm" />
+                            <span className="text-[10px]">12+</span>
                         </div>
                     </div>
                 </div>

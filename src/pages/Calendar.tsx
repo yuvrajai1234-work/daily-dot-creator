@@ -49,11 +49,18 @@ const CalendarPage = () => {
     const dateMap = new Map<string, number>();
     dateEfforts.forEach((efforts, dateStr) => {
       const sum = efforts.reduce((acc, curr) => acc + curr, 0);
-      const mean = sum / efforts.length;
+      
+      // Only count habits that actually existed on this specific date
+      const habitsExistedOnDate = habits.filter(h => {
+        const habitCreateDate = h.created_at.split('T')[0];
+        return habitCreateDate <= dateStr;
+      }).length || 1;
+
+      const mean = sum / habitsExistedOnDate;
       dateMap.set(dateStr, Math.round(mean));
     });
     return dateMap;
-  }, [completions]);
+  }, [completions, habits]);
 
   const modifiers = useMemo(() => {
     const level1: Date[] = [];
