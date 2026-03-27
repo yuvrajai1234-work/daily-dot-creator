@@ -31,7 +31,7 @@ const queryClient = new QueryClient();
 
 const App = () => (
   <QueryClientProvider client={queryClient}>
-    <BrowserRouter basename="/daily-dot-creator/">
+    <BrowserRouter>
       <AuthProvider>
         <ThemeProvider>
           <NotificationProvider>
