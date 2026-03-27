@@ -99,6 +99,25 @@ const SignIn = () => {
                     {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                   </button>
                 </div>
+                <div className="flex justify-end">
+                  <button
+                    type="button"
+                    onClick={async () => {
+                      if (!email) {
+                        toast.error("Please enter your email first");
+                        return;
+                      }
+                      const { error } = await supabase.auth.resetPasswordForEmail(email, {
+                        redirectTo: `${window.location.origin}/reset-password`,
+                      });
+                      if (error) toast.error(error.message);
+                      else toast.success("Password reset email sent!");
+                    }}
+                    className="text-xs text-primary hover:underline font-medium"
+                  >
+                    Forgot Password?
+                  </button>
+                </div>
               </div>
               <Button
                 type="submit"

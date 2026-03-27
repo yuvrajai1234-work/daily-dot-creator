@@ -8,7 +8,10 @@ const Landing = () => {
   const navigate = useNavigate();
 
   useEffect(() => {
-    if (!loading && user) {
+    // Check if URL has a recovery token
+    const isRecovery = window.location.hash.includes("type=recovery");
+    
+    if (!loading && user && !isRecovery) {
       navigate("/dashboard");
     }
   }, [user, loading, navigate]);

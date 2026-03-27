@@ -61,9 +61,41 @@ const incrementTodayAdCount = () => {
   return next;
 };
 
+const NativeAdContainer = () => {
+  useEffect(() => {
+    const container = document.getElementById("ad-wrapper");
+    if (!container) return;
+
+    // Clear previous
+    container.innerHTML = "";
+
+    const adDiv = document.createElement("div");
+    adDiv.id = "container-69dc1314fa49a484cbdcbd9ef807af5b";
+    
+    const script = document.createElement("script");
+    script.async = true;
+    script.setAttribute("data-cfasync", "false");
+    script.src = "https://pl28994651.profitablecpmratenetwork.com/69dc1314fa49a484cbdcbd9ef807af5b/invoke.js";
+
+    container.appendChild(adDiv);
+    container.appendChild(script);
+
+    return () => {
+      container.innerHTML = "";
+    };
+  }, []);
+
+  return (
+    <div id="ad-wrapper" className="min-h-[250px] w-full flex items-center justify-center">
+      <div className="text-xs text-muted-foreground animate-pulse">Initializing ad stream...</div>
+    </div>
+  );
+};
+
 const EarnCoinsPage = () => {
   const [adViews, setAdViews] = useState(() => getTodayAdCount());
   const [isWatching, setIsWatching] = useState(false);
+  const [adTimer, setAdTimer] = useState(0);
   const [loadingPlan, setLoadingPlan] = useState<string | null>(null);
   const [subscriptionStatus, setSubscriptionStatus] = useState<{
     subscribed: boolean;
@@ -175,10 +207,7 @@ const EarnCoinsPage = () => {
     }
   };
 
-  const { isAdLoaded, showAd, isWatchingRequested, isAdBlockerActive } = useRewardedAd(
-    handleClaimReward,
-    () => setIsWatching(false)
-  );
+  // Removed GAM-based rewarded ad hook as we use specific ad network now
 
   const bCoins = (profile as any)?.b_coin_balance || 0;
 
@@ -199,18 +228,21 @@ const EarnCoinsPage = () => {
   const xpAdsLeft = Math.max(0, MAX_XP_ADS - adViews);
 
   const handleWatchAd = () => {
-    if (!user || isWatching || isWatchingRequested) return;
+    if (!user || isWatching) return;
 
     setIsWatching(true);
+    setAdTimer(10); // 10 second countdown
 
-    if (isAdBlockerActive || !isAdLoaded) {
-      setTimeout(() => {
-        handleClaimReward();
-      }, 1500);
-      return;
-    }
-
-    showAd();
+    const interval = setInterval(() => {
+      setAdTimer((prev) => {
+        if (prev <= 1) {
+          clearInterval(interval);
+          handleClaimReward();
+          return 0;
+        }
+        return prev - 1;
+      });
+    }, 1000);
   };
 
   return (
@@ -297,10 +329,10 @@ const EarnCoinsPage = () => {
             <div className="flex flex-col items-end gap-1.5">
               <Button
                 onClick={handleWatchAd}
-                disabled={isWatching || isWatchingRequested}
+                disabled={isWatching}
                 className="gradient-primary border-0 hover:opacity-90 min-w-[140px]"
               >
-                {isWatching || isWatchingRequested ? (
+                {isWatching ? (
                   <>
                     <motion.span
                       animate={{ rotate: 360 }}
@@ -309,7 +341,7 @@ const EarnCoinsPage = () => {
                     >
                       <Zap className="w-4 h-4 text-yellow-400" />
                     </motion.span>
-                    {isAdLoaded ? "Opening..." : "Loading Ad..."}
+                    Opening...
                   </>
                 ) : (
                   <>
@@ -413,6 +445,28 @@ const EarnCoinsPage = () => {
           );
         })}
       </div>
+
+      {/* Ad Overlay for Native Banner */}
+      {isWatching && (
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          className="fixed inset-0 z-[100] flex items-center justify-center bg-black/80 backdrop-blur-sm p-4"
+        >
+          <div className="w-full max-w-lg glass border-primary/30 p-8 text-center relative pointer-events-auto">
+            <h3 className="text-xl font-bold mb-4">Ad in Progress...</h3>
+            <p className="text-muted-foreground mb-6">
+              Reward granted in <span className="text-primary font-bold text-lg">{adTimer}s</span>
+            </p>
+            
+            <div className="bg-white/5 rounded-xl p-4 overflow-hidden border border-border/50 min-h-[300px] flex items-center justify-center">
+              {/* Native Banner Container */}
+              <NativeAdContainer />
+            </div>
+            <p className="text-[10px] uppercase text-muted-foreground/50 mt-4 tracking-tighter italic">Keep this screen open to earn your B Coins</p>
+          </div>
+        </motion.div>
+      )}
     </div>
   );
 };

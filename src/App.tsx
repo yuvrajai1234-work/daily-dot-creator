@@ -25,12 +25,13 @@ import Settings from "./pages/Settings";
 import About from "./pages/About";
 import MainLayout from "./layouts/MainLayout";
 import NotFound from "./pages/NotFound";
+import ResetPassword from "./pages/ResetPassword";
 
 const queryClient = new QueryClient();
 
 const App = () => (
   <QueryClientProvider client={queryClient}>
-    <BrowserRouter>
+    <BrowserRouter basename="/daily-dot-creator/">
       <AuthProvider>
         <ThemeProvider>
           <NotificationProvider>
@@ -41,6 +42,7 @@ const App = () => (
                 <Route path="/" element={<Landing />} />
                 <Route path="/sign-in" element={<SignIn />} />
                 <Route path="/sign-up" element={<SignUp />} />
+                <Route path="/reset-password" element={<ResetPassword />} />
                 <Route element={<ProtectedRoute />}>
                   <Route element={<MainLayout />}>
                     <Route path="/dashboard" element={<Dashboard />} />
