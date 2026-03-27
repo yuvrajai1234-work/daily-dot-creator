@@ -30,13 +30,22 @@ const QUICK_PROMPTS = [
 
 // ─── Markdown-lite renderer ────────────────────────────────────────────────────
 const renderMarkdown = (text: string) => {
-    return text
+    // 1. Escape HTML characters to prevent XSS
+    const escapedText = text
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#039;");
+
+    // 2. Apply markdown-lite transformations on the escaped text
+    return escapedText
         .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
         .replace(/\*(.+?)\*/g, '<em>$1</em>')
         .replace(/`(.+?)`/g, '<code class="bg-secondary/60 px-1 rounded text-xs font-mono">$1</code>')
         .replace(/^#{1,3} (.+)$/gm, '<p class="font-bold text-primary mt-2 mb-1">$1</p>')
         .replace(/^[-•] (.+)$/gm, '<li class="ml-3 list-disc list-inside text-sm">$1</li>')
-        .replace(/\n\n/g, '</p><p class="mt-2">')
+        .replace(/\n\n/g, '</p><p class="mt-2 text-sm leading-relaxed">')
         .replace(/\n/g, '<br/>');
 };
 
