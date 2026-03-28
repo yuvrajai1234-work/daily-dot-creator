@@ -88,7 +88,7 @@ const AppSidebar = ({ isCollapsed, setIsCollapsed, isMobileOpen, setIsMobileOpen
       {/* ── Mobile Overlay ── */}
       {isMobileOpen && (
         <div 
-          className="fixed inset-0 z-40 bg-black/50 backdrop-blur-sm md:hidden"
+          className="fixed inset-0 z-[190] bg-black/60 backdrop-blur-sm md:hidden"
           onClick={() => setIsMobileOpen?.(false)}
         />
       )}
@@ -100,12 +100,11 @@ const AppSidebar = ({ isCollapsed, setIsCollapsed, isMobileOpen, setIsMobileOpen
           paddingTop: "env(safe-area-inset-top, 0px)",
           paddingBottom: "env(safe-area-inset-bottom, 20px)"
         }}
-        className={`fixed left-0 z-50 flex flex-col border-r transition-transform duration-300
+        className={`fixed left-0 z-[200] flex flex-col border-r transition-transform duration-300
           ${isCollapsed ? "md:w-16" : "md:w-64"}
-          w-64 ${isMobileOpen ? "translate-x-0" : "-translate-x-full"}
+          w-72 ${isMobileOpen ? "translate-x-0" : "-translate-x-full"}
           md:translate-x-0
-          md:top-0 md:h-screen
-          top-[52px] h-[calc(100dvh-52px)]
+          top-0 h-screen md:h-screen
         `}
       >
       {/* ── Logo ── */}
