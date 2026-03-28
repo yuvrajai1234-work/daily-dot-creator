@@ -10,6 +10,25 @@ export const isNotificationSupported = (): boolean => {
   return "Notification" in window;
 };
 
+export const isIOS = (): boolean => {
+  return (
+    [
+      'iPad Simulator',
+      'iPhone Simulator',
+      'iPod Simulator',
+      'iPad',
+      'iPhone',
+      'iPod'
+    ].includes(navigator.platform)
+    // iPad on iOS 13+ detection
+    || (navigator.userAgent.includes("Mac") && "ontouchend" in document)
+  );
+};
+
+export const isStandalone = (): boolean => {
+  return window.matchMedia('(display-mode: standalone)').matches || ('standalone' in navigator && (navigator as any).standalone === true);
+};
+
 /** Get current permission status */
 export const getNotificationPermission = (): NotificationPermission | "unsupported" => {
   if (!isNotificationSupported()) return "unsupported";

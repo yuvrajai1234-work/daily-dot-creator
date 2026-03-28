@@ -5,23 +5,35 @@ import { Button } from "@/components/ui/button";
 import { 
   requestNotificationPermission, 
   getNotificationPermission, 
-  isNotificationSupported 
+  isNotificationSupported,
+  isIOS,
+  isStandalone
 } from "@/lib/deviceNotifications";
 import { toast } from "sonner";
 
 export const NotificationPrompt = () => {
     const [isVisible, setIsVisible] = useState(false);
     const [isDismissed, setIsDismissed] = useState(false);
+    const [isIOSPrompt, setIsIOSPrompt] = useState(false);
 
     useEffect(() => {
         // Check if we should show the prompt
         const checkPermission = () => {
+            const dismissed = localStorage.getItem("dd_notification_prompt_dismissed");
+            if (dismissed) return;
+
+            // iOS requires PWA (Add to Home Screen) for notifications
+            if (isIOS() && !isStandalone()) {
+                setIsIOSPrompt(true);
+                const timer = setTimeout(() => setIsVisible(true), 2000);
+                return () => clearTimeout(timer);
+            }
+
             if (!isNotificationSupported()) return;
             
             const permission = getNotificationPermission();
-            const dismissed = localStorage.getItem("dd_notification_prompt_dismissed");
             
-            if (permission === "default" && !dismissed) {
+            if (permission === "default") {
                 // Delay showing by 2 seconds for better UX
                 const timer = setTimeout(() => setIsVisible(true), 2000);
                 return () => clearTimeout(timer);
@@ -32,6 +44,12 @@ export const NotificationPrompt = () => {
     }, []);
 
     const handleRequest = async () => {
+        if (isIOSPrompt) {
+            toast.info("Tap the Share icon at the bottom of Safari and select 'Add to Home Screen' to unlock push notifications.");
+            handleDismiss();
+            return;
+        }
+
         const granted = await requestNotificationPermission();
         if (granted) {
             toast.success("Yay! Notifications enabled.");
@@ -82,9 +100,13 @@ export const NotificationPrompt = () => {
                             </div>
                             
                             <div className="space-y-1.5">
-                                <h3 className="font-bold text-lg">Stay in the Loop! 🔔</h3>
+                                <h3 className="font-bold text-lg">
+                                  {isIOSPrompt ? "Unlock Notifications 📱" : "Stay in the Loop! 🔔"}
+                                </h3>
                                 <p className="text-xs text-muted-foreground leading-relaxed">
-                                    Enable notifications to get habit reminders and achievement alerts directly on your device.
+                                  {isIOSPrompt 
+                                    ? "Add DailyDots to your Home Screen to unlock habit reminders and achievement alerts."
+                                    : "Enable notifications to get habit reminders and achievement alerts directly on your device."}
                                 </p>
                             </div>
 
@@ -102,7 +124,7 @@ export const NotificationPrompt = () => {
                                     onClick={handleRequest}
                                     className="rounded-xl gradient-primary border-0 text-xs text-white"
                                 >
-                                    Enable Now
+                                    {isIOSPrompt ? "Show Me How" : "Enable Now"}
                                 </Button>
                             </div>
 
