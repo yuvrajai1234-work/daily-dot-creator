@@ -221,10 +221,12 @@ export type Database = {
           created_at: string
           current_xp: number
           full_name: string | null
+          has_seen_onboarding: boolean | null
           id: string
           level: number
           p_coin_balance: number
           p_coin_last_credited_period_end: string | null
+          pinned_badges: Json | null
           total_xp: number
           updated_at: string
           user_id: string
@@ -239,10 +241,12 @@ export type Database = {
           created_at?: string
           current_xp?: number
           full_name?: string | null
+          has_seen_onboarding?: boolean | null
           id?: string
           level?: number
           p_coin_balance?: number
           p_coin_last_credited_period_end?: string | null
+          pinned_badges?: Json | null
           total_xp?: number
           updated_at?: string
           user_id: string
@@ -257,10 +261,12 @@ export type Database = {
           created_at?: string
           current_xp?: number
           full_name?: string | null
+          has_seen_onboarding?: boolean | null
           id?: string
           level?: number
           p_coin_balance?: number
           p_coin_last_credited_period_end?: string | null
+          pinned_badges?: Json | null
           total_xp?: number
           updated_at?: string
           user_id?: string
