@@ -124,19 +124,32 @@ const EarnCoinsPage = () => {
     }
   }, [searchParams]);
 
-  // Check subscription status on mount
-  const checkSubscription = async () => {
+  // Normal subscription check (used on mount)
+  const checkSubscription = async (force = false) => {
     try {
-      const { data, error } = await supabase.functions.invoke("check-subscription");
+      const { data, error } = await supabase.functions.invoke("check-subscription", {
+        body: force ? { force: true } : undefined,
+      });
       if (error) throw error;
       setSubscriptionStatus(data);
       if (data?.coins_credited && data?.coins_amount > 0) {
-        toast.success(`🎉 +${data.coins_amount} P Coins credited for your subscription!`);
+        toast.success(`🎉 +${data.coins_amount} P Coins credited to your account!`);
         queryClient.invalidateQueries({ queryKey: ["profile"] });
+      } else if (force && data?.subscribed && !data?.coins_credited) {
+        toast.error("Could not credit coins. Please contact support.");
       }
     } catch (err) {
       console.warn("Failed to check subscription:", err);
+      if (force) toast.error("Something went wrong. Please try again.");
     }
+  };
+
+  const [isClaiming, setIsClaiming] = useState(false);
+
+  const handleForceClaim = async () => {
+    setIsClaiming(true);
+    await checkSubscription(true);
+    setIsClaiming(false);
   };
 
   useEffect(() => {
@@ -408,10 +421,11 @@ const EarnCoinsPage = () => {
           </div>
           <Button
             size="sm"
-            onClick={checkSubscription}
+            onClick={handleForceClaim}
+            disabled={isClaiming}
             className="bg-emerald-500 hover:bg-emerald-600 text-white font-bold shrink-0"
           >
-            Claim My Coins
+            {isClaiming ? "Crediting..." : "Claim My Coins"}
           </Button>
         </motion.div>
       )}

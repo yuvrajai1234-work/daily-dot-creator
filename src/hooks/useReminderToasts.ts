@@ -1,18 +1,24 @@
-import { useEffect } from "react";
+import { useEffect, useMemo } from "react";
 import { format } from "date-fns";
 import { usePopupNotifications } from "@/contexts/NotificationContext";
 import { useReminders } from "@/hooks/useReminders";
 import { sendDeviceNotification, sendDailyReminderNotification } from "@/lib/deviceNotifications";
+import { useAuth } from "@/components/AuthProvider";
 
 export const useReminderToasts = () => {
     const { showNotification } = usePopupNotifications();
-    const { reminders, markAsNotified } = useReminders();
+    const { user } = useAuth();
+
+    // Get user's reminders from Supabase store
+    const { reminders, markAsNotified, pruneExpiredReminders } = useReminders();
 
     // Daily reminder scheduler based on user's preferred time
     useEffect(() => {
         const scheduleDaily = () => {
             try {
-                const raw = localStorage.getItem("dd_settings_v2");
+                // Read user-specific settings key (matches ThemeContext pattern)
+                const settingsKey = user?.id ? `dd_settings_v2_${user.id}` : "dd_settings_v2_guest";
+                const raw = localStorage.getItem(settingsKey) ?? localStorage.getItem("dd_settings_v2");
                 if (!raw) return;
                 const settings = JSON.parse(raw);
                 if (!settings.dailyReminders) return;
@@ -44,7 +50,7 @@ export const useReminderToasts = () => {
         return () => {
             if (timer) clearTimeout(timer);
         };
-    }, []);
+    }, [user?.id]);
 
     useEffect(() => {
         const checkReminders = () => {
@@ -92,10 +98,14 @@ export const useReminderToasts = () => {
                     markAsNotified(r.id, "time");
                 }
             });
+
+            // Auto-remove non-special reminders whose time has passed.
+            // Special reminders are kept forever (user-managed).
+            pruneExpiredReminders();
         };
 
         checkReminders();
-        const interval = setInterval(checkReminders, 30000);
+        const interval = setInterval(checkReminders, 30000); // check every 30 seconds
         return () => clearInterval(interval);
-    }, [reminders, showNotification, markAsNotified]);
+    }, [reminders, showNotification, markAsNotified, pruneExpiredReminders]);
 };

@@ -46,6 +46,15 @@ serve(async (req: Request) => {
         if (!user?.email) throw new Error("User not authenticated or email not available");
         logStep("User authenticated", { email: user.email });
 
+        // Parse body to check for force flag
+        let forceClaim = false;
+        try {
+            const body = await req.json().catch(() => ({}));
+            forceClaim = body?.force === true;
+        } catch (_) { /* no body is fine */ }
+
+        logStep("Force claim mode", { forceClaim });
+
         const stripe = new Stripe(stripeKey, { apiVersion: "2025-08-27.basil" });
         const customers = await stripe.customers.list({ email: user.email, limit: 1 });
 
@@ -81,6 +90,15 @@ serve(async (req: Request) => {
 
             coinsAmount = PRICE_TO_COINS[priceId] || 0;
             if (coinsAmount > 0) {
+                if (forceClaim) {
+                    // Force mode: reset the deduplication key first, then credit
+                    logStep("Force mode: resetting deduplication key");
+                    await supabaseClient
+                        .from("profiles")
+                        .update({ p_coin_last_credited_period_end: null })
+                        .eq("user_id", user.id);
+                }
+
                 const { data: credited, error: rpcError } = await supabaseClient.rpc("credit_p_coins", {
                     p_user_id: user.id,
                     p_amount: coinsAmount,
@@ -92,6 +110,25 @@ serve(async (req: Request) => {
                 } else {
                     coinsCredited = credited === true;
                     logStep(coinsCredited ? "P Coins credited" : "Already credited for this period", { coinsAmount });
+
+                    // If still not credited even after reset, do a raw SQL increment as last resort
+                    if (!coinsCredited && forceClaim) {
+                        logStep("Force fallback: direct SQL increment");
+                        const { error: updateError } = await supabaseClient.rpc(
+                            "force_add_p_coins" as "credit_p_coins", // reuse type signature
+                            {
+                                p_user_id: user.id,
+                                p_amount: coinsAmount,
+                                p_period_end: subscriptionEnd,
+                            }
+                        );
+                        if (!updateError) {
+                            coinsCredited = true;
+                            logStep("Force fallback succeeded");
+                        } else {
+                            logStep("Force fallback failed", { error: updateError.message });
+                        }
+                    }
                 }
             }
         }
