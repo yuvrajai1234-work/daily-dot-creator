@@ -122,8 +122,8 @@ const ProfilePage = () => {
 
   // Sync pinned badges when profileData loads
   useState(() => {
-    if (profileData?.pinned_badges) {
-      setPinnedBadges(profileData.pinned_badges);
+    if (profileData?.pinned_badges && Array.isArray(profileData.pinned_badges)) {
+      setPinnedBadges(profileData.pinned_badges as string[]);
     }
   });
 
