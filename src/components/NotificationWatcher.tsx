@@ -1,5 +1,6 @@
 import { useRewardNotifications } from "@/hooks/useRewardNotifications";
 import { useReminderToasts } from "@/hooks/useReminderToasts";
+import { useStreakWatcher } from "@/hooks/useStreakWatcher";
 
 /**
  * Invisible component that watches for notifications.
@@ -8,5 +9,6 @@ import { useReminderToasts } from "@/hooks/useReminderToasts";
 export const NotificationWatcher = () => {
   useRewardNotifications();
   useReminderToasts();
+  useStreakWatcher();
   return null;
 };

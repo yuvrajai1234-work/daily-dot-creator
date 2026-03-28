@@ -12,6 +12,8 @@ import {
     sendAchievementNotification,
     sendStreakNotification,
 } from "@/lib/deviceNotifications";
+import { provideFeedback } from "@/lib/feedback";
+import { useTheme } from "@/contexts/ThemeContext";
 
 /**
  * Hook that monitors for claimable rewards and sends popup notifications
@@ -25,6 +27,7 @@ let lastNotificationDate = new Date().toDateString();
  */
 export const useRewardNotifications = () => {
     const { showNotification } = usePopupNotifications();
+    const { settings } = useTheme();
     const { data: todayCompletions = [] } = useTodayCompletions();
     const { data: claimedRewards = [], isLoading: isClaimedLoading } = useClaimedRewards();
     const { data: stats } = useUserStats();
@@ -75,6 +78,7 @@ export const useRewardNotifications = () => {
                 duration: 3000,
             });
             sendRewardNotification("🔑 Daily Login Reward", "Welcome back! Claim your 5 B Coins for logging in today.");
+            provideFeedback('success', settings);
             notifiedSet.add("quest-login");
         }
 
@@ -92,6 +96,7 @@ export const useRewardNotifications = () => {
                 duration: 3000,
             });
             sendRewardNotification("✅ Habit Completed!", "Great job! Claim your 10 B Coins for completing a habit.");
+            provideFeedback('complete', settings);
             notifiedSet.add("quest-habit");
         }
 
@@ -109,6 +114,7 @@ export const useRewardNotifications = () => {
                 duration: 3000,
             });
             sendRewardNotification("👥 Community Bonus", "Thanks for engaging! Claim your 8 B Coins.");
+            provideFeedback('success', settings);
             notifiedSet.add("quest-community");
         }
 
@@ -149,6 +155,7 @@ export const useRewardNotifications = () => {
                         duration: 3000,
                     });
                     sendAchievementNotification(achievement.name, achievement.coin_reward);
+                    provideFeedback('achievement', settings);
                     notifiedSet.add(notifKey);
                 }
             });

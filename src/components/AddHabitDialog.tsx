@@ -5,6 +5,7 @@ import { Label } from "@/components/ui/label";
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
   DialogHeader,
   DialogTitle,
   DialogTrigger,
@@ -158,6 +159,9 @@ const AddHabitDialog = () => {
       >
         <DialogHeader>
           <DialogTitle>Create New Habit</DialogTitle>
+          <DialogDescription className="sr-only">
+            Fill in the details below to start tracking a new habit.
+          </DialogDescription>
         </DialogHeader>
 
         {/* Mode Toggle */}

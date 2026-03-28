@@ -112,6 +112,7 @@ export const RemindersSection = ({ date }: RemindersSectionProps) => {
                 open={showAddDialog}
                 onOpenChange={setShowAddDialog}
                 onSave={handleSave}
+                selectedDate={date}
             />
         </>
     );

@@ -4,6 +4,8 @@ import { useAuth } from "@/components/AuthProvider";
 import { toast } from "sonner";
 import { getAppDate, getAppDateOffset, getCycleStartDate } from "@/lib/dateUtils";
 import { optimisticXPUpdate } from "@/hooks/useXP";
+import { provideFeedback } from "@/lib/feedback";
+import { useTheme } from "@/contexts/ThemeContext";
 
 export interface Habit {
   id: string;
@@ -307,6 +309,7 @@ export const useToggleCompletion = () => {
 export const useLogEffort = () => {
   const queryClient = useQueryClient();
   const { user } = useAuth();
+  const { settings } = useTheme();
   const today = getAppDate(); // Current date in IST (resets at midnight)
 
   return useMutation({
@@ -423,9 +426,11 @@ export const useLogEffort = () => {
 
       if (result.isUpdate) {
         toast.success("Effort level updated!");
+        provideFeedback('success', settings);
       } else {
         const m = context?.xpMultiplier || 1;
         toast.success(`Effort logged! (-15 B Coins, +${context?.calculatedXP} XP ${m > 1 ? `[${m}x Multiplier!]` : ''})`);
+        provideFeedback('complete', settings);
       }
     },
     onError: (error: any, variables, context) => {
@@ -542,6 +547,7 @@ export const useReflections = () => {
 export const useSaveReflection = () => {
   const queryClient = useQueryClient();
   const { user } = useAuth();
+  const { settings } = useTheme();
 
   return useMutation({
     mutationFn: async ({ content, isEdit }: { content: string, isEdit?: boolean }) => {
@@ -603,8 +609,10 @@ export const useSaveReflection = () => {
 
       if (result.isEdit) {
         toast.success("Reflection updated!");
+        provideFeedback('success', settings);
       } else {
         toast.success("Reflection saved! (-10 B Coins, +15 XP)");
+        provideFeedback('complete', settings);
       }
     },
     onError: (error: any) => {

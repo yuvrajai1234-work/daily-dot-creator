@@ -349,7 +349,11 @@ const AIAssistant = () => {
             <motion.button
                 id="ai-assistant-button"
                 onClick={() => setOpen(o => !o)}
-                className="fixed bottom-20 md:bottom-6 right-4 md:right-6 z-50 w-12 h-12 md:w-14 md:h-14 rounded-full gradient-primary shadow-2xl shadow-primary/40 flex items-center justify-center text-white hover:scale-110 active:scale-95 transition-transform"
+                style={{ 
+                    bottom: "calc(1.5rem + env(safe-area-inset-bottom, 0px))",
+                    right: "1rem" 
+                }}
+                className="fixed z-50 w-12 h-12 md:w-14 md:h-14 rounded-full gradient-primary shadow-2xl shadow-primary/40 flex items-center justify-center text-white hover:scale-110 active:scale-95 transition-transform md:bottom-6 md:right-6"
                 whileHover={{ scale: 1.1 }}
                 whileTap={{ scale: 0.95 }}
                 initial={{ scale: 0, opacity: 0 }}
@@ -378,7 +382,11 @@ const AIAssistant = () => {
                         animate={{ opacity: 1, scale: 1, y: 0 }}
                         exit={{ opacity: 0, scale: 0.92, y: 20 }}
                         transition={{ type: "spring", stiffness: 300, damping: 28 }}
-                        className="fixed bottom-32 md:bottom-20 right-3 md:right-6 z-[130] w-[min(380px,calc(100vw-24px))] h-[min(520px,calc(100vh-150px))] md:h-[520px] rounded-2xl border border-border/60 bg-[hsl(var(--card))] shadow-2xl shadow-black/50 flex flex-col overflow-hidden"
+                        className="fixed z-[130] w-[min(380px,calc(100vw-24px))] h-[min(520px,calc(100vh-150px))] md:h-[520px] rounded-2xl border border-border/60 bg-[hsl(var(--card))] shadow-2xl shadow-black/50 flex flex-col overflow-hidden"
+                        style={{
+                            bottom: "calc(4.5rem + env(safe-area-inset-bottom, 0px))",
+                            right: "max(12px, env(safe-area-inset-right, 12px))"
+                        }}
                     >
                         {/* Header */}
                         <div className="flex items-center gap-3 px-4 py-3 border-b border-border/40 bg-gradient-to-r from-primary/20 to-transparent flex-shrink-0">

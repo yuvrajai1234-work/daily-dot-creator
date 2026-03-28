@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -41,6 +41,9 @@ export const AddReminderDialog = ({ open, onOpenChange, onSave }: AddReminderDia
             <DialogContent className="sm:max-w-[425px] border-border bg-background">
                 <DialogHeader>
                     <DialogTitle>Add a new reminder</DialogTitle>
+                    <DialogDescription className="sr-only">
+                        Enter the details for your new habit reminder.
+                    </DialogDescription>
                 </DialogHeader>
                 <div className="grid gap-4 py-4">
                     <div className="grid gap-2">

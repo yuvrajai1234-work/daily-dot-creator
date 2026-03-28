@@ -507,7 +507,7 @@ export const useMyInvites = () => {
   return useQuery({
     queryKey: ["my-community-invites", user?.id],
     queryFn: async () => {
-      const { data, error } = await supabase
+      const { data: invites, error } = await supabase
         .from("community_invites" as any)
         .select(`
           id,
@@ -515,7 +515,7 @@ export const useMyInvites = () => {
           status,
           created_at,
           communities (name, emoji),
-          profiles:inviter_user_id (full_name)
+          inviter_user_id
         `)
         .eq("invited_user_id", user!.id)
         .eq("status", "pending");
@@ -524,7 +524,24 @@ export const useMyInvites = () => {
         console.error("Error fetching invites", error);
         return [];
       }
-      return data as any[];
+
+      if (!invites || invites.length === 0) return [];
+
+      // Fetch profiles separately to avoid FK join issues in schema cache
+      const inviterIds = invites.map((i: any) => i.inviter_user_id).filter(Boolean);
+      const { data: profiles } = await supabase
+        .from("profiles")
+        .select("user_id, full_name")
+        .in("user_id", inviterIds);
+      
+      const profileMap = new Map((profiles || []).map((p: any) => [p.user_id, p]));
+
+      return (invites as any[]).map(invite => ({
+        ...invite,
+        inviter_profile: {
+          full_name: profileMap.get(invite.inviter_user_id)?.full_name || "Unknown member"
+        }
+      }));
     },
     enabled: !!user,
   });

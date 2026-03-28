@@ -115,10 +115,10 @@ const HabitCard = ({
           />
 
           {/* Header */}
-          <div className="flex items-center justify-between mb-3 relative z-10 pointer-events-none">
-            <div className="flex items-center gap-2">
-              <span className="text-xl pointer-events-auto">{habit.icon}</span>
-              <p className="font-semibold text-sm text-white truncate pointer-events-auto">{habit.name}</p>
+          <div className="flex items-start justify-between mb-3 relative z-10 pointer-events-none gap-2">
+            <div className="flex items-center gap-2 flex-1 min-w-0">
+              <span className="text-xl pointer-events-auto shrink-0">{habit.icon}</span>
+              <p className="font-semibold text-sm text-white pointer-events-auto break-words leading-tight">{habit.name}</p>
             </div>
             <div className="pointer-events-auto">
               <DropdownMenu>

@@ -8,6 +8,7 @@ import { AnimatePresence } from "framer-motion";
 import AIAssistant from "@/components/AIAssistant";
 import { NotificationWatcher } from "@/components/NotificationWatcher";
 import { Onboarding } from "@/components/Onboarding";
+import { NotificationPrompt } from "@/components/NotificationPrompt";
 
 const MainLayout = () => {
   const [isCollapsed, setIsCollapsed] = useState(false);
@@ -38,6 +39,7 @@ const MainLayout = () => {
   return (
     <div className="flex h-screen overflow-hidden bg-background text-foreground relative">
       <NotificationWatcher />
+      <NotificationPrompt />
       <AnimatePresence>
         {showLevelUp && currentLevel && (
           <LevelUpOverlay
@@ -71,7 +73,7 @@ const MainLayout = () => {
           className={`flex-1 w-full
             ${isCommunity
               ? 'h-full overflow-hidden p-0'
-              : 'overflow-y-auto p-3 md:p-6'
+              : 'overflow-y-auto p-3 md:p-6 pb-[calc(1.5rem+env(safe-area-inset-bottom,0px))] scroll-smooth custom-scrollbar'
             }
           `}
         >

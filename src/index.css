@@ -161,6 +161,10 @@
     min-height: 100vh;
   }
 
+  html {
+    scroll-behavior: smooth;
+  }
+
   html.dark body {
     background: linear-gradient(135deg, hsl(240, 10%, 3%), hsl(240, 8%, 6%));
   }
@@ -479,7 +483,7 @@
 
   /* Safe area padding for notched devices (iPhone X+, Android w/ notch) */
   .safe-area-bottom {
-    padding-bottom: env(safe-area-inset-bottom, 0px);
+    padding-bottom: calc(env(safe-area-inset-bottom, 0px) + 1.5rem);
   }
 
   /* Remove ugly tap highlight on mobile */
@@ -495,7 +499,7 @@
 
   /* Prevent content from shifting on overscroll */
   body {
-    overscroll-behavior-y: none;
+    overscroll-behavior-y: contain;
   }
 
   /* Make all interactive elements have minimum tap target size of 44x44px on mobile */
