@@ -114,8 +114,11 @@ const EarnCoinsPage = () => {
   useEffect(() => {
     const checkoutResult = searchParams.get("checkout");
     if (checkoutResult === "success") {
-      toast.success("🎉 Subscription activated! Your P Coins will be credited shortly.");
-      checkSubscription();
+      // Give Stripe a couple seconds to fully process before checking
+      toast.success("🎉 Payment successful! Checking your subscription...");
+      setTimeout(() => {
+        checkSubscription();
+      }, 2000);
     } else if (checkoutResult === "cancel") {
       toast.info("Checkout was cancelled.");
     }
@@ -154,7 +157,8 @@ const EarnCoinsPage = () => {
       if (data?.error) throw new Error(data.error);
 
       if (data?.url) {
-        window.open(data.url, "_blank");
+        // Redirect in the same tab so ?checkout=success is detected on return
+        window.location.href = data.url;
       }
     } catch (err: any) {
       toast.error(err.message || "Failed to start checkout");
@@ -387,6 +391,30 @@ const EarnCoinsPage = () => {
           </div>
         )}
       </div>
+
+      {/* Success Banner after payment - manual claim fallback */}
+      {searchParams.get("checkout") === "success" && (
+        <motion.div
+          initial={{ opacity: 0, y: -10 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="rounded-xl border border-emerald-500/30 bg-emerald-500/10 p-4 flex flex-wrap items-center justify-between gap-4"
+        >
+          <div className="flex items-center gap-3">
+            <span className="text-2xl">🎉</span>
+            <div>
+              <p className="font-semibold text-emerald-400">Payment successful!</p>
+              <p className="text-xs text-muted-foreground">Your P Coins should appear in your balance. If not, click Claim.</p>
+            </div>
+          </div>
+          <Button
+            size="sm"
+            onClick={checkSubscription}
+            className="bg-emerald-500 hover:bg-emerald-600 text-white font-bold shrink-0"
+          >
+            Claim My Coins
+          </Button>
+        </motion.div>
+      )}
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         {subscriptionPlans.map((plan, index) => {
