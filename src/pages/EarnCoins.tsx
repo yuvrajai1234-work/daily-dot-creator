@@ -147,9 +147,30 @@ const EarnCoinsPage = () => {
   const [isClaiming, setIsClaiming] = useState(false);
 
   const handleForceClaim = async () => {
+    if (!user) return;
     setIsClaiming(true);
-    await checkSubscription(true);
-    setIsClaiming(false);
+    
+    try {
+      // Manual bypass during test phase: directly credit 100 P Coins!
+      const currentPCoins = (profile as any)?.p_coin_balance || 0;
+      const { error } = await supabase
+        .from("profiles")
+        .update({ p_coin_balance: currentPCoins + 100 } as any)
+        .eq("user_id", user.id);
+        
+      if (error) throw error;
+      
+      toast.success("🎉 +100 P Coins manually credited! (Test Phase)");
+      queryClient.invalidateQueries({ queryKey: ["profile"] });
+      
+      // Clear the checkout param to dismiss banner
+      searchParams.delete("checkout");
+      window.history.replaceState({}, '', `${window.location.pathname}?${searchParams.toString()}`);
+    } catch (err: any) {
+      toast.error("Could not credit coins. Please try again or contact support.");
+    } finally {
+      setIsClaiming(false);
+    }
   };
 
   useEffect(() => {
@@ -403,6 +424,10 @@ const EarnCoinsPage = () => {
             </Button>
           </div>
         )}
+        
+        <div className="max-w-md mx-auto mt-4 p-3 bg-warning/10 border border-warning/30 rounded-xl">
+          <p className="text-sm text-warning font-medium">⚠️ Subscriptions are currently in a test phase for future updates.</p>
+        </div>
       </div>
 
       {/* Success Banner after payment - manual claim fallback */}
