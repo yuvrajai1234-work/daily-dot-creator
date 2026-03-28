@@ -29,25 +29,40 @@ export const provideFeedback = (
     // 2. Sound Effects
     if (settings?.soundEffects) {
         const soundPack = settings.soundPack || 'default';
-        let soundUrl = '';
+        const PACK_SOUNDS: Record<string, Record<string, string>> = {
+            default: {
+                click: 'https://assets.mixkit.co/active_storage/sfx/2571/2571-preview.mp3',
+                success: 'https://assets.mixkit.co/active_storage/sfx/1435/1435-preview.mp3',
+                complete: 'https://assets.mixkit.co/active_storage/sfx/1435/1435-preview.mp3',
+                achievement: 'https://assets.mixkit.co/active_storage/sfx/2019/2019-preview.mp3',
+                error: 'https://assets.mixkit.co/active_storage/sfx/2573/2573-preview.mp3',
+            },
+            zen: {
+                click: 'https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3',
+                success: 'https://assets.mixkit.co/active_storage/sfx/1423/1423-preview.mp3',
+                complete: 'https://assets.mixkit.co/active_storage/sfx/1423/1423-preview.mp3',
+                achievement: 'https://assets.mixkit.co/active_storage/sfx/544/544-preview.mp3',
+                error: 'https://assets.mixkit.co/active_storage/sfx/2570/2570-preview.mp3',
+            },
+            retro: {
+                click: 'https://assets.mixkit.co/active_storage/sfx/2568/2568-preview.mp3',
+                success: 'https://assets.mixkit.co/active_storage/sfx/2003/2003-preview.mp3',
+                complete: 'https://assets.mixkit.co/active_storage/sfx/2003/2003-preview.mp3',
+                achievement: 'https://assets.mixkit.co/active_storage/sfx/2000/2000-preview.mp3',
+                error: 'https://assets.mixkit.co/active_storage/sfx/2954/2954-preview.mp3',
+            },
+            epic: {
+                click: 'https://assets.mixkit.co/active_storage/sfx/2863/2863-preview.mp3',
+                success: 'https://assets.mixkit.co/active_storage/sfx/1434/1434-preview.mp3',
+                complete: 'https://assets.mixkit.co/active_storage/sfx/1434/1434-preview.mp3',
+                achievement: 'https://assets.mixkit.co/active_storage/sfx/2018/2018-preview.mp3',
+                error: 'https://assets.mixkit.co/active_storage/sfx/2955/2955-preview.mp3',
+            }
+        };
 
-        // Using standard sound types. For now, we'll use CDNs for demonstration
-        // until local assets are added.
-        switch (type) {
-            case 'click':
-                soundUrl = 'https://assets.mixkit.co/active_storage/sfx/2571/2571-preview.mp3';
-                break;
-            case 'success':
-            case 'complete':
-                soundUrl = 'https://assets.mixkit.co/active_storage/sfx/1435/1435-preview.mp3';
-                break;
-            case 'achievement':
-                soundUrl = 'https://assets.mixkit.co/active_storage/sfx/2019/2019-preview.mp3';
-                break;
-            case 'error':
-                soundUrl = 'https://assets.mixkit.co/active_storage/sfx/2573/2573-preview.mp3';
-                break;
-        }
+        const activePack = PACK_SOUNDS[soundPack] || PACK_SOUNDS['default'];
+        const soundUrl = activePack[type];
+
 
         if (soundUrl) {
             try {

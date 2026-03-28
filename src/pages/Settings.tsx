@@ -36,6 +36,7 @@ import {
 import { useProfile } from "@/hooks/useProfile";
 import AvatarWithFrame from "@/components/AvatarWithFrame";
 import { supabase } from "@/integrations/supabase/client";
+import { provideFeedback } from "@/lib/feedback";
 
 // ─── Purchased rewards tracking is now managed via the database ────────────────
 
@@ -437,6 +438,18 @@ const SettingsPage = () => {
                   <span className="text-base">{sp.icon}</span>
                   <span>{sp.name}</span>
                   {active && <Check className="w-3 h-3" />}
+                  {owned && (
+                    <div 
+                      title="Preview sound"
+                      className="ml-1 p-1 rounded-full hover:bg-black/10 dark:hover:bg-white/10 transition-colors z-10"
+                      onClick={(e) => {
+                        e.stopPropagation(); // Prevent actuating the pack selection if they only want to preview
+                        provideFeedback('success', { soundEffects: true, soundPack: id });
+                      }}
+                    >
+                      <Volume2 className="w-3.5 h-3.5 opacity-70 hover:opacity-100" />
+                    </div>
+                  )}
                   {!owned && <Lock className="w-3 h-3" />}
                 </button>
               );

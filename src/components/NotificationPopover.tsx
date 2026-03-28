@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { useNotifications, AppNotification } from "@/hooks/useNotifications";
 import { useClaimACoins, useClaimBCoins, useClaimStreakReward } from "@/hooks/useCoins";
+import { useReminders } from "@/hooks/useReminders";
 import { useNavigate } from "react-router-dom";
 
 const typeIcon = (type: AppNotification["type"]) => {
@@ -26,6 +27,7 @@ const NotificationPopover = () => {
   const claimACoins = useClaimACoins();
   const claimBCoins = useClaimBCoins();
   const claimStreakReward = useClaimStreakReward();
+  const { deleteReminder } = useReminders();
 
   const handleClaim = (notif: AppNotification, e: React.MouseEvent) => {
     e.stopPropagation(); // Prevent navigation when claiming
@@ -53,6 +55,10 @@ const NotificationPopover = () => {
     if (notif.type === "achievement") {
       navigate("/achievements");
     } else if (notif.type === "reminder") {
+      // Delete normal reminders if clicked after their scheduled time
+      if (!notif.isSpecial && notif.timestamp <= new Date()) {
+        deleteReminder(notif.id);
+      }
       navigate("/calendar");
     } else {
       navigate("/inbox");

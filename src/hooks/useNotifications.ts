@@ -4,6 +4,7 @@ import { useUserStats, useAchievements, useUserAchievements } from "@/hooks/useA
 import { useClaimedRewards, useCycleStreakRewards } from "@/hooks/useCoins";
 import { useReminders } from "@/hooks/useReminders";
 import { format } from "date-fns";
+import { getAchievementProgress } from "@/hooks/achievementConstants";
 import { useProfile } from "@/hooks/useProfile";
 import { getCycleStartDate, getAppDate } from "@/lib/dateUtils";
 import { useAuth } from "@/components/AuthProvider";
@@ -19,6 +20,7 @@ export interface AppNotification {
   claimable: boolean;
   claimReward?: number;
   timestamp: Date;
+  isSpecial?: boolean;
 }
 
 export const useNotifications = () => {
@@ -141,11 +143,7 @@ export const useNotifications = () => {
     achievements.forEach((ach) => {
       if (!earnedIds.has(ach.id)) {
         // Check if user qualifies
-        let qualifies = false;
-        if (ach.requirement_type === "streak" && bestStreak >= ach.requirement_value) qualifies = true;
-        if (ach.requirement_type === "total_completions" && (stats?.totalCompletions || 0) >= ach.requirement_value) qualifies = true;
-        if (ach.requirement_type === "total_habits" && (stats?.totalHabits || 0) >= ach.requirement_value) qualifies = true;
-        if (ach.requirement_type === "total_reflections" && (stats?.totalReflections || 0) >= ach.requirement_value) qualifies = true;
+        const qualifies = getAchievementProgress(ach, stats) === 100;
 
         if (qualifies) {
           notifs.push({
@@ -175,6 +173,7 @@ export const useNotifications = () => {
         icon: r.isSpecial ? "🎉" : "🔔",
         claimable: false,
         timestamp: new Date(`${r.date}T${r.time}`),
+        isSpecial: r.isSpecial,
       });
     });
 
