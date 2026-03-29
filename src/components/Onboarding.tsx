@@ -658,11 +658,20 @@ export const Onboarding = () => {
               <img src="/adonis.png" alt="Adonis" className="w-full h-full object-cover" />
             </motion.div>
 
-            <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.9 }} className="space-y-2">
+            <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.9 }} className="space-y-4">
               <h2 className="text-2xl font-bold text-white">Hi! I'm Adonis 👋</h2>
-              <p className="text-sm text-white/70 leading-relaxed">
+              <p className="text-sm text-white/80 leading-relaxed max-w-sm mx-auto">
                 Your personal DailyDots guide. I'll walk you through every feature of this app step by step — with live highlights on the actual screen so you know exactly what to click.
               </p>
+              
+              <div className="bg-white/5 border border-white/10 p-4 rounded-xl shadow-inner text-left">
+                <h3 className="text-sm font-bold text-violet-300 mb-2 flex items-center gap-2">
+                  <Sparkles className="w-4 h-4" /> The Future is Here
+                </h3>
+                <p className="text-xs text-white/70 leading-relaxed">
+                  Get ready, because the future of this app is massive! Soon, you'll be able to earn <strong>A Coins</strong> the hard way through sheer discipline (where <strong>1 A = ₹1</strong>) to score real-world deals and app perks. Want to enter the big leagues? Our upcoming <strong>P Coins</strong> will give you VIP access to elite athletic competitions and the chance to win luxurious trips and <strong>₹1L+ cash prizes</strong>. Together, we're going to crush your goals and turn your discipline into real world victory!
+                </p>
+              </div>
             </motion.div>
 
             <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 1.6 }}

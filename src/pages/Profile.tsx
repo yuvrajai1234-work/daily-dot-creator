@@ -690,9 +690,15 @@ const ProfilePage = () => {
                   {isEditing ? (
                     <Input
                       value={weight}
-                      onChange={(e) => setWeight(e.target.value)}
+                      onChange={(e) => {
+                        const val = e.target.value;
+                        if (!val || Number(val) <= 1000) {
+                          setWeight(val);
+                        }
+                      }}
                       placeholder="65"
                       type="number"
+                      max={1000}
                       className="w-24 bg-secondary/30 border-border text-sm"
                     />
                   ) : (
@@ -709,9 +715,15 @@ const ProfilePage = () => {
                   {isEditing ? (
                     <Input
                       value={height}
-                      onChange={(e) => setHeight(e.target.value)}
+                      onChange={(e) => {
+                        const val = e.target.value;
+                        if (!val || Number(val) <= 300) {
+                          setHeight(val);
+                        }
+                      }}
                       placeholder="181"
                       type="number"
+                      max={300}
                       className="w-24 bg-secondary/30 border-border text-sm"
                     />
                   ) : (

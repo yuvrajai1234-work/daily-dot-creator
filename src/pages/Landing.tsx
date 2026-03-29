@@ -1,6 +1,6 @@
 import { useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { HeroSection, FeaturesSection, CTASection } from "@/components/landing/LandingSections";
+import { HeroSection, FeaturesSection, CTASection, CoinsSection } from "@/components/landing/LandingSections";
 import { useAuth } from "@/components/AuthProvider";
 
 const Landing = () => {
@@ -19,6 +19,7 @@ const Landing = () => {
     <div className="flex flex-col min-h-screen">
       <HeroSection />
       <FeaturesSection />
+      <CoinsSection />
       <CTASection />
       <footer className="border-t border-border py-8 px-6">
         <div className="max-w-6xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-4">

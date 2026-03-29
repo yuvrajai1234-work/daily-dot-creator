@@ -43,7 +43,7 @@ export const CommunityDetailView = ({ community, onBack }: CommunityDetailViewPr
     const { user, onlineUsers } = useAuth();
     const { data: members = [], isLoading: membersLoading } = useCommunityMembers(community.id);
     const { friends, sendRequest, isLoading: friendsLoading } = useFriendships();
-    const { leaveCommunity } = useCommunities();
+    const { leaveCommunity, updateCommunity } = useCommunities();
     const [settingsOpen, setSettingsOpen] = useState(false);
 
     // Fetch Channels
@@ -168,49 +168,164 @@ export const CommunityDetailView = ({ community, onBack }: CommunityDetailViewPr
     const activeChannelObj = channels.find(c => c.id === activeChannelId);
 
     // Rules View Component (Inline)
-    const RulesView = () => (
-        <div className="absolute inset-0 p-8 flex flex-col items-center justify-center text-center animate-in fade-in zoom-in-95 duration-300">
-            <div className="max-w-2xl w-full bg-[#2b2d31] rounded-lg p-6 shadow-xl border-l-4 border-yellow-500 text-left">
-                <div className="flex items-center gap-3 mb-4">
-                    <div className="w-12 h-12 rounded-full bg-secondary/20 flex items-center justify-center text-2xl">
-                        {community.emoji}
-                    </div>
-                    <div>
-                        <h3 className="text-xl font-bold text-white">Welcome to {community.name}</h3>
-                        <p className="text-gray-400 text-sm">Est. {new Date(community.created_at).getFullYear()}</p>
-                    </div>
-                </div>
+    const RulesView = () => {
+        const [isEditing, setIsEditing] = useState(false);
+        const [extraRules, setExtraRules] = useState<string[]>([]);
+        const [newRule, setNewRule] = useState("");
 
-                <div className="space-y-4 text-gray-300">
-                    <div className="flex items-center justify-between">
+        useEffect(() => {
+            try {
+                if (community.rules_content) {
+                    const parsed = JSON.parse(community.rules_content);
+                    if (Array.isArray(parsed)) setExtraRules(parsed);
+                }
+            } catch (e) { }
+        }, [community.rules_content, isEditing]);
+
+        const handleAddRule = () => {
+            if (!newRule.trim()) return;
+            const words = newRule.trim().split(/\s+/).filter(Boolean).length;
+            if (words > 100) {
+                toast.error("Rule cannot exceed 100 words.");
+                return;
+            }
+            setExtraRules(prev => [...prev, newRule.trim()]);
+            setNewRule("");
+        };
+
+        const handleSaveRules = () => {
+            updateCommunity.mutate({
+                id: community.id,
+                rules_content: JSON.stringify(extraRules)
+            }, {
+                onSuccess: () => setIsEditing(false)
+            });
+        };
+
+        const defaultRules = [
+            "Be respectful to all members. Harassment is not tolerated.",
+            "Keep discussions relevant to the channel topic.",
+            "No spamming or self-promotion without permission."
+        ];
+
+        let displayExtraRules = [];
+        try {
+            if (community.rules_content) {
+                const parsed = JSON.parse(community.rules_content);
+                if (Array.isArray(parsed)) displayExtraRules = parsed;
+            }
+        } catch(e) {}
+
+        return (
+            <div className="absolute inset-0 p-8 flex flex-col items-center justify-center text-center animate-in fade-in zoom-in-95 duration-300">
+                <div className="max-w-2xl w-full bg-[#2b2d31] rounded-lg p-6 shadow-xl border-l-4 border-yellow-500 text-left flex flex-col max-h-full">
+                    <div className="flex items-center gap-3 mb-4 shrink-0">
+                        <div className="w-12 h-12 rounded-full bg-secondary/20 flex items-center justify-center text-2xl">
+                            {community.emoji}
+                        </div>
+                        <div>
+                            <h3 className="text-xl font-bold text-white">Welcome to {community.name}</h3>
+                            <p className="text-gray-400 text-sm">Est. {new Date(community.created_at).getFullYear()}</p>
+                        </div>
+                    </div>
+
+                    <div className="flex items-center justify-between shrink-0 mb-4">
                         <p className="font-semibold text-yellow-500 flex items-center gap-2">
                             <ShieldCheck className="w-5 h-5" /> Community Rules
                         </p>
-                        {isAdmin && <Button variant="ghost" size="sm" className="h-6 text-xs text-muted-foreground" onClick={() => alert("Edit rules feature coming soon!")}>Edit</Button>}
+                        {isAdmin && (
+                            <Dialog open={isEditing} onOpenChange={setIsEditing}>
+                                <DialogTrigger asChild>
+                                    <Button variant="ghost" size="sm" className="h-6 text-xs text-muted-foreground">Edit</Button>
+                                </DialogTrigger>
+                                <DialogContent className="max-w-xl bg-[#2b2d31] border-border text-foreground overflow-hidden flex flex-col max-h-[90vh]">
+                                    <DialogHeader>
+                                        <DialogTitle className="text-yellow-500 flex items-center gap-2">
+                                            <ShieldCheck className="w-5 h-5" /> Edit Community Rules
+                                        </DialogTitle>
+                                    </DialogHeader>
+                                    <ScrollArea className="flex-1 min-h-0 pr-4 mt-2">
+                                        <div className="space-y-4">
+                                            <div className="bg-[#1e1f22] p-4 rounded border border-gray-700 space-y-3">
+                                                {defaultRules.map((r, i) => (
+                                                    <div key={i} className="flex gap-3">
+                                                        <span className="font-bold text-gray-400">{i + 1}.</span>
+                                                        <p className="text-sm">{r}</p>
+                                                    </div>
+                                                ))}
+                                                {extraRules.map((r, i) => (
+                                                    <div key={`extra-${i}`} className="flex gap-3 group">
+                                                        <span className="font-bold text-gray-400">{defaultRules.length + i + 1}.</span>
+                                                        <p className="text-sm flex-1 break-words pb-1">{r}</p>
+                                                        <button
+                                                            onClick={() => setExtraRules(extraRules.filter((_, idx) => idx !== i))}
+                                                            className="text-red-400 opacity-0 group-hover:opacity-100 transition-opacity"
+                                                        >
+                                                            <X className="w-4 h-4" />
+                                                        </button>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                            
+                                            <div className="space-y-2">
+                                                <label className="text-sm font-semibold text-muted-foreground">Add New Rule (Max 100 words)</label>
+                                                <div className="flex flex-col gap-2">
+                                                    <textarea 
+                                                        className="w-full bg-[#1e1f22] border border-gray-700 rounded-md p-2 text-sm focus:outline-none focus:ring-1 focus:ring-primary text-gray-200 resize-none min-h-[80px]"
+                                                        placeholder="Type new rule here..."
+                                                        value={newRule}
+                                                        onChange={(e) => {
+                                                            const words = e.target.value.trim().split(/\s+/).filter(Boolean).length;
+                                                            if (words <= 100 || e.target.value.length < newRule.length) {
+                                                                setNewRule(e.target.value);
+                                                            }
+                                                        }}
+                                                    />
+                                                    <div className="flex justify-between items-center">
+                                                        <span className="text-xs text-muted-foreground">
+                                                            {newRule.trim() ? newRule.trim().split(/\s+/).filter(Boolean).length : 0} / 100 words
+                                                        </span>
+                                                        <Button onClick={handleAddRule} disabled={!newRule.trim()} size="sm" variant="secondary">Add Rule</Button>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </ScrollArea>
+                                    <div className="pt-4 border-t border-border mt-2 flex justify-end gap-2 shrink-0">
+                                        <Button variant="ghost" onClick={() => setIsEditing(false)}>Cancel</Button>
+                                        <Button onClick={handleSaveRules} disabled={updateCommunity.isPending}>Save Changes</Button>
+                                    </div>
+                                </DialogContent>
+                            </Dialog>
+                        )}
                     </div>
 
-                    <div className="bg-[#1e1f22] p-4 rounded border border-gray-700 space-y-3">
-                        <div className="flex gap-3">
-                            <span className="font-bold text-gray-400">1.</span>
-                            <p className="text-sm">Be respectful to all members. Harassment is not tolerated.</p>
-                        </div>
-                        <div className="flex gap-3">
-                            <span className="font-bold text-gray-400">2.</span>
-                            <p className="text-sm">Keep discussions relevant to the channel topic.</p>
-                        </div>
-                        <div className="flex gap-3">
-                            <span className="font-bold text-gray-400">3.</span>
-                            <p className="text-sm">No spamming or self-promotion without permission.</p>
-                        </div>
-                    </div>
+                    <ScrollArea className="flex-1 pr-2 min-h-0">
+                        <div className="space-y-4 text-gray-300">
+                            <div className="bg-[#1e1f22] p-4 rounded border border-gray-700 space-y-3">
+                                {defaultRules.map((r, i) => (
+                                    <div key={`view-def-${i}`} className="flex gap-3">
+                                        <span className="font-bold text-gray-400">{i + 1}.</span>
+                                        <p className="text-sm">{r}</p>
+                                    </div>
+                                ))}
+                                {displayExtraRules.map((r, i) => (
+                                    <div key={`view-ext-${i}`} className="flex gap-3">
+                                        <span className="font-bold text-gray-400">{defaultRules.length + i + 1}.</span>
+                                        <p className="text-sm break-words pb-1">{r}</p>
+                                    </div>
+                                ))}
+                            </div>
 
-                    <p className="text-sm italic text-gray-500 mt-4">
-                        By staying in this server, you agree to follow these rules.
-                    </p>
+                            <p className="text-sm italic text-gray-500 mt-4 pb-4">
+                                By staying in this server, you agree to follow these rules.
+                            </p>
+                        </div>
+                    </ScrollArea>
                 </div>
             </div>
-        </div>
-    );
+        );
+    };
 
     return (
         <div className="flex h-full w-full bg-background text-foreground overflow-hidden">
@@ -466,7 +581,41 @@ export const CommunityDetailView = ({ community, onBack }: CommunityDetailViewPr
                             <input className="bg-transparent border-none outline-none text-foreground placeholder-muted-foreground w-full" placeholder="Search" />
                             <Search className="w-3 h-3 text-muted-foreground" />
                         </div>
-                        <HelpCircle className="w-5 h-5 cursor-pointer hover:text-foreground" />
+                        <Dialog>
+                            <DialogTrigger asChild>
+                                <HelpCircle className="w-5 h-5 cursor-pointer hover:text-foreground" />
+                            </DialogTrigger>
+                            <DialogContent className="sm:max-w-md glass border-border/50">
+                                <DialogHeader>
+                                    <DialogTitle className="flex items-center gap-2">
+                                        <Hash className="w-5 h-5 text-primary" />
+                                        About Communities
+                                    </DialogTitle>
+                                </DialogHeader>
+                                <div className="text-sm text-foreground/80 space-y-4 mt-2">
+                                    <p>
+                                        Welcome to Daily Dots Communities! This is your space to connect, share goals, and stay motivated with like-minded people.
+                                    </p>
+                                    <ul className="space-y-3">
+                                        <li className="flex gap-2">
+                                            <Hash className="w-4 h-4 text-primary shrink-0 mt-0.5" />
+                                            <span><strong>Channels:</strong> Join various text channels to discuss specific subjects, share your habit streaks, or ask for advice.</span>
+                                        </li>
+                                        <li className="flex gap-2">
+                                            <ShieldCheck className="w-4 h-4 text-primary shrink-0 mt-0.5" />
+                                            <span><strong>Roles:</strong> Communities are led by Chiefs (Admins) and guided by Elders (Moderators) to ensure a great vibe.</span>
+                                        </li>
+                                        <li className="flex gap-2">
+                                            <Bell className="w-4 h-4 text-primary shrink-0 mt-0.5" />
+                                            <span><strong>Stay Updated:</strong> Keep an eye on the bell icon for any mentions, replies, or announcements.</span>
+                                        </li>
+                                    </ul>
+                                    <p className="font-medium text-primary pt-2">
+                                        Engage with your tribe and let's achieve greatness together!
+                                    </p>
+                                </div>
+                            </DialogContent>
+                        </Dialog>
                     </div>
                 </div>
 

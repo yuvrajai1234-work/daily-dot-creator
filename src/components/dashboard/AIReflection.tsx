@@ -17,9 +17,9 @@ const AIReflection = ({ completionRate, userName }: AIReflectionProps) => {
       <CardHeader className="pb-3">
         <CardTitle className="text-lg flex items-center gap-2">
           <Sparkles className="w-5 h-5 text-primary animate-pulse" />
-          AI Daily Reflection
+          Daily Reflection
         </CardTitle>
-        <p className="text-xs text-muted-foreground">Your AI companion's thoughts on your progress.</p>
+        <p className="text-xs text-muted-foreground">Adonis's thoughts on your progress.</p>
       </CardHeader>
       <CardContent className="space-y-4">
         {/* AI Generated Message */}

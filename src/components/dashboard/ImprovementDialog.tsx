@@ -227,7 +227,14 @@ export const ImprovementDialog = ({ trigger, overallImprovement, singleHabitId }
             <DialogTrigger asChild>
                 {trigger}
             </DialogTrigger>
-            <DialogContent className="max-w-3xl w-[90vw] max-h-[85vh] overflow-y-auto glass border-primary/20">
+            <DialogContent 
+                className="max-w-3xl w-[90vw] max-h-[85vh] overflow-y-auto glass border-primary/20"
+                onPointerDown={(e) => e.stopPropagation()}
+                onPointerMove={(e) => e.stopPropagation()}
+                onPointerEnter={(e) => e.stopPropagation()}
+                onPointerLeave={(e) => e.stopPropagation()}
+                onClick={(e) => e.stopPropagation()}
+            >
                 <DialogHeader>
                     <DialogTitle className="text-2xl font-bold">
                         {singleHabit ? singleHabit.name : "Improvement"}

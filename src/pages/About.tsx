@@ -65,6 +65,35 @@ const AboutPage = () => {
         </Card>
       </motion.section>
 
+      <motion.section initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.32 }} className="text-center">
+        <h2 className="text-3xl font-bold mb-6">The Future: Level Up Your Game</h2>
+        <Card className="glass border-border/50 text-left">
+          <CardContent className="p-8 space-y-6">
+            <div>
+              <h3 className="text-xl font-bold mb-2 flex items-center gap-2">
+                <span className="w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center text-primary text-sm shadow-inner">A</span>
+                Earn A Coins the Hard Way
+              </h3>
+              <p className="text-muted-foreground leading-relaxed">
+                We are building a robust economy to truly reward your discipline. Soon, you'll be able to earn <strong>A Coins</strong> the hard way—tracking habits, crushing workouts, and hitting daily goals. Every push-up counts, because <strong className="text-foreground">1 A Coin equals ₹1</strong> in real value! Redeem them for in-app rewards or buy real-world products at killer discounts.
+              </p>
+            </div>
+            
+            <div className="h-px w-full bg-border/50" />
+
+            <div>
+              <h3 className="text-xl font-bold mb-2 flex items-center gap-2 text-yellow-500">
+                <span className="w-8 h-8 rounded-full bg-yellow-500/20 flex items-center justify-center text-yellow-500 text-sm shadow-inner">P</span>
+                Unlock Elite Wins with P Coins
+              </h3>
+              <p className="text-muted-foreground leading-relaxed">
+                But that's just the beginning. <strong>P Coins</strong> will act as your VIP pass to the big leagues. Available via in-app purchases, they unlock entry into elite athletic events and fitness challenges, allowing you to compete for massive rewards like <strong>₹1 Lakh cash, sponsored trips, and premium health packages</strong>.
+              </p>
+            </div>
+          </CardContent>
+        </Card>
+      </motion.section>
+
       <motion.section initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.35 }}>
         <h2 className="text-3xl font-bold text-center mb-6">Meet the Team</h2>
         <div className="flex flex-wrap justify-center gap-6">

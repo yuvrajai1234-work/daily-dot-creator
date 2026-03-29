@@ -197,4 +197,126 @@ const CTASection = () => {
   );
 };
 
-export { HeroSection, FeaturesSection, CTASection };
+const CoinsSection = () => {
+  return (
+    <section className="py-20 bg-secondary/10 border-t border-border/50">
+      <div className="max-w-6xl mx-auto px-6">
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true }}
+          className="text-center mb-16"
+        >
+          <h2 className="text-3xl md:text-5xl font-bold mb-4 animate-text-gradient bg-gradient-to-r from-violet-500 via-indigo-500 to-purple-500 bg-clip-text text-transparent">
+            Level Up Your Game with Daily Dots Coins!
+          </h2>
+          <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
+            Ready to grind for A Coins or splurge on P Coins? Start earning now and turn discipline into discounts!
+          </p>
+        </motion.div>
+
+        <div className="grid md:grid-cols-2 gap-8 mb-16">
+          <motion.div
+            initial={{ opacity: 0, x: -20 }}
+            whileInView={{ opacity: 1, x: 0 }}
+            viewport={{ once: true }}
+            className="glass rounded-2xl p-8 border-t-4 border-t-primary shadow-lg"
+          >
+            <h3 className="text-2xl font-bold mb-4 flex items-center gap-3">
+              <span className="w-12 h-12 rounded-full bg-primary/20 flex items-center justify-center text-primary text-xl shadow-inner">A</span>
+              Earn A Coins the Hard Way
+            </h3>
+            <p className="text-muted-foreground mb-6 leading-relaxed">
+              A Coins are your sweat-earned currency. Track habits, crush workouts, and hit daily goals to rack them up. Our motto: <strong className="text-foreground">1 A Coin = ₹1</strong> — Real value, no fluff.
+            </p>
+            <ul className="space-y-4 mb-6">
+              <li className="flex items-start gap-3 text-sm text-foreground/80">
+                <CheckCircle className="w-5 h-5 text-primary shrink-0" />
+                <span>Redeem for in-app rewards like premium themes, custom habit trackers, or exclusive badges.</span>
+              </li>
+              <li className="flex items-start gap-3 text-sm text-foreground/80">
+                <CheckCircle className="w-5 h-5 text-primary shrink-0" />
+                <span>Buy real-world products at killer discounts: fitness gear, supplements, or tech gadgets from our partners.</span>
+              </li>
+              <li className="flex items-start gap-3 text-sm text-foreground/80">
+                <CheckCircle className="w-5 h-5 text-primary shrink-0" />
+                <span><em>Pro Tip:</em> Every push-up or streak counts. Turn discipline into discounts!</span>
+              </li>
+            </ul>
+          </motion.div>
+
+          <motion.div
+            initial={{ opacity: 0, x: 20 }}
+            whileInView={{ opacity: 1, x: 0 }}
+            viewport={{ once: true }}
+            className="glass rounded-2xl p-8 border-t-4 border-t-yellow-500 shadow-lg"
+          >
+            <h3 className="text-2xl font-bold mb-4 flex items-center gap-3 text-yellow-500">
+              <span className="w-12 h-12 rounded-full bg-yellow-500/20 flex items-center justify-center text-xl shadow-inner text-yellow-500">P</span>
+              Unlock Elite Wins with P Coins
+            </h3>
+            <p className="text-muted-foreground mb-6 leading-relaxed">
+              P Coins are your VIP pass to the big leagues—available exclusively via in-app purchases. Ready to compete for glory? Your next big win is one event away!
+            </p>
+            <ul className="space-y-4">
+              <li className="flex items-start gap-3 text-sm text-foreground/80">
+                <CheckCircle className="w-5 h-5 text-yellow-500 shrink-0" />
+                <span>Enter elite athletic events & competitions: Boxing battles, fitness challenges, or virtual races.</span>
+              </li>
+              <li className="flex items-start gap-3 text-sm text-foreground/80">
+                <CheckCircle className="w-5 h-5 text-yellow-500 shrink-0" />
+                <span>Win massive rewards like ₹1 Lakh cash, sponsored trekking/camping trips, luxury stays, or premium health packages (spa retreats, anyone?).</span>
+              </li>
+            </ul>
+          </motion.div>
+        </div>
+
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true }}
+          className="max-w-4xl mx-auto glass rounded-2xl overflow-hidden shadow-xl"
+        >
+          <div className="bg-secondary/30 p-4 border-b border-border/50 text-center">
+            <h4 className="font-bold text-lg">A Coins vs. P Coins: Quick Compare</h4>
+          </div>
+          <div className="overflow-x-auto">
+            <table className="w-full text-left border-collapse">
+              <thead>
+                <tr className="bg-secondary/10">
+                  <th className="p-4 font-semibold border-b border-border/50 w-1/4">Feature</th>
+                  <th className="p-4 font-semibold text-primary border-b border-border/50 w-3/8">A Coins (Earned)</th>
+                  <th className="p-4 font-semibold text-yellow-500 border-b border-border/50 w-3/8">P Coins (Purchased)</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr className="border-b border-border/20 hover:bg-muted/50 transition-colors">
+                  <td className="p-4 text-muted-foreground font-medium">How to Get</td>
+                  <td className="p-4 text-sm">Daily habits & challenges</td>
+                  <td className="p-4 text-sm">In-app store purchases</td>
+                </tr>
+                <tr className="border-b border-border/20 hover:bg-muted/50 transition-colors">
+                  <td className="p-4 text-muted-foreground font-medium">Value</td>
+                  <td className="p-4 text-sm font-semibold">1 A = ₹1</td>
+                  <td className="p-4 text-sm font-semibold">Premium entry power</td>
+                </tr>
+                <tr className="border-b border-border/20 hover:bg-muted/50 transition-colors">
+                  <td className="p-4 text-muted-foreground font-medium">Best For</td>
+                  <td className="p-4 text-sm">Everyday rewards & deals</td>
+                  <td className="p-4 text-sm">Elite events & huge prizes</td>
+                </tr>
+                <tr className="hover:bg-muted/50 transition-colors">
+                  <td className="p-4 text-muted-foreground font-medium">Top Rewards</td>
+                  <td className="p-4 text-sm">Discounts, app perks</td>
+                  <td className="p-4 text-sm">₹1L cash, trips, health luxuries</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </motion.div>
+      </div>
+    </section>
+  );
+};
+
+export { HeroSection, FeaturesSection, CTASection, CoinsSection };

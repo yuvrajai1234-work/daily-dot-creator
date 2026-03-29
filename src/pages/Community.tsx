@@ -114,9 +114,10 @@ const CommunityPage = () => {
 
   // Render detail view if a community is selected
   if (selectedCommunity) {
+    const freshCommunity = communities.find(c => c.id === selectedCommunity.id) || selectedCommunity;
     return (
       <CommunityDetailView
-        community={selectedCommunity}
+        community={freshCommunity}
         onBack={() => setSelectedCommunity(null)}
       />
     );
