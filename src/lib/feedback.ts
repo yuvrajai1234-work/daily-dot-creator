@@ -51,7 +51,7 @@ export const provideFeedback = (
                 achievement: 'https://assets.mixkit.co/active_storage/sfx/2000/2000-preview.mp3',
                 error: 'https://assets.mixkit.co/active_storage/sfx/2954/2954-preview.mp3',
             },
-            epic: {
+            orchestra: {
                 click: 'https://assets.mixkit.co/active_storage/sfx/2863/2863-preview.mp3',
                 success: 'https://assets.mixkit.co/active_storage/sfx/1434/1434-preview.mp3',
                 complete: 'https://assets.mixkit.co/active_storage/sfx/1434/1434-preview.mp3',
